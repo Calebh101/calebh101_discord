@@ -9,4 +9,4 @@ pubspec.lock
 suggestions_plus
 
 settings.json
-database.db
+*.db

@@ -6,18 +6,6 @@ import 'package:calebh101_discord/calebh101_discord.dart';
 import 'package:calebh101_discord/src/logger_override.dart';
 import 'package:localpkg/classes.dart';
 
-String formatLatency(Duration latency) {
-  return "${(latency.inMicroseconds / Duration.microsecondsPerMillisecond).toStringAsFixed(3)}ms";
-}
-
-final Map<String? Function(MessageCreateEvent event), num> pingPhrases = {
-  (_) => "WHAT'S ALL THAT NOISE??": 50,
-  (_) => "Ow!": 100,
-  (_) => "Pong!": 100,
-  (event) => event.member != null ? "<@${event.member!.id}>, pong!" : null: 100,
-  (_) => "AGHGHGHGHGHGHGHGHGHGHGHGHGHGHGHHGHG": 5,
-};
-
 String randomPingPhrase(Map<String? Function(MessageCreateEvent event), num> phrases, MessageCreateEvent event) {
   while (true) {
     final total = phrases.values.reduce((a, b) => a + b);
@@ -36,11 +24,11 @@ String randomPingPhrase(Map<String? Function(MessageCreateEvent event), num> phr
   }
 }
 
-class BotResult {
+class BotContext {
   final NyxxGateway client;
   final User? bot;
 
-  const BotResult({required this.client, required this.bot});
+  const BotContext({required this.client, required this.bot});
 }
 
 class BotCommand {
@@ -69,7 +57,7 @@ class TerminalCommand {
 /// [permissions] is a list of permissions. For bot apps, you should start out with `[...GatewayIntents.allUnprivileged, GatewayIntents.messageContent]`.
 ///
 /// [createBot] will create a bot user using `client.user.get()` if true.
-Future<BotResult?> load({required BotSettings settings, required FutureOr<Pattern> Function(MessageCreateEvent)? prefix, List<BotCommand>? commands, required List<Flag<GatewayIntents>> permissions, bool createBot = true, List<TerminalCommand> terminalCommands = const []}) async {
+Future<BotContext?> load({required BotSettings settings, required FutureOr<Pattern> Function(MessageCreateEvent)? prefix, List<BotCommand>? commands, required List<Flag<GatewayIntents>> permissions, bool createBot = true, List<TerminalCommand> terminalCommands = const []}) async {
   if (!(await settings.initCore())) return null;
   if (!(await settings.init())) return null;
   loggerOverride();
@@ -166,5 +154,29 @@ Future<BotResult?> load({required BotSettings settings, required FutureOr<Patter
     }
   });
 
-  return BotResult(client: client, bot: user);
+  return BotContext(client: client, bot: user);
+}
+
+String? memberToString(Member? member) {
+  if (member == null) return null;
+
+  try {
+    return "**${member.nick ?? member.user?.globalName ?? member.user?.username ?? (throw UnimplementedError("Couldn't find a valid name for member."))}** (*${member.user?.username ?? (throw UnimplementedError("Couldn't find a valid username for member."))}*)";
+  } catch (_) {
+    return null;
+  }
+}
+
+String? userToString(User? user) {
+  if (user == null) return null;
+
+  try {
+    return "**${user.globalName ?? user.username}** (*${user.username}*)";
+  } catch (_) {
+    return null;
+  }
+}
+
+String formatLatency(Duration latency) {
+  return "${(latency.inMicroseconds / Duration.microsecondsPerMillisecond).toStringAsFixed(3)}ms";
 }
