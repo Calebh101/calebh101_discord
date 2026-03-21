@@ -6,5 +6,7 @@
 # https://dart.dev/guides/libraries/private-files#pubspeclock.
 pubspec.lock
 
+suggestions_plus
+
 settings.json
 database.db

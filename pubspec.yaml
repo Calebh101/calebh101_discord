@@ -1,14 +1,20 @@
 name: calebh101_discord
 description: A starting point for Dart libraries or applications.
 version: 1.0.0
-# repository: https://github.com/my_org/my_repo
+publish_to: none
 
 environment:
   sdk: ^3.11.0
 
 # Add regular dependencies here.
 dependencies:
+  localpkg:
+    git:
+      url: https://github.com/Calebh101/localpkg-dart.git
+      ref: main
+
   dotenv: ^4.2.0
+  intl: ^0.20.2
   meta: ^1.18.2
   nyxx: ^6.8.1
   nyxx_commands: ^6.1.0
