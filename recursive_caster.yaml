@@ -1,0 +1,40 @@
+# This is the configuration file for recursive_caster.
+# To initialize the configuration file: dart run recursive_caster:initialize
+# To generate the library file: dart run recursive_caster
+
+
+types:
+- List<String>
+
+# This is how you add types that you can cast to. This is a list of strings, where each item is the target type. Imports don't matter at this stage.
+#
+# Example:
+#
+# types:
+#   - Map<String, List<Map<String, dynamic>>>
+#   - List<Set<Map<String, List<Map<String, dynamic>>>>>
+#   - List<Map<String, num>>
+
+
+imports:
+
+# This is how you import packages for custom and non-standard types into the generated file. The syntax is:
+#   - package:example/example.dart [as prefix] [show Class1, Class2]
+# prefix and show are not required. If you supply a prefix, make sure to use the 'prefixes' field.
+#
+# Example:
+#
+# imports:
+#   - dart:io show File, Directory
+#   - package:flutter/material.dart as material
+#
+# Make sure that the 'as' comes before the 'show', and that 'show' items are separated by commas. You can also put quotes around the path and 'as' values, and if you wanted, you could put 'import' at the beginning.
+# Note that deferred imports are not supported, and will be ignored.
+
+prefixes:
+
+# This is how you set prefixes for certain types, where file conflicts may be an issue.
+# 'prefixes' is a dictionary of type string, string. The key is the type that needs the prefix, and the value is the prefix to be used. Note that keys are case sensitive.
+# Example:
+# prefixes:
+#   "Example": "example"

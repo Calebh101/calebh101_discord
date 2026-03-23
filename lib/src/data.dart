@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:calebh101_discord/calebh101_discord.dart';
+import 'package:calebh101_discord/recursive_caster.g.dart';
 import 'package:meta/meta.dart';
 import 'package:path/path.dart' as p;
 import 'package:sqlite3/sqlite3.dart';
@@ -150,33 +151,52 @@ class KVStore {
 enum Scope {
   server,
   user,
+  userPerServer,
 }
 
 class SettingsObject<T> {
   final EntitySettings obj;
   final String key;
 
-  const SettingsObject(this.obj, this.key);
+  final T? Function(dynamic input)? decodeFunction;
+  final dynamic Function(T input)? encodeFunction;
+
+  SettingsObject(this.obj, this.key, {this.decodeFunction, this.encodeFunction});
 
   T? get() {
-    return obj.store.get(obj.scope.name, obj.id.toString(), key) as T?;
+    try {
+      return (decodeFunction ?? cast).call(obj.store.get(obj.scope.name, obj.id.toString(), key));
+    } catch (e) {
+      Logger.warn("SettingsObject($key, $T)", "Unable to decode: $e");
+      return null;
+    }
   }
 
   void set(T? value) {
-    return obj.store.set(obj.scope.name, obj.id.toString(), key, value);
+    try {
+      if (value == null) return delete();
+      final v = encodeFunction?.call(value) ?? value;
+      return obj.store.set(obj.scope.name, obj.id.toString(), key, v);
+    } catch (e) {
+      Logger.warn("SettingsObject($key, $T)", "Unable to encode value ${value.runtimeType}: $e");
+    }
   }
 
   void delete() {
     return obj.store.delete(obj.scope.name, obj.id.toString(), key);
   }
+
+  static R cast<R>(dynamic input) {
+    return input as R;
+  }
 }
 
 abstract class EntitySettings {
   final KVStore store;
-  final Snowflake id;
+  final String id;
   final Scope scope;
 
-  const EntitySettings(this.store, this.id, {required this.scope});
+  const EntitySettings(this.store, {required this.id, required this.scope});
 
   Map<String, dynamic> getAll() {
     return store.getAll(scope.name, id.toString());
@@ -184,15 +204,21 @@ abstract class EntitySettings {
 }
 
 class ServerSettings extends EntitySettings {
-  ServerSettings(super.store, super.id) : super(scope: Scope.server);
+  ServerSettings(super.store, Snowflake id) : super(id: id.toString(), scope: Scope.server);
 
-  SettingsObject<String> get prefix => SettingsObject<String>(this, "prefix");
-  SettingsObject<String> get mainAdmin => SettingsObject<String>(this, "mainAdmin");
-  SettingsObject<List> get admins => SettingsObject<List>(this, "admins");
+  SettingsObject<String> get prefix => SettingsObject(this, "prefix");
+  SettingsObject<String> get mainAdmin => SettingsObject(this, "mainAdmin");
+  SettingsObject<List> get admins => SettingsObject(this, "admins");
+  SettingsObject<int> get modlogChannel => SettingsObject(this, "modlogChannel");
+  SettingsObject<List<String>> get modlog => SettingsObject(this, "modlogScopes", encodeFunction: (input) => input as List, decodeFunction: (input) => RecursiveCaster.cast<List<String>>(input));
 }
 
 class UserSettings extends EntitySettings {
-  UserSettings(super.store, super.id) : super(scope: Scope.user);
+  UserSettings(super.store, Snowflake id) : super(id: id.toString(), scope: Scope.user);
+}
+
+class UserPerServerSettings extends EntitySettings {
+  UserPerServerSettings(super.store, Snowflake server, Snowflake user) : super(id: "$server.$user", scope: Scope.userPerServer);
 }
 
 enum IsAdminType {
@@ -200,12 +226,34 @@ enum IsAdminType {
   user,
 }
 
-bool isAdmin(ServerSettings settings, IsAdminType type, Snowflake id) {
+DefinedUser? globalOwner;
+
+DefinedUser setGlobalOwner(DefinedUser owner) {
+  globalOwner = owner;
+  return owner;
+}
+
+bool isAdmin({required ServerSettings settings, IsAdminType type = IsAdminType.user, required Snowflake id, Snowflake? owner}) {
+  if (isOwner(id: id, owner: owner)) return true;
+  if (type == IsAdminType.user && settings.mainAdmin.get() == id.toString()) return true;
+
   for (final x in settings.admins.get() ?? []) {
     if (x["type"] == type.name && x["id"] == id.toString()) {
       return true;
     }
   }
 
+  return false;
+}
+
+bool isOwner({required Snowflake id, Snowflake? owner}) {
+  owner ??= globalOwner?.id;
+  if (owner != null && owner == id) return true;
+  return false;
+}
+
+bool isClaimer({required ServerSettings settings, required Snowflake id}) {
+  if (settings.mainAdmin.get() == null) return false;
+  if (settings.mainAdmin.get() == id.toString()) return true;
   return false;
 }

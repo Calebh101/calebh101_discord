@@ -1,61 +1,185 @@
+import 'dart:io';
+
 import 'package:calebh101_discord/calebh101_discord.dart';
 import 'package:localpkg/functions.dart';
 
-Future<String> Function(MessageCreateEvent) prefixFromServerSettings(ServerSettings? Function(PartialGuild guild) getSettings) => (MessageCreateEvent event) async {
-  if (event.guild == null) return "!";
-  final settings = getSettings.call(event.guild!);
-  if (settings == null) return "!";
+const defaultPrefix = "!";
+const enableKill = true;
 
-  final prefix = settings.prefix.get() ?? "!";
+typedef DefinedUser = ({String name, String username, Snowflake id});
+
+const DefinedUser calebh101 = (
+  name: "Caleb",
+  username: "calebh101",
+  id: Snowflake(1225628518021599264),
+);
+
+Future<String> Function(MessageCreateEvent) prefixFromServerSettings(ServerSettings? Function(PartialGuild guild) getSettings) => (MessageCreateEvent event) async {
+  if (event.guild == null) return defaultPrefix;
+  final settings = getSettings.call(event.guild!);
+  if (settings == null) return defaultPrefix;
+
+  final prefix = settings.prefix.get() ?? defaultPrefix;
   return prefix;
 };
 
-ChatCommand prefixCommand(ServerSettings? Function(Guild guild) getSettings) => ChatCommand("prefix", "Set the bot's prefix. Defaults to !.", (ChatContext context, String prefix) {
-  if (context.guild == null) return;
+BotCommand pingCommand() => BotCommand.command(ChatCommand(
+    "ping", "Pong!",
+    (ChatContext context) async {
+      final latency = context.client.httpHandler.latency;
+      final realLatency = context.client.httpHandler.realLatency;
+      final gatewayLatency = context.client.gateway.latency;
+
+      final Map<String, String> keys = {
+        "HTTP latency": formatLatency(latency),
+        "Real latency": formatLatency(realLatency),
+        if (gatewayLatency.inMicroseconds > 0) "Gateway latency": formatLatency(gatewayLatency),
+      };
+
+      await context.respond(MessageBuilder(content: "<@${context.user.id}>, pong!\n\n${keys.entries.map((x) {
+        return "> ${x.key}: **${x.value}**";
+      }).join("\n")}"));
+    },
+  ), CommandAttributes(category: "Bot"));
+
+BotCommand killCommand(ServerSettings? Function(Guild guild) getSettings) => BotCommand.command(ChatCommand("kill", "Kill the bot. He will be sad.", (ChatContext context) async {
+  if (!isOwner(id: context.user.id)) {
+    context.respondWithError("You are not the owner of me!");
+    return;
+  }
+
+  await context.respond(MessageBuilder(content: "I am now dead."));
+  Logger.print("Commands.Kill", "User ${context.user.id} requested my death.");
+  Process.killPid(pid, ProcessSignal.sigint);
+}), CommandAttributes(permissionsRequired: BotCommandPermissions.owner, category: "Bot"));
+
+BotCommand prefixCommand(ServerSettings? Function(Guild guild) getSettings) => BotCommand.command(ChatCommand("prefix", "Set the bot's prefix. Defaults to !.", (ChatContext context, [String? prefix]) async {
+  if (context.guild == null || context.member == null) return context.respondWithError("No guild/member found.");
   final settings = getSettings.call(context.guild!);
-  if (settings == null) return;
+  if (settings == null) return context.respondWithError("Unable to load settings.");
+  if (await context.assurePerms(BotCommandPermissions.admin, settings) == false) return;
+
+  final old = settings.prefix.get();
   settings.prefix.set(prefix);
 
-  context.respond(MessageBuilder(
-    content: "Prefix set to `$prefix`!",
+  Modlog.add(ModlogEvent(
+    "prefix.change",
+    guild: context.guild,
+    title: "Prefix Changed",
+    fields: {
+      "Was": "`$old`",
+      "Now": "`$prefix`",
+      "Default": "`$defaultPrefix`",
+    },
+    settings: settings,
   ));
-});
 
-ChatCommand listAllServerSettings(ServerSettings? Function(Guild guild) getSettings) => ChatCommand("allsettings", "List all settings for this server. Admin only.", (ChatContext context) {
-  if (context.guild == null) return;
+  context.respond(MessageBuilder(
+    content: "Prefix set to `${prefix ?? defaultPrefix}`!",
+  ));
+}), CommandAttributes(permissionsRequired: BotCommandPermissions.admin, category: "Bot"));
+
+BotCommand helpCommand(ServerSettings? Function(Guild guild) getSettings, CommandsPlugin plugin) => BotCommand.command(ChatCommand("help", "Show help for all commands, or a specific command.", (ChatContext context, [String? command]) async {
+  String getDescription(Command command) {
+    if (command is ChatCommand) return command.description;
+    return "Does something.";
+  }
+
+  String? getPerms(Command command) {
+    final attributes = BotCommand.commandAttributesMap[command.name];
+    return attributes?.permissionsRequired == BotCommandPermissions.any ? null : attributes?.permissionsRequired.name;
+  }
+
+  if (command == null) {
+    final commands = plugin.walkCommands().toList()..sort((a, b) => a.name.compareTo(b.name));
+    final categories = BotCommand.getAllCategories();
+
+    await respondWithPagination(
+      context,
+      PaginatedEmbedBuilder(
+        title: "All Commands",
+        footer: ElementBasedEmbedFooterBuilder(elements: ["${commands.length} commands", if (categories.isNotEmpty) "${categories.length} categories"]),
+        color: await getPrimaryColor(context.member) ?? primaryBotColor,
+        pages: EmbedPage.generate(List.generate(commands.length, (i) {
+          final command = commands.elementAt(i);
+          return EmbedFieldBuilder(name: command.name, value: [getDescription(command), if (getPerms(command) != null) "Requires perms: `${getPerms(command)}`"].join(" "), isInline: false);
+        })),
+      ),
+    );
+  } else {
+    final c = plugin.getCommand(StringView(command));
+    if (c == null) return context.respondWithError("Invalid command: $command");
+
+    await context.respond(MessageBuilder(embeds: [
+      EmbedBuilder(
+        title: "Command `${c.name}`",
+        color: await getPrimaryColor(context.member) ?? primaryBotColor,
+        description: [getDescription(c), if (getPerms(c) != null) "Requires perms: `${getPerms(c)}`"].join("\n"),
+      ),
+    ]));
+  }
+}), CommandAttributes(category: "Bot"));
+
+BotCommand echoDebugCommand(ServerSettings? Function(Guild guild) getSettings) => BotCommand.command(ChatCommand("echo", "Echo the input text from the bot.", (ChatContext context, String text, [int count = 1]) async {
+  if (context.guild == null || context.member == null) return context.respondWithError("No guild/member found.");
   final settings = getSettings.call(context.guild!);
-  if (settings == null) return;
+  if (settings == null) return context.respondWithError("Unable to load settings.");
+  if (await context.assurePerms(BotCommandPermissions.owner, settings) == false) return;
+
+  await context.respond(MessageBuilder(
+    content: text * count,
+  ));
+}), CommandAttributes(permissionsRequired: BotCommandPermissions.owner, category: "Debug"));
+
+BotCommand listAllServerSettings(ServerSettings? Function(Guild guild) getSettings) => BotCommand.command(ChatCommand("allsettings", "List all settings for this server. Admin only.", (ChatContext context) async {
+  if (context.guild == null || context.member == null) return context.respondWithError("No guild/member found.");
+  final settings = getSettings.call(context.guild!);
+  if (settings == null) return context.respondWithError("Unable to load settings.");
+  if (await context.assurePerms(BotCommandPermissions.admin, settings) == false) return;
   final all = settings.getAll().entries;
 
   context.respond(MessageBuilder(
     content: "All settings for *${context.guild?.name}*:\n${all.map((x) => "- `${x.key}`: `${x.value}`").join("\n")}",
   ), level: ResponseLevel.private);
-});
+}), CommandAttributes(permissionsRequired: BotCommandPermissions.admin, category: "Server"));
 
-List<ChatCommand> adminRoles(ServerSettings? Function(Guild guild) getSettings) => [
-  ChatCommand("addadminuser", "Add an admin user.", (ChatContext context, User user) {
-    if (context.guild == null) return;
+List<BotCommand> adminRoles(ServerSettings? Function(Guild guild) getSettings) => [
+  BotCommand.command(ChatCommand("addadminuser", "Add an admin user.", (ChatContext context, User user) async {
+    if (context.guild == null || context.member == null) return context.respondWithError("No guild/member found.");
     final settings = getSettings.call(context.guild!);
-    if (settings == null) return;
+    if (settings == null) return context.respondWithError("Unable to load settings.");
+    if (await context.assurePerms(BotCommandPermissions.admin, settings) == false) return;
     final admins = settings.admins.get() ?? [];
 
     if (admins.any((x) => x["type"] == "user" && x["id"] == user.id.toString())) {
       return context.respond(MessageBuilder(
-        content: "<@${user.id}> is already an admin.",
+        content: "${userToString(user)} is already an admin.",
       )).toVoid();
     }
 
     admins.add({"type": "user", "id": user.id.toString()});
     settings.admins.set(admins);
 
-    context.respond(MessageBuilder(
-      content: "Added <@${user.id}> as an admin!",
+    Modlog.add(ModlogEvent(
+      "adminuser.add",
+      guild: context.guild,
+      title: "Admin User Added",
+      fields: {
+        "Who": "<@${user.id}>",
+        "Author": "<@${context.user.id}>",
+      },
+      settings: settings,
     ));
-  }),
-  ChatCommand("addadminrole", "Add a role as admin.", (ChatContext context, Role role) {
-    if (context.guild == null) return;
+
+    context.respond(MessageBuilder(
+      content: "Added ${userToString(user)} as an admin!",
+    ));
+  }), CommandAttributes(permissionsRequired: BotCommandPermissions.admin, category: "Server")),
+  BotCommand.command(ChatCommand("addadminrole", "Add a role as admin.", (ChatContext context, Role role) async {
+    if (context.guild == null || context.member == null) return context.respondWithError("No guild/member found.");
     final settings = getSettings.call(context.guild!);
-    if (settings == null) return;
+    if (settings == null) return context.respondWithError("Unable to load settings.");
+    if (await context.assurePerms(BotCommandPermissions.admin, settings) == false) return;
     final admins = settings.admins.get() ?? [];
 
     if (admins.any((x) => x["type"] == "role" && x["id"] == role.id.toString())) {
@@ -67,14 +191,26 @@ List<ChatCommand> adminRoles(ServerSettings? Function(Guild guild) getSettings) 
     admins.add({"type": "role", "id": role.id.toString()});
     settings.admins.set(admins);
 
+    Modlog.add(ModlogEvent(
+      "adminrole.add",
+      guild: context.guild,
+      title: "Admin Role Added",
+      fields: {
+        "Who": "<@${role.id}>",
+        "Author": "<@${context.user.id}>",
+      },
+      settings: settings,
+    ));
+
     context.respond(MessageBuilder(
       content: "Added role *${role.name}* as admin!",
     ));
-  }),
-  ChatCommand("removeadminuser", "Remove a user from admin.", (ChatContext context, User user) {
-    if (context.guild == null) return;
+  }), CommandAttributes(permissionsRequired: BotCommandPermissions.admin, category: "Server")),
+  BotCommand.command(ChatCommand("removeadminuser", "Remove a user from admin.", (ChatContext context, User user) async {
+    if (context.guild == null || context.member == null) return context.respondWithError("No guild/member found.");
     final settings = getSettings.call(context.guild!);
-    if (settings == null) return;
+    if (settings == null) return context.respondWithError("Unable to load settings.");
+    if (await context.assurePerms(BotCommandPermissions.admin, settings) == false) return;
 
     final admins = settings.admins.get() ?? [];
     bool found = false;
@@ -87,16 +223,28 @@ List<ChatCommand> adminRoles(ServerSettings? Function(Guild guild) getSettings) 
 
     if (found) {
       settings.admins.set(admins);
+
+      Modlog.add(ModlogEvent(
+        "adminuser.remove",
+        guild: context.guild,
+        title: "Admin User Removed",
+        fields: {
+          "Who": "<@${user.id}>",
+          "Author": "<@${context.user.id}>",
+        },
+        settings: settings,
+      ));
     }
 
     context.respond(MessageBuilder(
-      content: found ? "Removed <@${user.id}> from admin." : "<@${user.id}> is not currently an admin.",
+      content: found ? "Removed ${userToString(user)} from admin." : "${userToString(user)} is not currently an admin.",
     ));
-  }),
-  ChatCommand("removeadminrole", "Remove a role from admin.", (ChatContext context, Role role) {
-    if (context.guild == null) return;
+  }), CommandAttributes(permissionsRequired: BotCommandPermissions.admin, category: "Server")),
+  BotCommand.command(ChatCommand("removeadminrole", "Remove a role from admin.", (ChatContext context, Role role) async {
+    if (context.guild == null || context.member == null) return context.respondWithError("No guild/member found.");
     final settings = getSettings.call(context.guild!);
-    if (settings == null) return;
+    if (settings == null) return context.respondWithError("Unable to load settings.");
+    if (await context.assurePerms(BotCommandPermissions.admin, settings) == false) return;
 
     final admins = settings.admins.get() ?? [];
     bool found = false;
@@ -109,25 +257,65 @@ List<ChatCommand> adminRoles(ServerSettings? Function(Guild guild) getSettings) 
 
     if (found) {
       settings.admins.set(admins);
+
+      Modlog.add(ModlogEvent(
+        "adminrole.remove",
+        guild: context.guild,
+        title: "Admin Role Removed",
+        fields: {
+          "Who": "<@${role.id}>",
+          "Author": "<@${context.user.id}>",
+        },
+        settings: settings,
+      ));
     }
 
     context.respond(MessageBuilder(
       content: found ? "Removed role *${role.name}* from admin." : "Role *${role.name}* is not currently admin.",
     ));
-  }),
-  ChatCommand("claim", "Claim yourself as king of the bot!", (ChatContext context) async {
-    if (context.guild == null) return;
+  }), CommandAttributes(permissionsRequired: BotCommandPermissions.admin, category: "Server")),
+  BotCommand.command(ChatCommand("claim", "Claim yourself as king of the bot!", (ChatContext context) async {
+    if (context.guild == null || context.member == null) return context.respondWithError("No guild/member found.");
     final settings = getSettings.call(context.guild!);
-    if (settings == null) return;
-    if (context.member == null) return;
+    if (settings == null) return context.respondWithError("Unable to load settings.");
+    if (context.member == null) return context.respondWithError("No member found.");
     final mainAdmin = settings.mainAdmin.get();
 
-    if (mainAdmin == null) {
+    if (mainAdmin == null || isOwner(id: context.member!.id)) {
       settings.mainAdmin.set(context.member!.id.toString());
+
+      Modlog.add(ModlogEvent(
+        "claim",
+        guild: context.guild,
+        title: "I Have Been Claimed",
+        fields: {
+          "Who": "<@${context.user.id}>",
+          "Was": mainAdmin != null ? "<@$mainAdmin>" : "`null`",
+        },
+        settings: settings,
+      ));
 
       context.respond(MessageBuilder(
         content: "<@${context.member!.id}> has claimed me!",
       ));
+
+      if (mainAdmin != null) {
+        final m = await () async {
+          try {
+            return (await context.client.users.createDm(Snowflake(int.parse(mainAdmin)))).sendMessage(MessageBuilder(content: "I have been unclaimed."));
+          } catch (e) {
+            Logger.warn("Commands.Claim", "Unable to open DM: $e");
+          }
+        }();
+
+        try {
+          if (m == null) return;
+          final member = (await context.guild!.members.get(Snowflake(int.parse(mainAdmin))));
+          await m.edit(MessageUpdateBuilder(content: "I have been reclaimed by ${memberToString(context.member)}.\n-# I was claimed by ${memberToString(member)}."));
+        } catch (e) {
+          Logger.warn("Commands.Claim", "User $mainAdmin not found: $e");
+        }
+      }
     } else {
       final m = await context.respond(MessageBuilder(
         content: "I've already been claimed by someone else.",
@@ -140,34 +328,144 @@ List<ChatCommand> adminRoles(ServerSettings? Function(Guild guild) getSettings) 
         Logger.warn("Commands.Claim", "User $mainAdmin not found: $e");
       }
     }
-  }),
-  ChatCommand("unclaim", "Step down as king of the bot. This will not be made known to others.", (ChatContext context) async {
-    if (context.guild == null) return;
+  }), CommandAttributes(category: "Bot")),
+  BotCommand.command(ChatCommand("unclaim", "Step down as king of the bot. This will not be made known to others.", (ChatContext context) async {
+    if (context.guild == null || context.member == null) return context.respondWithError("No guild/member found.");
     final settings = getSettings.call(context.guild!);
-    if (settings == null) return;
-    if (context.member == null) return;
+    if (settings == null) return context.respondWithError("Unable to load settings.");
+    if (context.member == null) return context.respondWithError("No member found.");
     final old = settings.mainAdmin.get();
 
     if (old == null) {
-      context.respond(MessageBuilder(
+      await context.respond(MessageBuilder(
         content: "I am unclaimed already.",
+      ));
+    } else if (old != context.member!.id.toString() && !isOwner(id: context.member!.id)) {
+      await context.respond(MessageBuilder(
+        content: "You are not the one who claimed me!",
       ));
     } else {
       settings.mainAdmin.delete();
-      if (context is MessageChatContext) await context.message.delete();
+      //if (context is MessageChatContext) await context.message.delete();
 
-      final m = await context.respond(MessageBuilder(
+      Modlog.add(ModlogEvent(
+        "claim",
+        guild: context.guild,
+        title: "I Have Been Unclaimed",
+        fields: {
+          "Who": "<@${context.user.id}>",
+          "Was": "<@$old>",
+        },
+        settings: settings,
+      ));
+
+      await context.respond(MessageBuilder(
         content: "I have been unclaimed.",
-      ), level: ResponseLevel.private);
+      ), level: ResponseLevel.hint);
+
+      final m = await () async {
+        try {
+          return (await context.client.users.createDm(Snowflake(int.parse(old)))).sendMessage(MessageBuilder(content: "I have been unclaimed."));
+        } catch (e) {
+          Logger.warn("Commands.Unclaim", "Unable to open DM: $e");
+        }
+      }();
 
       try {
+        if (m == null) return;
         final member = (await context.guild!.members.get(Snowflake(int.parse(old))));
-        m.edit(MessageUpdateBuilder(content: "I have been unclaimed.\n-# I was claimed by: ${memberToString(member)}."));
+        await m.edit(MessageUpdateBuilder(content: "I have been unclaimed.\n-# I was claimed by ${memberToString(member)}."));
       } catch (e) {
         Logger.warn("Commands.Unclaim", "User $old not found: $e");
       }
     }
-  }),
+  }), CommandAttributes(permissionsRequired: BotCommandPermissions.claimer, category: "Bot")),
+  BotCommand.command(ChatCommand("owner", "See stats about who owns the bot, who owns the server, and who's claimed the bot.", (ChatContext context) async {
+    final settings = getSettings.call(context.guild!);
+    final mainAdmin = settings?.mainAdmin.get();
+    Map<String, String> results = {};
+
+    if (globalOwner != null) {
+      results["Bot Owner"] = "**${globalOwner!.name}** (*${globalOwner!.username}*)";
+    }
+
+    if (mainAdmin != null) {
+      try {
+        final member = await context.guild!.members.get(Snowflake(int.parse(mainAdmin)));
+        results["Bot Claimer"] = memberToString(member)!;
+      } catch (e) {
+        Logger.warn("Commands.Owner", "Unable to get claimer $mainAdmin: $e");
+        results["Bot Claimer"] = "User `$mainAdmin`";
+      }
+    } else {
+      results["Bot Claimer"] = "Not claimed yet!";
+    }
+
+    if (context.guild != null) {
+      try {
+        final serverOwner = await context.guild!.members.get(context.guild!.ownerId);
+        results["Server Owner"] = memberToString(serverOwner)!;
+      } catch (e) {
+        Logger.warn("Commands.Owner", "Unable to get server owner: $e");
+      }
+    }
+
+    await context.respond(MessageBuilder(embeds: [
+      EmbedBuilder(
+        fields: List.generate(results.length, (i) {
+          final entry = results.entries.elementAt(i);
+          return EmbedFieldBuilder(name: entry.key, value: entry.value, isInline: false);
+        }),
+      ),
+    ]));
+  }), CommandAttributes(category: "Bot")),
+  BotCommand.command(ChatCommand("status", "See your status.", (ChatContext context, [@Description('The member to check') Member? member]) async {
+    final m = member ?? context.member;
+    final u = m?.user ?? context.user;
+    List<String> attributes = ["Alive"];
+
+    if (context.guild != null && context.member != null) {
+      attributes.add("In *${context.guild!.name}*");
+      final settings = getSettings.call(context.guild!);
+
+      if (settings != null) {
+        final mainAdmin = settings.mainAdmin.get();
+        final admins = settings.admins.get();
+
+        if (m != null) {
+          for (final a in admins ?? []) {
+            if (a["type"] == "user") {
+              if (a["id"] == m.id.toString()) {
+                attributes.add("Admin user");
+              }
+            } else if (a["type"] == "role") {
+              for (final x in m.roles) {
+                if (a["id"] == x.id.toString()) {
+                  attributes.add("Admin (role: ${(await x.get()).name})");
+                }
+              }
+            }
+          }
+        }
+
+        if (mainAdmin == u.id.toString()) {
+          attributes.add("Claimer");
+        }
+      }
+    }
+
+    if (globalOwner != null && globalOwner!.id == u.id) {
+      attributes.add("Owner");
+    }
+
+    try {
+      await context.respond(MessageBuilder(
+        content: "### Attributes for ${userOrMemberToString(m, u)}${context.guild != null ? " in *${context.guild!.name}*" : ""}\n\n${attributes.map((x) => "- $x").join("\n")}",
+      ));
+    } catch (e) {
+      Logger.warn("Commands.Status", e);
+    }
+  }), CommandAttributes(category: "User")),
 ];
 
 final Map<String? Function(MessageCreateEvent event), num> pingPhrases = {
@@ -178,3 +476,33 @@ final Map<String? Function(MessageCreateEvent event), num> pingPhrases = {
   (e) => "Hi there, <@${e.member!.id}>!": 100,
   (_) => "AGHGHGHGHGHGHGHGHGHGHGHGHGHGHGHHGHG": 5,
 };
+
+extension ContextHelper on ChatContext {
+  void respondWithError(String message, {ResponseLevel? level}) async {
+    try {
+      await respond(MessageBuilder(content: "Error: $message"), level: level);
+    } catch (e) {
+      Logger.warn("ChatContext.respondWithError", "Unable to respond with error '$message': $e");
+    }
+  }
+
+  bool verifyPerms(BotCommandPermissions perms, ServerSettings settings) {
+    switch (perms) {
+      case BotCommandPermissions.any: return true;
+      case BotCommandPermissions.admin: return isAdmin(settings: settings, id: user.id);
+      case BotCommandPermissions.claimer: return isClaimer(settings: settings, id: user.id);
+      case BotCommandPermissions.owner: return isOwner(id: user.id);
+    }
+  }
+
+  Future<bool> assurePerms(BotCommandPermissions perms, ServerSettings settings) async {
+    final result = verifyPerms(perms, settings);
+
+    if (result == false) {
+      await respond(MessageBuilder(content: "You don't have the required permissions to access this command.\n-# Permissions required: `${perms.name}`"));
+      return false;
+    }
+
+    return true;
+  }
+}
