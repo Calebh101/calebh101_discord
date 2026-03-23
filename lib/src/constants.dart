@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:calebh101_discord/calebh101_discord.dart';
+import 'package:collection/collection.dart';
 import 'package:localpkg/functions.dart';
 
 const defaultPrefix = "!";
@@ -79,21 +80,26 @@ BotCommand prefixCommand(ServerSettings? Function(Guild guild) getSettings) => B
   ));
 }), CommandAttributes(permissionsRequired: BotCommandPermissions.admin, category: "Bot"));
 
-BotCommand helpCommand(ServerSettings? Function(Guild guild) getSettings, CommandsPlugin plugin) => BotCommand.command(ChatCommand("help", "Show help for all commands, or a specific command.", (ChatContext context, [String? command]) async {
+BotCommand helpCommand(ServerSettings? Function(Guild guild) getSettings, CommandsPlugin plugin, {bool useCategories = true}) => BotCommand.command(ChatCommand("help", "Show help for all commands, or a specific command.", (ChatContext context, [String? command]) async {
+  final settings = context.guild != null ? getSettings.call(context.guild!) : null;
+  final commands = plugin.walkCommands().toList()..sort((a, b) => a.name.compareTo(b.name));
+  final categories = BotCommand.getAllCategories();
+
   String getDescription(Command command) {
     if (command is ChatCommand) return command.description;
     return "Does something.";
   }
 
+  CommandAttributes? getAttributes(Command command) {
+    return BotCommand.commandAttributesMap[command.name];
+  }
+
   String? getPerms(Command command) {
-    final attributes = BotCommand.commandAttributesMap[command.name];
+    final attributes = getAttributes(command);
     return attributes?.permissionsRequired == BotCommandPermissions.any ? null : attributes?.permissionsRequired.name;
   }
 
   if (command == null) {
-    final commands = plugin.walkCommands().toList()..sort((a, b) => a.name.compareTo(b.name));
-    final categories = BotCommand.getAllCategories();
-
     await respondWithPagination(
       context,
       PaginatedEmbedBuilder(
@@ -102,21 +108,45 @@ BotCommand helpCommand(ServerSettings? Function(Guild guild) getSettings, Comman
         color: await getPrimaryColor(context.member) ?? primaryBotColor,
         pages: EmbedPage.generate(List.generate(commands.length, (i) {
           final command = commands.elementAt(i);
-          return EmbedFieldBuilder(name: command.name, value: [getDescription(command), if (getPerms(command) != null) "Requires perms: `${getPerms(command)}`"].join(" "), isInline: false);
+          final attributes = getAttributes(command);
+          return EmbedFieldBuilder(name: [command.name, if (attributes != null) attributes.category].join(" - "), value: [getDescription(command), if (getPerms(command) != null) "Requires perms: `${getPerms(command)}`"].join(" "), isInline: false);
         })),
       ),
+      settings: settings,
     );
   } else {
-    final c = plugin.getCommand(StringView(command));
-    if (c == null) return context.respondWithError("Invalid command: $command");
+    final category = useCategories ? categories.entries.firstWhereOrNull((x) => x.key == command.trim()) : null;
 
-    await context.respond(MessageBuilder(embeds: [
-      EmbedBuilder(
-        title: "Command `${c.name}`",
-        color: await getPrimaryColor(context.member) ?? primaryBotColor,
-        description: [getDescription(c), if (getPerms(c) != null) "Requires perms: `${getPerms(c)}`"].join("\n"),
-      ),
-    ]));
+    if (category != null) {
+      if (category.value <= 0) return context.respondWithError("Category ${category.key} has no commands.");
+      final commandsInCategory = commands.where((x) => getAttributes(x)?.category == category.key);
+
+      await respondWithPagination(
+        context,
+        PaginatedEmbedBuilder(
+          title: "All Commands for Category ${category.key}",
+          footer: ElementBasedEmbedFooterBuilder(elements: ["${commandsInCategory.length} commands"]),
+          color: await getPrimaryColor(context.member) ?? primaryBotColor,
+          pages: EmbedPage.generate(List.generate(commandsInCategory.length, (i) {
+            final command = commandsInCategory.elementAt(i);
+            return EmbedFieldBuilder(name: command.name, value: [getDescription(command), if (getPerms(command) != null) "Requires perms: `${getPerms(command)}`"].join(" "), isInline: false);
+          })),
+        ),
+        settings: settings,
+      );
+    } else {
+      final c = plugin.getCommand(StringView(command));
+      if (c == null) return context.respondWithError("Invalid command${useCategories ? "/category" : ""}: `$command`");
+      final attributes = getAttributes(c);
+
+      await context.respond(MessageBuilder(embeds: [
+        EmbedBuilder(
+          title: "Command `${c.name}`",
+          color: await getPrimaryColor(context.member) ?? primaryBotColor,
+          description: [if (attributes != null) "Category: ${attributes.category}", getDescription(c), if (getPerms(c) != null) "Requires perms: `${getPerms(c)}`"].join("\n"),
+        ),
+      ]));
+    }
   }
 }), CommandAttributes(category: "Bot"));
 
@@ -290,7 +320,7 @@ List<BotCommand> adminRoles(ServerSettings? Function(Guild guild) getSettings) =
         title: "I Have Been Claimed",
         fields: {
           "Who": "<@${context.user.id}>",
-          "Was": mainAdmin != null ? "<@$mainAdmin>" : "`null`",
+          "Was": mainAdmin != null ? "<@$mainAdmin>" : null.toDiscordCodeBlock(),
         },
         settings: settings,
       ));

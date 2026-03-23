@@ -10,6 +10,8 @@ import 'package:localpkg/classes.dart';
 
 late DiscordColor primaryBotColor;
 
+List<T> flatten<T>(List<List<T>> lists) => lists.expand((e) => e).toList();
+
 String randomPingPhrase(Map<String? Function(MessageCreateEvent event), num> phrases, MessageCreateEvent event) {
   while (true) {
     final total = phrases.values.reduce((a, b) => a + b);
@@ -322,19 +324,52 @@ class PaginatedEmbedBuilder {
       url: url,
       timestamp: timestamp,
       color: color,
-      footer: EmbedFooterBuilder(text: [...?footer?.elements, "Page ${page + 1}/${pages.length}", ...extraFooterElements].join(" - "), iconUrl: footer?.iconUrl),
+      footer: EmbedFooterBuilder(text: [...?footer?.elements, if (pages.length > 1) "Page ${page + 1}/${pages.length}", ...extraFooterElements].join(" - "), iconUrl: footer?.iconUrl),
       image: image,
       thumbnail: thumbnail,
       author: author,
       fields: pages[page].fields,
     );
   }
+
+  EmbedBuilder buildFull() {
+    return EmbedBuilder(
+      title: title,
+      description: description,
+      url: url,
+      timestamp: timestamp,
+      color: color,
+      footer: EmbedFooterBuilder(text: [...?footer?.elements].join(" - "), iconUrl: footer?.iconUrl),
+      image: image,
+      thumbnail: thumbnail,
+      author: author,
+      fields: flatten(pages.map((x) => x.fields).toList()),
+    );
+  }
 }
 
-Future<bool> respondWithPagination(ChatContext context, PaginatedEmbedBuilder embed, {ResponseLevel? level, int timeLimit = 60, bool notifyIfNotOwner = true}) async {
-  Logger.print("Pagination", "Pagination session with user ${context.user.id} started. Context: ${context.runtimeType}");
+Future<bool> respondWithPagination(ChatContext context, PaginatedEmbedBuilder embed, {ResponseLevel? level, Duration timeLimit = const Duration(seconds: 60), bool notifyIfNotOwner = true, required ServerSettings? settings}) async {
+  final hasPages = embed.pages.length > 1;
+  Logger.print("Pagination", "Pagination session with user ${context.user.id} started. context=${context.runtimeType}, hasPages=$hasPages");
+
+  Modlog.add(ModlogEvent(
+    "pagination",
+    severity: ModlogSeverity.verbose,
+    guild: context.guild,
+    settings: settings,
+    title: "Pagination Start",
+    fields: {
+      "Who": "<@${context.user.id}>",
+      "Channel": "<#${context.channel.id}>",
+      "Pages": "${embed.pages.length} (hasPages=`$hasPages`)",
+      "Time Limit": timeLimit.toString(),
+      "Context": "`${context.runtimeType}`",
+      "Embed Title": embed.title ?? null.toDiscordCodeBlock(),
+    },
+  ));
+
   int page = 0;
-  int secondsRemaining = timeLimit; // 5 minutes
+  int secondsRemaining = timeLimit.inSeconds; // 5 minutes
 
   Future<void> Function() onTimeUp = () async {
     Logger.warn("Pagination", "Pagination session with user ${context.user.id} has not set onTimeUp at this point. The paginated embed will appear broken.");
@@ -368,77 +403,91 @@ Future<bool> respondWithPagination(ChatContext context, PaginatedEmbedBuilder em
       embeds: [embed.build(page)],
     ), level: level);
 
-    Future<void> update() async {
-      timeLimit = 300;
+    if (hasPages) {
+      Future<void> update() async {
+        secondsRemaining = 300;
 
-      try {
-        await m.edit(MessageUpdateBuilder(
-          embeds: [embed.build(page)],
-        ));
-      } catch (e) {
-        Logger.warn("Pagination", "Error with message ${m.id} update: $e");
+        try {
+          await m.edit(MessageUpdateBuilder(
+            embeds: [embed.build(page)],
+          ));
+        } catch (e) {
+          Logger.warn("Pagination", "Error with message ${m.id} update: $e");
+        }
       }
-    }
 
-    for (final x in emojis.entries) {
-      await m.react(ReactionBuilder(name: x.value, id: null));
-    }
+      for (final x in emojis.entries) {
+        await m.react(ReactionBuilder(name: x.value, id: null));
+      }
 
-    final controller = StreamController<DispatchEvent>();
-    timeLimit = 300;
+      final controller = StreamController<DispatchEvent>();
+      secondsRemaining = 300;
 
-    onTimeUp = () async {
-      await m.deleteAllReactions();
-      controller.close();
-    };
+      onTimeUp = () async {
+        await m.deleteAllReactions();
+        controller.close();
+      };
 
-    StreamGroup.merge([
-      context.client.onMessageReactionAdd,
-      context.client.onMessageReactionRemove,
-    ]).listen(
-      (event) => controller.isClosed ? null : controller.add(event),
-      onDone: () => controller.close(),
-    );
-
-    outer: await for (final x in controller.stream) {
-      final context = (
-        emoji: x is MessageReactionAddEvent ? x.emoji : (x is MessageReactionRemoveEvent ? x.emoji : null),
-        userId: x is MessageReactionAddEvent ? x.userId : (x is MessageReactionRemoveEvent ? x.userId : null),
-        guild: x is MessageReactionAddEvent ? x.guild : (x is MessageReactionRemoveEvent ? x.guild : null),
+      StreamGroup.merge([
+        context.client.onMessageReactionAdd,
+        context.client.onMessageReactionRemove,
+      ]).listen(
+        (event) => controller.isClosed ? null : controller.add(event),
+        onDone: () => controller.close(),
       );
 
-      if (!hasPerms(context.userId!)) continue;
-      final entry = emojis.entries.firstWhereOrNull((y) => y.value == context.emoji?.name)?.key;
-      if (entry == null) continue;
+      outer: await for (final x in controller.stream) {
+        final context = (
+          emoji: x is MessageReactionAddEvent ? x.emoji : (x is MessageReactionRemoveEvent ? x.emoji : null),
+          userId: x is MessageReactionAddEvent ? x.userId : (x is MessageReactionRemoveEvent ? x.userId : null),
+          guild: x is MessageReactionAddEvent ? x.guild : (x is MessageReactionRemoveEvent ? x.guild : null),
+        );
 
-      switch (entry) {
-        case "backAll":
-          page = 0;
-          await update();
-          break;
-        case "forwardAll":
-          page = embed.pages.length - 1;
-          await update();
-          break;
-        case "back":
-          page--;
-          if (page < 0) page = 0;
-          await update();
-          break;
-        case "forward":
-          page = page + 1;
-          if (page >= embed.pages.length) page = embed.pages.length - 1;
-          await update();
-          break;
-        case "stop":
-          await m.react(ReactionBuilder(name: "🛑", id: null));
-          if (context.guild != null) await m.deleteAllReactions();
-          else await m.edit(MessageUpdateBuilder(content: "Pagination session stopped."));
-          break outer;
-        case "input":
-          // TODO
-          await update();
-          break;
+        if (!hasPerms(context.userId!)) continue;
+        final entry = emojis.entries.firstWhereOrNull((y) => y.value == context.emoji?.name)?.key;
+        if (entry == null) continue;
+
+        switch (entry) {
+          case "backAll":
+            page = 0;
+            await update();
+            break;
+          case "forwardAll":
+            page = embed.pages.length - 1;
+            await update();
+            break;
+          case "back":
+            page--;
+            if (page < 0) page = 0;
+            await update();
+            break;
+          case "forward":
+            page = page + 1;
+            if (page >= embed.pages.length) page = embed.pages.length - 1;
+            await update();
+            break;
+          case "stop":
+            try {
+              await m.deleteAllReactions();
+            } catch (_) {
+              Logger.print("Pagination", "Falling back on deleting ${emojis.length} self-reactions...");
+              await m.react(ReactionBuilder(name: "🛑", id: null));
+
+              for (final x in emojis.entries) {
+                try {
+                  await m.deleteOwnReaction(ReactionBuilder(id: null, name: x.value));
+                } catch (e) {
+                  Logger.warn("Pagination", "Unable to delete self-reaction ${x.key} on message ${m.id}: $e");
+                }
+              }
+            }
+
+            break outer;
+          case "input":
+            // TODO
+            await update();
+            break;
+        }
       }
     }
   } else if (context is InteractionChatContext) {
@@ -459,89 +508,110 @@ Future<bool> respondWithPagination(ChatContext context, PaginatedEmbedBuilder em
 
     await context.respond(MessageBuilder(
       embeds: [embed.build(page)],
-      components: [ActionRowBuilder(components: buildComponents())],
+      components: hasPages ? [ActionRowBuilder(components: buildComponents())] : [],
     ));
 
-    Future<void> update(MessageComponentInteraction interaction, {bool stop = false}) async {
-      timeLimit = 300;
+    if (hasPages) {
+      Future<void> update(MessageComponentInteraction interaction, {bool stop = false}) async {
+        secondsRemaining = 300;
 
-      try {
-        await interaction.respond(MessageBuilder(
-          embeds: [embed.build(page)],
-          components: stop ? [] : [ActionRowBuilder(components: buildComponents())],
-        ));
-      } catch (e) {
-        Logger.warn("Pagination", "Error with interaction ${interaction.id} update: $e");
+        try {
+          await interaction.respond(MessageUpdateBuilder(
+            embeds: [embed.build(page)],
+            components: stop ? [] : [ActionRowBuilder(components: buildComponents())],
+          ), updateMessage: true);
+        } catch (e) {
+          Logger.warn("Pagination", "Error with interaction ${interaction.id} update: $e");
+        }
       }
-    }
 
-    final controller = StreamController<InteractionCreateEvent<MessageComponentInteraction>>();
-    MessageComponentInteraction? interaction;
-    timeLimit = 300;
+      final controller = StreamController<InteractionCreateEvent<MessageComponentInteraction>>();
+      MessageComponentInteraction? interaction;
+      secondsRemaining = 300;
 
-    onTimeUp = () async {
-      if (interaction == null) await context.interaction.updateOriginalResponse(MessageUpdateBuilder(components: []));
-      else await interaction.updateOriginalResponse(MessageUpdateBuilder(components: []));
-      controller.close();
-    };
+      onTimeUp = () async {
+        if (interaction == null) await context.interaction.updateOriginalResponse(MessageUpdateBuilder(components: []));
+        else await interaction.updateOriginalResponse(MessageUpdateBuilder(components: []));
+        controller.close();
+      };
 
-    context.client.onMessageComponentInteraction.listen(
-      (event) => controller.isClosed ? null : controller.add(event),
-      onDone: () => controller.close(),
-    );
+      context.client.onMessageComponentInteraction.listen(
+        (event) => controller.isClosed ? null : controller.add(event),
+        onDone: () => controller.close(),
+      );
 
-    outer: await for (final event in controller.stream) {
-      final customId = event.interaction.data.customId;
-      final condition = emojis.entries.any((x) => customId == "${x.key}.${context.interaction.id}");
-      final userId = event.interaction.user?.id ?? event.interaction.member?.id;
+      outer: await for (final event in controller.stream) {
+        final customId = event.interaction.data.customId;
+        final condition = emojis.entries.any((x) => customId == "${x.key}.${context.interaction.id}");
+        final userId = event.interaction.user?.id ?? event.interaction.member?.id;
 
-      if (userId == null || !hasPerms(userId)) {
-        if (notifyIfNotOwner) {
-          await event.interaction.respond(MessageBuilder(content: "You are not the owner of this embed.", flags: MessageFlags.ephemeral));
-          await Future.delayed(Duration(seconds: 2));
-          await event.interaction.deleteOriginalResponse();
+        if (userId == null || !hasPerms(userId)) {
+          if (notifyIfNotOwner) {
+            await event.interaction.respond(MessageBuilder(content: "You are not the owner of this embed.", flags: MessageFlags.ephemeral));
+            await Future.delayed(Duration(seconds: 2));
+            await event.interaction.deleteOriginalResponse();
+          }
+
+          continue;
         }
 
-        continue;
-      }
+        Logger.print("Pagination", "Found event (${event.runtimeType}) with interaction ${event.interaction.id} with ID $id ($condition)");
+        if (!condition) continue;
+        interaction = event.interaction;
 
-      Logger.print("Pagination", "Found event (${event.runtimeType}) with interaction ${event.interaction.id} with ID $id ($condition)");
-      if (!condition) continue;
-      interaction = event.interaction;
-
-      switch (customId.split(".").first) {
-        case "backAll":
-          page = 0;
-          await update(event.interaction);
-          break;
-        case "forwardAll":
-          page = embed.pages.length - 1;
-          await update(event.interaction);
-          break;
-        case "back":
-          page--;
-          if (page < 0) page = 0;
-          await update(event.interaction);
-          break;
-        case "forward":
-          page = page + 1;
-          if (page >= embed.pages.length) page = embed.pages.length - 1;
-          await update(event.interaction);
-          break;
-        case "stop":
-          await update(event.interaction, stop: true);
-          break outer;
-        case "input":
-          // TODO
-          await update(event.interaction);
-          break;
+        switch (customId.split(".").first) {
+          case "backAll":
+            page = 0;
+            await update(event.interaction);
+            break;
+          case "forwardAll":
+            page = embed.pages.length - 1;
+            await update(event.interaction);
+            break;
+          case "back":
+            page--;
+            if (page < 0) page = 0;
+            await update(event.interaction);
+            break;
+          case "forward":
+            page = page + 1;
+            if (page >= embed.pages.length) page = embed.pages.length - 1;
+            await update(event.interaction);
+            break;
+          case "stop":
+            await update(event.interaction, stop: true);
+            break outer;
+          case "input":
+            // TODO
+            await update(event.interaction);
+            break;
+        }
       }
     }
   } else {
     throw UnimplementedError();
   }
 
+  Modlog.add(ModlogEvent(
+    "pagination",
+    severity: ModlogSeverity.verbose,
+    guild: context.guild,
+    settings: settings,
+    title: "Pagination End",
+    fields: {
+      "Who": "<@${context.user.id}>",
+      "Channel": "<#${context.channel.id}>",
+      "Tick": "${countdown.isActive ? countdown.tick : null.toDiscordCodeBlock()}",
+    },
+  ));
+
   Logger.print("Pagination", "Pagination session with user ${context.user.id} ended.");
   if (countdown.isActive) countdown.cancel();
   return true;
+}
+
+extension ToDiscordCodeBlock on Object? {
+  String toDiscordCodeBlock({String? language}) {
+    return "```${language ?? ""}\n$this\n```";
+  }
 }

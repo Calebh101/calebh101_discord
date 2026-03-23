@@ -21,6 +21,7 @@ DiscordColor? modLogSeverityToColor(ModlogSeverity severity) {
 
 class Modlog {
   static const List<String> defaultEvents = ["test", "prefix.change", "adminuser.add", "adminuser.remove", "adminrole.add", "adminrole.remove", "claim"];
+  static List<String> ignoredEvents = ["pagination"];
   static List<String>? events;
 
   Modlog(List<String> possibleEvents) {
@@ -29,13 +30,14 @@ class Modlog {
 
   static Future<String?> add(ModlogEvent event) async {
     try {
+      if (ignoredEvents.contains(event.eventId)) return "Event is ignored.";
       if (events == null) return "Not set up.";
       if (!events!.contains(event.eventId)) throw Exception("Invalid event ID: ${event.eventId}");
       if (event.guild == null) return "No guild found.";
-      if (event.settings.modlogChannel.get() == null) return "No modlog channel set.";
+      if (event.settings?.modlogChannel.get() == null) return "No modlog channel set.";
 
       final channels = await (event.guild!.fetchChannels());
-      final channel = channels.firstWhere((x) => x.id == Snowflake(event.settings.modlogChannel.get()!));
+      final channel = channels.firstWhere((x) => x.id == Snowflake(event.settings!.modlogChannel.get()!));
       if (channel is! GuildTextChannel) return "Specified channel is not a text channel.";
 
       await channel.sendMessage(MessageBuilder(embeds: [
@@ -62,7 +64,7 @@ class Modlog {
 
 class ModlogEvent {
   final Guild? guild;
-  final ServerSettings settings;
+  final ServerSettings? settings;
   final String eventId;
   final String title;
   final String? description;
