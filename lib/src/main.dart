@@ -224,7 +224,8 @@ String? memberToString(Member? member, {bool detailed = false}) {
       "(*${member.user?.username ?? (throw UnimplementedError("Couldn't find a valid username for member."))}*)",
       if (detailed) "(`${member.id}`)",
     ].join(" ");
-  } catch (_) {
+  } catch (e) {
+    Logger.print("memberToString", e);
     return null;
   }
 }
@@ -613,5 +614,35 @@ Future<bool> respondWithPagination(ChatContext context, PaginatedEmbedBuilder em
 extension ToDiscordCodeBlock on Object? {
   String toDiscordCodeBlock({String? language}) {
     return "```${language ?? ""}\n$this\n```";
+  }
+}
+
+extension ContextHelper on ChatContext {
+  void respondWithError(String message, {ResponseLevel? level}) async {
+    try {
+      await respond(MessageBuilder(content: "Error: $message"), level: level);
+    } catch (e) {
+      Logger.warn("ChatContext.respondWithError", "Unable to respond with error '$message': $e");
+    }
+  }
+
+  bool verifyPerms(BotCommandPermissions perms, ServerSettings settings) {
+    switch (perms) {
+      case BotCommandPermissions.any: return true;
+      case BotCommandPermissions.admin: return isAdmin(settings: settings, id: user.id);
+      case BotCommandPermissions.claimer: return isClaimer(settings: settings, id: user.id);
+      case BotCommandPermissions.owner: return isOwner(id: user.id);
+    }
+  }
+
+  Future<bool> assurePerms(BotCommandPermissions perms, ServerSettings settings) async {
+    final result = verifyPerms(perms, settings);
+
+    if (result == false) {
+      await respond(MessageBuilder(content: "You don't have the required permissions to access this command.\n-# Permissions required: `${perms.name}`"));
+      return false;
+    }
+
+    return true;
   }
 }

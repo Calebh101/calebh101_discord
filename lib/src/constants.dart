@@ -54,33 +54,68 @@ BotCommand killCommand(ServerSettings? Function(Guild guild) getSettings) => Bot
   Process.killPid(pid, ProcessSignal.sigint);
 }), CommandAttributes(permissionsRequired: BotCommandPermissions.owner, category: "Bot"));
 
-BotCommand prefixCommand(ServerSettings? Function(Guild guild) getSettings) => BotCommand.command(ChatCommand("prefix", "Set the bot's prefix. Defaults to !.", (ChatContext context, [String? prefix]) async {
-  if (context.guild == null || context.member == null) return context.respondWithError("No guild/member found.");
-  final settings = getSettings.call(context.guild!);
-  if (settings == null) return context.respondWithError("Unable to load settings.");
-  if (await context.assurePerms(BotCommandPermissions.admin, settings) == false) return;
+List<BotCommand> prefixCommands(ServerSettings? Function(Guild guild) getSettings) => [
+    BotCommand.command(ChatCommand("prefix", "Get/set the bot's prefix.", (ChatContext context, [String? prefix]) async {
+      if (context.guild == null || context.member == null) return context.respondWithError("No guild/member found.");
+      final settings = getSettings.call(context.guild!);
+      if (settings == null) return context.respondWithError("Unable to load settings.");
 
-  final old = settings.prefix.get();
-  settings.prefix.set(prefix);
+      if (prefix == null) {
+        await context.respond(MessageBuilder(
+          content: "Prefix is currently set to `${settings.prefix.get() ?? defaultPrefix}`.",
+        ));
 
-  Modlog.add(ModlogEvent(
-    "prefix.change",
-    guild: context.guild,
-    title: "Prefix Changed",
-    fields: {
-      "Was": "`$old`",
-      "Now": "`$prefix`",
-      "Default": "`$defaultPrefix`",
-    },
-    settings: settings,
-  ));
+        return;
+      }
 
-  context.respond(MessageBuilder(
-    content: "Prefix set to `${prefix ?? defaultPrefix}`!",
-  ));
-}), CommandAttributes(permissionsRequired: BotCommandPermissions.admin, category: "Bot"));
+      if (await context.assurePerms(BotCommandPermissions.admin, settings) == false) return;
+      final old = settings.prefix.get();
+      settings.prefix.set(prefix);
 
-BotCommand helpCommand(ServerSettings? Function(Guild guild) getSettings, CommandsPlugin plugin, {bool useCategories = true}) => BotCommand.command(ChatCommand("help", "Show help for all commands, or a specific command.", (ChatContext context, [String? command]) async {
+      Modlog.add(ModlogEvent(
+        "prefix.change",
+        guild: context.guild,
+        title: "Prefix Changed",
+        fields: {
+          "Was": old.toDiscordCodeBlock(),
+          "Now": prefix.toDiscordCodeBlock(),
+          "Default": defaultPrefix.toDiscordCodeBlock(),
+        },
+        settings: settings,
+      ));
+
+      await context.respond(MessageBuilder(
+        content: "Prefix set to `$prefix`!",
+      ));
+    }), CommandAttributes(category: "Bot")),
+  BotCommand.command(ChatCommand("resetprefix", "Reset the bot's prefix for this server.", (ChatContext context) async {
+    if (context.guild == null || context.member == null) return context.respondWithError("No guild/member found.");
+    final settings = getSettings.call(context.guild!);
+    if (settings == null) return context.respondWithError("Unable to load settings.");
+    if (await context.assurePerms(BotCommandPermissions.admin, settings) == false) return;
+
+    final old = settings.prefix.get();
+    settings.prefix.delete();
+
+    Modlog.add(ModlogEvent(
+      "prefix.change",
+      guild: context.guild,
+      title: "Prefix Reset",
+      fields: {
+        "Was": old.toDiscordCodeBlock(),
+        "Now": null.toDiscordCodeBlock(),
+        "Default": defaultPrefix.toDiscordCodeBlock(),
+      },
+      settings: settings,
+    ));
+
+    context.respond(MessageBuilder(
+      content: "Prefix set to `$defaultPrefix`!",
+    ));
+  }), CommandAttributes(category: "Bot", permissionsRequired: BotCommandPermissions.admin))
+];
+
+BotCommand helpCommand(ServerSettings? Function(Guild guild) getSettings, CommandsPlugin plugin, {bool useCategories = true}) => BotCommand.command(ChatCommand("help", "Show help for all commands, or a specific command${useCategories ? "/category" : ""}.", (ChatContext context, [@Description("Command or category to search.") String? command]) async {
   final settings = context.guild != null ? getSettings.call(context.guild!) : null;
   final commands = plugin.walkCommands().toList()..sort((a, b) => a.name.compareTo(b.name));
   final categories = BotCommand.getAllCategories();
@@ -104,6 +139,7 @@ BotCommand helpCommand(ServerSettings? Function(Guild guild) getSettings, Comman
       context,
       PaginatedEmbedBuilder(
         title: "All Commands",
+        description: "Current prefix: `${settings?.prefix.get() ?? "!"}`",
         footer: ElementBasedEmbedFooterBuilder(elements: ["${commands.length} commands", if (categories.isNotEmpty) "${categories.length} categories"]),
         color: await getPrimaryColor(context.member) ?? primaryBotColor,
         pages: EmbedPage.generate(List.generate(commands.length, (i) {
@@ -506,33 +542,3 @@ final Map<String? Function(MessageCreateEvent event), num> pingPhrases = {
   (e) => "Hi there, <@${e.member!.id}>!": 100,
   (_) => "AGHGHGHGHGHGHGHGHGHGHGHGHGHGHGHHGHG": 5,
 };
-
-extension ContextHelper on ChatContext {
-  void respondWithError(String message, {ResponseLevel? level}) async {
-    try {
-      await respond(MessageBuilder(content: "Error: $message"), level: level);
-    } catch (e) {
-      Logger.warn("ChatContext.respondWithError", "Unable to respond with error '$message': $e");
-    }
-  }
-
-  bool verifyPerms(BotCommandPermissions perms, ServerSettings settings) {
-    switch (perms) {
-      case BotCommandPermissions.any: return true;
-      case BotCommandPermissions.admin: return isAdmin(settings: settings, id: user.id);
-      case BotCommandPermissions.claimer: return isClaimer(settings: settings, id: user.id);
-      case BotCommandPermissions.owner: return isOwner(id: user.id);
-    }
-  }
-
-  Future<bool> assurePerms(BotCommandPermissions perms, ServerSettings settings) async {
-    final result = verifyPerms(perms, settings);
-
-    if (result == false) {
-      await respond(MessageBuilder(content: "You don't have the required permissions to access this command.\n-# Permissions required: `${perms.name}`"));
-      return false;
-    }
-
-    return true;
-  }
-}

@@ -1,5 +1,8 @@
 import 'package:calebh101_discord/calebh101_discord.dart';
+import 'package:collection/collection.dart';
 import 'package:localpkg/classes.dart';
+
+typedef ModlogGroupCollection = Map<ModLogGroup, Set<String> Function(Set<String> levelBelow)>;
 
 enum ModlogSeverity {
   verbose,
@@ -7,6 +10,13 @@ enum ModlogSeverity {
   warning,
   severe,
   error,
+}
+
+enum ModLogGroup {
+  all,
+  normal,
+  quiet,
+  off,
 }
 
 DiscordColor? modLogSeverityToColor(ModlogSeverity severity) {
@@ -20,12 +30,33 @@ DiscordColor? modLogSeverityToColor(ModlogSeverity severity) {
 }
 
 class Modlog {
-  static const List<String> defaultEvents = ["test", "prefix.change", "adminuser.add", "adminuser.remove", "adminrole.add", "adminrole.remove", "claim"];
-  static List<String> ignoredEvents = ["pagination"];
-  static List<String>? events;
+  static Set<String> ignoredEvents = {"pagination"};
+  static Set<String>? events;
 
-  Modlog(List<String> possibleEvents) {
-    events = possibleEvents;
+  Modlog(ModlogGroupCollection collection) {
+    events = getGroup(ModLogGroup.all, addExtraGroups: false).union(getGroup(ModLogGroup.all, collection: collection, addExtraGroups: false));
+    extraGroups = collection;
+  }
+
+  static ModlogGroupCollection groups = {
+    ModLogGroup.all: (levelBelow) => {...levelBelow, "pagination"},
+    ModLogGroup.normal: (levelBelow) => {...levelBelow, "prefix.change"},
+    ModLogGroup.quiet: (levelBelow) => {...levelBelow, "test", "adminuser.add", "adminuser.remove", "adminrole.add", "adminrole.remove", "claim"},
+    ModLogGroup.off: (_) => {},
+  };
+
+  static ModlogGroupCollection extraGroups = {};
+
+  static Set<String> getGroup(ModLogGroup group, {ModlogGroupCollection? collection, bool addExtraGroups = true}) {
+    Set<String> current = {};
+
+    for (final level in ModLogGroup.values.reversed) {
+      current = (collection ?? groups)[level]?.call(current) ?? {};
+      if (level == group) break;
+    }
+
+    if (addExtraGroups) current = current.union(getGroup(group, collection: extraGroups, addExtraGroups: false));
+    return current.where((x) => !ignoredEvents.contains(x)).toSet();
   }
 
   static Future<String?> add(ModlogEvent event) async {
@@ -35,6 +66,9 @@ class Modlog {
       if (!events!.contains(event.eventId)) throw Exception("Invalid event ID: ${event.eventId}");
       if (event.guild == null) return "No guild found.";
       if (event.settings?.modlogChannel.get() == null) return "No modlog channel set.";
+
+      final enabledScopes = event.settings?.modlog.get();
+      if (enabledScopes != null && !enabledScopes.contains(event.eventId)) return "Event not in enabled scopes.";
 
       final channels = await (event.guild!.fetchChannels());
       final channel = channels.firstWhere((x) => x.id == Snowflake(event.settings!.modlogChannel.get()!));
@@ -107,7 +141,7 @@ List<BotCommand> modLogCommands(ServerSettings? Function(Guild guild) getSetting
     },
   ), CommandAttributes(permissionsRequired: BotCommandPermissions.admin, category: "modlog")),
   BotCommand.command(ChatCommand("modlogscopes", "Select scopes to log.", (ChatContext context, [String? input]) async {
-    if (Modlog.events == null) return context.respondWithError("Modlog is not enabled.\n-# No events allowed. Did you forget to call `Modlog([events...])`?");
+    if (Modlog.events == null) return context.respondWithError("Modlog is not enabled.\n-# No events allowed. Did you forget to call `Modlog()`?");
     if (context.guild == null || context.member == null) return context.respondWithError("No guild/member found.");
     final settings = getSettings.call(context.guild!);
     if (settings == null) return context.respondWithError("No settings found.");
@@ -126,9 +160,11 @@ List<BotCommand> modLogCommands(ServerSettings? Function(Guild guild) getSetting
       return;
     }
 
-    final List<String> items = input.trim().toLowerCase() == "none" ? [] : (input.trim().toLowerCase() == "all" ? Modlog.events : input.split(',').map((s) => s.trim()).where((x) => x.isNotEmpty).toList()) ?? [];
     final enabled = <String>[];
     final invalid = <String>[];
+
+    final group = ModLogGroup.values.firstWhereOrNull((x) => x.name == input.trim());
+    final Set<String> items = group != null ? Modlog.getGroup(group) : input.split(',').map((s) => s.trim()).where((x) => x.isNotEmpty).toSet();
 
     for (final x in items) {
       if (Modlog.events!.contains(x)) {
@@ -142,7 +178,8 @@ List<BotCommand> modLogCommands(ServerSettings? Function(Guild guild) getSetting
 
     await context.respond(MessageBuilder(
       content: [
-        "Enabled **${enabled.length}** ${Word.fromCount(enabled.length, singular: Word("scope"))}: ${enabled.map((x) => "`$x`").join(", ")}",
+        "**${enabled.length}** ${Word.fromCount(enabled.length, singular: Word("scope"))} enabled${enabled.isNotEmpty ? enabled.map((x) => "`$x`").join(", ") : ""}",
+        if (group != null) "From group: `${group.name}`",
         if (invalid.isNotEmpty) "-# **${invalid.length}** ${Word.fromCount(invalid.length, singular: Word("scope"))} are invalid: ${invalid.map((x) => "`$x`").join(", ")}",
         "-# **${Modlog.events?.length}** ${Word.fromCount(Modlog.events!.length, singular: Word("scope"))} available: ${Modlog.events!.map((x) => "`$x`").join(", ")}",
       ].join("\n"),
