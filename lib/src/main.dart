@@ -9,6 +9,8 @@ import 'package:collection/collection.dart';
 import 'package:localpkg/classes.dart';
 
 late DiscordColor primaryBotColor;
+late NyxxGateway client;
+bool ignoreOwner = false;
 
 List<T> flatten<T>(List<List<T>> lists) => lists.expand((e) => e).toList();
 
@@ -70,8 +72,9 @@ enum BotCommandPermissions {
 class CommandAttributes {
   final BotCommandPermissions permissionsRequired;
   final String category;
+  final String? extendedDescription;
 
-  const CommandAttributes({this.permissionsRequired = BotCommandPermissions.any, required this.category});
+  const CommandAttributes({this.permissionsRequired = BotCommandPermissions.any, required this.category, this.extendedDescription});
 }
 
 class TerminalCommand {
@@ -92,8 +95,12 @@ class TerminalCommand {
 /// [permissions] is a list of permissions. For bot apps, you should start out with `[...GatewayIntents.allUnprivileged, GatewayIntents.messageContent]`.
 ///
 /// [createBot] will create a bot user using `client.user.get()` if true.
-Future<BotContext?> load({required BotSettings settings, required FutureOr<Pattern> Function(MessageCreateEvent)? prefix, List<BotCommand>? Function(CommandsPlugin plugin)? commands, required List<Flag<GatewayIntents>> permissions, bool createBot = true, List<TerminalCommand> terminalCommands = const [], required DefinedUser owner, required KVStore store, required DiscordColor primaryColor}) async {
+Future<BotContext?> load({required BotSettings settings, required FutureOr<Pattern> Function(MessageCreateEvent)? prefix, List<BotCommand>? Function(CommandsPlugin plugin)? commands, required List<Flag<GatewayIntents>> permissions, bool createBot = true, List<TerminalCommand> terminalCommands = const [], required DefinedUser owner, required DefinedServer? supportServer, required KVStore store, required DiscordColor primaryColor, required String botName}) async {
+  globalBotName = botName;
+  globalOwner = owner;
   primaryBotColor = primaryColor;
+  globalSupportServer = supportServer;
+
   if (!(await settings.initCore())) return null;
   if (!(await settings.init())) return null;
   loggerOverride();
@@ -124,7 +131,7 @@ Future<BotContext?> load({required BotSettings settings, required FutureOr<Patte
     return null;
   }
 
-  final client = await Nyxx.connectGateway(
+  client = await Nyxx.connectGateway(
     token, intents,
     options: GatewayClientOptions(plugins: [cliIntegration, cmd]),
   );
@@ -215,22 +222,23 @@ Future<BotContext?> load({required BotSettings settings, required FutureOr<Patte
   return BotContext(client: client, bot: user);
 }
 
-String? memberToString(Member? member, {bool detailed = false}) {
+FutureOr<String?> memberToString(Member? member, {bool detailed = false}) async {
   if (member == null) return null;
+  final user = member.user ?? await client.users[member.id].get();
 
   try {
     return [
-      "**${member.nick ?? member.user?.globalName ?? member.user?.username ?? (throw UnimplementedError("Couldn't find a valid name for member."))}**",
-      "(*${member.user?.username ?? (throw UnimplementedError("Couldn't find a valid username for member."))}*)",
+      "**${member.nick ?? user.username}**",
+      "(*${user.username}*)",
       if (detailed) "(`${member.id}`)",
     ].join(" ");
   } catch (e) {
-    Logger.print("memberToString", e);
-    return null;
+    Logger.print("memberToString", "$e (member=${member.runtimeType}, user=${member.user.runtimeType}, nick=${member.nick}, id=${member.id}, detailed=$detailed)");
+    return userToString(user);
   }
 }
 
-String? userToString(User? user, {bool detailed = false}) {
+FutureOr<String?> userToString(User? user, {bool detailed = false}) async {
   if (user == null) return null;
 
   try {
@@ -243,8 +251,8 @@ String? userToString(User? user, {bool detailed = false}) {
   }
 }
 
-String userOrMemberToString(Member? member, User user, {bool detailed = false}) {
-  return memberToString(member, detailed: detailed) ?? userToString(user, detailed: detailed) ?? "`${user.id}`";
+FutureOr<String> userOrMemberToString(Member? member, User user, {bool detailed = false}) async {
+  return await memberToString(member, detailed: detailed) ?? await userToString(user, detailed: detailed) ?? "`${user.id}`";
 }
 
 String formatLatency(Duration latency) {
@@ -615,6 +623,37 @@ extension ToDiscordCodeBlock on Object? {
   String toDiscordCodeBlock({String? language}) {
     return "```${language ?? ""}\n$this\n```";
   }
+
+  String toDiscordCodeString() {
+    return "`$this`";
+  }
+}
+
+extension DiscordTimestamp on DateTime {
+  String toDiscordTimestamp([String? flag]) {
+    return "<t:${((toUtc().millisecondsSinceEpoch) / Duration.millisecondsPerSecond).floor()}${flag != null ? ":$flag" : ""}>";
+  }
+
+  /// Short time (e.g. `9:30 AM`)
+  static const String shortTime = 't';
+
+  /// Long time (e.g. `9:30:00 AM`)
+  static const String longTime = 'T';
+
+  /// Short date (e.g. `03/24/2026`)
+  static const String shortDate = 'd';
+
+  /// Long date (e.g. `March 24, 2026`)
+  static const String longDate = 'D';
+
+  /// Short date and time — default (e.g. `March 24, 2026 9:30 AM`)
+  static const String shortDateTime = 'f';
+
+  /// Long date and time (e.g. `Tuesday, March 24, 2026 9:30 AM`)
+  static const String longDateTime = 'F';
+
+  /// Relative time (e.g. `in 5 minutes` / `3 hours ago`)
+  static const String relative = 'R';
 }
 
 extension ContextHelper on ChatContext {
@@ -645,4 +684,6 @@ extension ContextHelper on ChatContext {
 
     return true;
   }
+
+  FutureOr<String?> userString({bool detailed = false}) async => userOrMemberToString(member, user, detailed: detailed);
 }

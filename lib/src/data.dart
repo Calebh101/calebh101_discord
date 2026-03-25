@@ -227,11 +227,8 @@ enum IsAdminType {
 }
 
 DefinedUser? globalOwner;
-
-DefinedUser setGlobalOwner(DefinedUser owner) {
-  globalOwner = owner;
-  return owner;
-}
+DefinedServer? globalSupportServer;
+late String globalBotName;
 
 bool isAdmin({required ServerSettings settings, IsAdminType type = IsAdminType.user, required Snowflake id, Snowflake? owner}) {
   if (isOwner(id: id, owner: owner)) return true;
@@ -246,7 +243,8 @@ bool isAdmin({required ServerSettings settings, IsAdminType type = IsAdminType.u
   return false;
 }
 
-bool isOwner({required Snowflake id, Snowflake? owner}) {
+bool isOwner({required Snowflake id, Snowflake? owner, bool overrideIgnoreOwner = false}) {
+  if (!overrideIgnoreOwner && ignoreOwner) return false;
   owner ??= globalOwner?.id;
   if (owner != null && owner == id) return true;
   return false;
