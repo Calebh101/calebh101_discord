@@ -115,7 +115,7 @@ class ModlogEvent {
 }
 
 List<BotCommand> modLogCommands(ServerSettings? Function(Guild guild) getSettings) => [
-  BotCommand.command(ChatCommand(
+  BotCommand.command(
     "modlogchannel", "Set the preferred channel for mod logs. The bot must be able to send a message there.",
     (ChatContext context, [GuildTextChannel? channel]) async {
       if (context.guild == null || context.member == null) return context.respondWithError("No guild/member found.");
@@ -139,8 +139,9 @@ List<BotCommand> modLogCommands(ServerSettings? Function(Guild guild) getSetting
       settings.modlogChannel.set(channel.id.value);
       await context.respond(MessageBuilder(content: "Modlog channel set to <#${channel.id}>!"));
     },
-  ), CommandAttributes(permissionsRequired: BotCommandPermissions.admin, category: "modlog")),
-  BotCommand.command(ChatCommand("modlogscopes", "Select scopes to log.", (ChatContext context, [String? input]) async {
+    CommandAttributes(permissionsRequired: BotCommandPermissions.admin, category: "modlog"),
+  ),
+  BotCommand.command("modlogscopes", "Select scopes to log.", (ChatContext context, [String? input]) async {
     if (Modlog.events == null) return context.respondWithError("Modlog is not enabled.\n-# No events allowed. Did you forget to call `Modlog()`?");
     if (context.guild == null || context.member == null) return context.respondWithError("No guild/member found.");
     final settings = getSettings.call(context.guild!);
@@ -184,8 +185,8 @@ List<BotCommand> modLogCommands(ServerSettings? Function(Guild guild) getSetting
         "-# **${Modlog.events?.length}** ${Word.fromCount(Modlog.events!.length, singular: Word("scope"))} available: ${Modlog.events!.map((x) => "`$x`").join(", ")}",
       ].join("\n"),
     ));
-  }), CommandAttributes(permissionsRequired: BotCommandPermissions.admin, category: "modlog")),
-  BotCommand.command(ChatCommand("modlogtest", "Send a modlog message.", (ChatContext context, String title, String message) async {
+  }, CommandAttributes(permissionsRequired: BotCommandPermissions.admin, category: "modlog")),
+  BotCommand.command("modlogtest", "Send a modlog message.", (ChatContext context, String title, String message) async {
     final settings = getSettings.call(context.guild!);
     if (settings == null) return context.respondWithError("No settings found.");
     if (await context.assurePerms(BotCommandPermissions.admin, settings) == false) return;
@@ -209,5 +210,5 @@ List<BotCommand> modLogCommands(ServerSettings? Function(Guild guild) getSetting
         content: "Modlog message sent.",
       ));
     }
-  }), CommandAttributes(permissionsRequired: BotCommandPermissions.admin, category: "modlog")),
+  }, CommandAttributes(permissionsRequired: BotCommandPermissions.admin, category: "modlog")),
 ];
