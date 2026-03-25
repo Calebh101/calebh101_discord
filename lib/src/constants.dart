@@ -63,7 +63,7 @@ BotCommand supportCommand(KVStore? store) => BotCommand.command("support", "See 
 
 BotCommand deleteMyMessageCommand(ServerSettings? Function(Guild guild) getSettings) => BotCommand.command(
   "deletemymessage", "Delete my message.",
-  (ChatContext context, int id, [TextChannel? channel]) async {
+  (ChatContext context, int id, [GuildTextChannel? targetChannel]) async {
     if (context.guild != null) {
       final settings = getSettings.call(context.guild!);
       if (settings == null) return context.respondWithError("No settings found.");
@@ -72,7 +72,7 @@ BotCommand deleteMyMessageCommand(ServerSettings? Function(Guild guild) getSetti
       if (!isOwner(id: context.user.id)) return context.respondWithError("You are not the owner of me.");
     }
 
-    channel ??= context.channel;
+    final channel = targetChannel ?? context.channel;
 
     try {
       final message = await channel.messages.get(Snowflake(id));
