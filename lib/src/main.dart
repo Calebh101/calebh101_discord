@@ -34,9 +34,7 @@ String randomPingPhrase(Map<String? Function(MessageCreateEvent event), num> phr
 
 class BotContext {
   final NyxxGateway client;
-  final User? bot;
-
-  const BotContext({required this.client, required this.bot});
+  const BotContext({required this.client});
 }
 
 class BotCommand {
@@ -136,7 +134,13 @@ Future<BotContext?> load({required BotSettings settings, required FutureOr<Patte
     options: GatewayClientOptions(plugins: [cliIntegration, cmd]),
   );
 
-  final user = createBot ? await client.user.get() : null;
+  Future<User?> user() async {
+    try {
+      return await client.user.get();
+    } catch (_) {
+      return null;
+    }
+  }
 
   cmd.onCommandError.listen((e) async {
     if (e is CommandNotFoundException) return;
@@ -169,7 +173,9 @@ Future<BotContext?> load({required BotSettings settings, required FutureOr<Patte
   });
 
   client.onMessageCreate.listen((event) async {
-    if (user != null && event.message.content.trim() == "<@${user.id}>") {
+    final u = await user();
+
+    if (u != null && event.message.content.trim() == "<@${u.id}>") {
       final latency = client.httpHandler.latency;
       final realLatency = client.httpHandler.realLatency;
       final message = randomPingPhrase(pingPhrases, event);
@@ -219,7 +225,7 @@ Future<BotContext?> load({required BotSettings settings, required FutureOr<Patte
     }
   });
 
-  return BotContext(client: client, bot: user);
+  return BotContext(client: client);
 }
 
 FutureOr<String?> memberToString(Member? member, {bool detailed = false}) async {
