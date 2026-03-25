@@ -61,6 +61,31 @@ BotCommand supportCommand(KVStore? store) => BotCommand.command("support", "See 
   ));
 }, CommandAttributes(category: "Bot"));
 
+BotCommand deleteMyMessageCommand(ServerSettings? Function(Guild guild) getSettings) => BotCommand.command(
+  "deletemymessage", "Delete my message.",
+  (ChatContext context, int id, {TextChannel? channel}) async {
+    if (context.guild != null) {
+      final settings = getSettings.call(context.guild!);
+      if (settings == null) return context.respondWithError("No settings found.");
+      if (await context.assurePerms(BotCommandPermissions.admin, settings) == false) return;
+    } else {
+      if (!isOwner(id: context.user.id)) return context.respondWithError("You are not the owner of me.");
+    }
+
+    channel ??= context.channel;
+
+    try {
+      final message = await channel.messages.get(Snowflake(id));
+      if (message.author.id != context.client.user.id) return context.respondWithError("This message is not mine.", level: ResponseLevel.hint);
+      await message.delete();
+      await context.respond(MessageBuilder(content: "Message `${message.id}` deleted."), level: ResponseLevel.hint);
+    } catch (e) {
+      Logger.warn("DeleteMyMessage", "Unable to delete message $id from channel ${channel.id}: $e");
+    }
+  },
+  CommandAttributes(category: "Bot"),
+);
+
 BotCommand pingCommand() => BotCommand.command(
   "ping", "Pong!",
   (ChatContext context) async {
@@ -203,7 +228,11 @@ BotCommand helpCommand(ServerSettings? Function(Guild guild) getSettings, Comman
           color: await getPrimaryColor(context.member) ?? primaryBotColor,
           pages: EmbedPage.generate(List.generate(commandsInCategory.length, (i) {
             final command = commandsInCategory.elementAt(i);
-            return EmbedFieldBuilder(name: command.name, value: [getDescription(command), if (getPerms(command) != null) "Requires perms: `${getPerms(command)}`"].join(" "), isInline: false);
+
+            return EmbedFieldBuilder(name: command.name, value: [
+              getDescription(command),
+              if (getPerms(command) != null) "Requires perms: `${getPerms(command)}`",
+            ].join(" "), isInline: false);
           })),
         ),
         settings: settings,
@@ -217,7 +246,12 @@ BotCommand helpCommand(ServerSettings? Function(Guild guild) getSettings, Comman
         EmbedBuilder(
           title: "Command `${c.name}`",
           color: await getPrimaryColor(context.member) ?? primaryBotColor,
-          description: [if (attributes != null) "Category: ${attributes.category}", getDescription(c), if (getPerms(c) != null) "Requires perms: `${getPerms(c)}`"].join("\n"),
+          description: [
+            if (attributes != null) "Category: ${attributes.category}",
+            getDescription(c),
+            if (getPerms(c) != null) "Requires perms: `${getPerms(c)}`",
+            if (attributes?.extendedDescription != null) "\n${attributes?.extendedDescription}",
+          ].join("\n"),
         ),
       ]));
     }
