@@ -147,17 +147,20 @@ class KVStore {
     return {for (final r in rows) r['key'] as String: jsonDecode(r['value'])};
   }
 
-  List<Map<String, dynamic>> getScope(String scope) {
+  Map<String, Map<String, dynamic>> getScope(String scope) {
     final rows = _db.select(
       'SELECT id, key, value FROM kv WHERE scope=?',
       [scope],
     );
 
-    return rows.map((r) => {
-      'id': r['id'] as String,
-      'key': r['key'] as String,
-      'value': jsonDecode(r['value']),
-    }).toList();
+    final result = <String, Map<String, dynamic>>{};
+
+    for (final r in rows) {
+      final id = r['id'] as String;
+      result.putIfAbsent(id, () => {})[r['key'] as String] = jsonDecode(r['value']);
+    }
+
+    return result;
   }
 }
 
