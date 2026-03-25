@@ -63,7 +63,7 @@ BotCommand supportCommand(KVStore? store) => BotCommand.command("support", "See 
 
 BotCommand deleteMyMessageCommand(ServerSettings? Function(Guild guild) getSettings) => BotCommand.command(
   "deletemymessage", "Delete my message.",
-  (ChatContext context, int id, {TextChannel? channel}) async {
+  (ChatContext context, int id, [TextChannel? channel]) async {
     if (context.guild != null) {
       final settings = getSettings.call(context.guild!);
       if (settings == null) return context.respondWithError("No settings found.");
