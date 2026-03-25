@@ -31,6 +31,22 @@ Future<String> Function(MessageCreateEvent) prefixFromServerSettings(ServerSetti
   return prefix;
 };
 
+BotCommand messageMe() => BotCommand.command(ChatCommand("messageme", "DM me.", (ChatContext context) async {
+  bool dmSuccessful = false;
+
+  try {
+    (await context.client.users.createDm(context.user.id)).sendMessage(MessageBuilder(
+      content: "Hey there, <@${context.user.id}>!",
+    ));
+
+    dmSuccessful = true;
+  } catch (e) {
+    Logger.warn("Commands.Suggestion.Deny", "Unable to open DM: $e");
+  }
+
+  await context.respond(MessageBuilder(content: dmSuccessful ? "<@${context.user.id}>, I have DMed you." : "<@${context.user.id}>, I was **not** able to DM you."), level: ResponseLevel.hint);
+}), CommandAttributes(category: "Bot"));
+
 BotCommand supportCommand(KVStore? store) => BotCommand.command(ChatCommand("support", "See help/support options for this bot.", (ChatContext context) async {
   final settings = store != null && context.guild != null ? ServerSettings(store, context.guild!.id) : null;
   final prefix = settings?.prefix.get() ?? "!";
