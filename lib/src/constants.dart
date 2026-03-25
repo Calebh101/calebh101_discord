@@ -63,24 +63,27 @@ BotCommand supportCommand(KVStore? store) => BotCommand.command("support", "See 
 
 BotCommand deleteMyMessageCommand(ServerSettings? Function(Guild guild) getSettings) => BotCommand.command(
   "deletemymessage", "Delete my message.",
-  (ChatContext context, int id, [GuildTextChannel? targetChannel]) async {
-    if (context.guild != null) {
+  (ChatContext context, Snowflake id, [GuildTextChannel? targetChannel]) async {
+    final owner = isOwner(id: context.user.id);
+
+    if (context.guild != null && !owner) {
       final settings = getSettings.call(context.guild!);
       if (settings == null) return context.respondWithError("No settings found.");
       if (await context.assurePerms(BotCommandPermissions.admin, settings) == false) return;
     } else {
-      if (!isOwner(id: context.user.id)) return context.respondWithError("You are not the owner of me.");
+      if (!owner) return context.respondWithError("You are not the owner of me.");
     }
 
     final channel = targetChannel ?? context.channel;
 
     try {
-      final message = await channel.messages.get(Snowflake(id));
+      final message = await channel.messages.get(id);
       if (message.author.id != context.client.user.id) return context.respondWithError("This message is not mine.", level: ResponseLevel.hint);
       await message.delete();
       await context.respond(MessageBuilder(content: "Message `${message.id}` deleted."), level: ResponseLevel.hint);
     } catch (e) {
       Logger.warn("DeleteMyMessage", "Unable to delete message $id from channel ${channel.id}: $e");
+      context.respondWithError("Unable to delete message.");
     }
   },
   CommandAttributes(category: "Bot"),
