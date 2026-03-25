@@ -38,12 +38,13 @@ class BotContext {
 }
 
 class BotCommand {
-  final Command? command;
+  late Command? command;
   final Converter? Function(CommandsPlugin plugin)? converter;
 
-  const BotCommand.converter(this.converter) : command = null;
+  BotCommand.converter(this.converter) : command = null;
 
-  BotCommand.command(Command this.command, CommandAttributes attributes) : converter = null {
+  BotCommand.command(String name, String description, Function execute, CommandAttributes attributes, {CommandOptions? options}) : converter = null {
+    command = ChatCommand(name, description, id(name, execute), options: options ?? CommandOptions());
     commandAttributesMap[command!.name] = attributes;
   }
 

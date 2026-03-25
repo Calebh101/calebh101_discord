@@ -31,7 +31,7 @@ Future<String> Function(MessageCreateEvent) prefixFromServerSettings(ServerSetti
   return prefix;
 };
 
-BotCommand messageMe() => BotCommand.command(ChatCommand("messageme", "DM me.", (ChatContext context) async {
+BotCommand messageMe() => BotCommand.command("messageme", "DM me.", (ChatContext context) async {
   bool dmSuccessful = false;
 
   try {
@@ -45,9 +45,9 @@ BotCommand messageMe() => BotCommand.command(ChatCommand("messageme", "DM me.", 
   }
 
   await context.respond(MessageBuilder(content: dmSuccessful ? "<@${context.user.id}>, I have DMed you." : "<@${context.user.id}>, I was **not** able to DM you."), level: ResponseLevel.hint);
-}), CommandAttributes(category: "Bot"));
+}, CommandAttributes(category: "Bot"));
 
-BotCommand supportCommand(KVStore? store) => BotCommand.command(ChatCommand("support", "See help/support options for this bot.", (ChatContext context) async {
+BotCommand supportCommand(KVStore? store) => BotCommand.command("support", "See help/support options for this bot.", (ChatContext context) async {
   final settings = store != null && context.guild != null ? ServerSettings(store, context.guild!.id) : null;
   final prefix = settings?.prefix.get() ?? "!";
 
@@ -59,9 +59,9 @@ BotCommand supportCommand(KVStore? store) => BotCommand.command(ChatCommand("sup
       if (globalSupportServer != null) "For support: ${globalSupportServer!.invite}",
     ].join("\n"),
   ));
-}), CommandAttributes(category: "Bot"));
+}, CommandAttributes(category: "Bot"));
 
-BotCommand pingCommand() => BotCommand.command(ChatCommand(
+BotCommand pingCommand() => BotCommand.command(
   "ping", "Pong!",
   (ChatContext context) async {
     final latency = context.client.httpHandler.latency;
@@ -78,9 +78,10 @@ BotCommand pingCommand() => BotCommand.command(ChatCommand(
       return "> ${x.key}: **${x.value}**";
     }).join("\n")}"));
   },
-), CommandAttributes(category: "Bot"));
+  CommandAttributes(category: "Bot"),
+);
 
-BotCommand killCommand(ServerSettings? Function(Guild guild) getSettings) => BotCommand.command(ChatCommand("kill", "Kill the bot. He will be sad.", (ChatContext context) async {
+BotCommand killCommand(ServerSettings? Function(Guild guild) getSettings) => BotCommand.command("kill", "Kill the bot. He will be sad.", (ChatContext context) async {
   if (!isOwner(id: context.user.id)) {
     context.respondWithError("You are not the owner of me!");
     return;
@@ -89,10 +90,10 @@ BotCommand killCommand(ServerSettings? Function(Guild guild) getSettings) => Bot
   await context.respond(MessageBuilder(content: "I am now dead."));
   Logger.print("Commands.Kill", "User ${context.user.id} requested my death.");
   Process.killPid(pid, ProcessSignal.sigint);
-}), CommandAttributes(permissionsRequired: BotCommandPermissions.owner, category: "Bot"));
+}, CommandAttributes(permissionsRequired: BotCommandPermissions.owner, category: "Bot"));
 
 List<BotCommand> prefixCommands(ServerSettings? Function(Guild guild) getSettings) => [
-    BotCommand.command(ChatCommand("prefix", "Get/set the bot's prefix.", (ChatContext context, [String? prefix]) async {
+    BotCommand.command("prefix", "Get/set the bot's prefix.", (ChatContext context, [String? prefix]) async {
       if (context.guild == null || context.member == null) return context.respondWithError("No guild/member found.");
       final settings = getSettings.call(context.guild!);
       if (settings == null) return context.respondWithError("Unable to load settings.");
@@ -124,8 +125,8 @@ List<BotCommand> prefixCommands(ServerSettings? Function(Guild guild) getSetting
       await context.respond(MessageBuilder(
         content: "Prefix set to `$prefix`!",
       ));
-    }), CommandAttributes(category: "Bot")),
-  BotCommand.command(ChatCommand("resetprefix", "Reset the bot's prefix for this server.", (ChatContext context) async {
+    }, CommandAttributes(category: "Bot")),
+  BotCommand.command("resetprefix", "Reset the bot's prefix for this server.", (ChatContext context) async {
     if (context.guild == null || context.member == null) return context.respondWithError("No guild/member found.");
     final settings = getSettings.call(context.guild!);
     if (settings == null) return context.respondWithError("Unable to load settings.");
@@ -149,10 +150,10 @@ List<BotCommand> prefixCommands(ServerSettings? Function(Guild guild) getSetting
     context.respond(MessageBuilder(
       content: "Prefix set to `$defaultPrefix`!",
     ));
-  }), CommandAttributes(category: "Bot", permissionsRequired: BotCommandPermissions.admin))
+  }, CommandAttributes(category: "Bot", permissionsRequired: BotCommandPermissions.admin))
 ];
 
-BotCommand helpCommand(ServerSettings? Function(Guild guild) getSettings, CommandsPlugin plugin, {bool useCategories = true}) => BotCommand.command(ChatCommand("help", "Show help for all commands, or a specific command${useCategories ? "/category" : ""}.", (ChatContext context, [@Description("Command or category to search.") String? command]) async {
+BotCommand helpCommand(ServerSettings? Function(Guild guild) getSettings, CommandsPlugin plugin, {bool useCategories = true}) => BotCommand.command("help", "Show help for all commands, or a specific command${useCategories ? "/category" : ""}.", (ChatContext context, [@Description("Command or category to search.") String? command]) async {
   final settings = context.guild != null ? getSettings.call(context.guild!) : null;
   final commands = plugin.walkCommands().toList()..sort((a, b) => a.name.compareTo(b.name));
   final categories = BotCommand.getAllCategories();
@@ -221,9 +222,9 @@ BotCommand helpCommand(ServerSettings? Function(Guild guild) getSettings, Comman
       ]));
     }
   }
-}), CommandAttributes(category: "Bot"));
+}, CommandAttributes(category: "Bot"));
 
-BotCommand echoDebugCommand(ServerSettings? Function(Guild guild) getSettings) => BotCommand.command(ChatCommand("echo", "Echo the input text from the bot.", (ChatContext context, String text, [int count = 1]) async {
+BotCommand echoDebugCommand(ServerSettings? Function(Guild guild) getSettings) => BotCommand.command("echo", "Echo the input text from the bot.", (ChatContext context, String text, [int count = 1]) async {
   if (context.guild == null || context.member == null) return context.respondWithError("No guild/member found.");
   final settings = getSettings.call(context.guild!);
   if (settings == null) return context.respondWithError("Unable to load settings.");
@@ -232,9 +233,9 @@ BotCommand echoDebugCommand(ServerSettings? Function(Guild guild) getSettings) =
   await context.respond(MessageBuilder(
     content: text * count,
   ));
-}), CommandAttributes(permissionsRequired: BotCommandPermissions.owner, category: "Debug"));
+}, CommandAttributes(permissionsRequired: BotCommandPermissions.owner, category: "Debug"));
 
-BotCommand listAllServerSettings(ServerSettings? Function(Guild guild) getSettings) => BotCommand.command(ChatCommand("allsettings", "List all settings for this server. Admin only.", (ChatContext context) async {
+BotCommand listAllServerSettings(ServerSettings? Function(Guild guild) getSettings) => BotCommand.command("allsettings", "List all settings for this server. Admin only.", (ChatContext context) async {
   if (context.guild == null || context.member == null) return context.respondWithError("No guild/member found.");
   final settings = getSettings.call(context.guild!);
   if (settings == null) return context.respondWithError("Unable to load settings.");
@@ -244,10 +245,10 @@ BotCommand listAllServerSettings(ServerSettings? Function(Guild guild) getSettin
   context.respond(MessageBuilder(
     content: "All settings for *${context.guild?.name}*:\n${all.map((x) => "- `${x.key}`: `${x.value}`").join("\n")}",
   ), level: ResponseLevel.private);
-}), CommandAttributes(permissionsRequired: BotCommandPermissions.admin, category: "Server"));
+}, CommandAttributes(permissionsRequired: BotCommandPermissions.admin, category: "Server"));
 
 List<BotCommand> adminRoles(ServerSettings? Function(Guild guild) getSettings) => [
-  BotCommand.command(ChatCommand("addadminuser", "Add an admin user.", (ChatContext context, User user) async {
+  BotCommand.command("addadminuser", "Add an admin user.", (ChatContext context, User user) async {
     if (context.guild == null || context.member == null) return context.respondWithError("No guild/member found.");
     final settings = getSettings.call(context.guild!);
     if (settings == null) return context.respondWithError("Unable to load settings.");
@@ -277,8 +278,8 @@ List<BotCommand> adminRoles(ServerSettings? Function(Guild guild) getSettings) =
     context.respond(MessageBuilder(
       content: "Added ${await userToString(user)} as an admin!",
     ));
-  }), CommandAttributes(permissionsRequired: BotCommandPermissions.admin, category: "Server")),
-  BotCommand.command(ChatCommand("addadminrole", "Add a role as admin.", (ChatContext context, Role role) async {
+  }, CommandAttributes(permissionsRequired: BotCommandPermissions.admin, category: "Server")),
+  BotCommand.command("addadminrole", "Add a role as admin.", (ChatContext context, Role role) async {
     if (context.guild == null || context.member == null) return context.respondWithError("No guild/member found.");
     final settings = getSettings.call(context.guild!);
     if (settings == null) return context.respondWithError("Unable to load settings.");
@@ -308,8 +309,8 @@ List<BotCommand> adminRoles(ServerSettings? Function(Guild guild) getSettings) =
     context.respond(MessageBuilder(
       content: "Added role *${role.name}* as admin!",
     ));
-  }), CommandAttributes(permissionsRequired: BotCommandPermissions.admin, category: "Server")),
-  BotCommand.command(ChatCommand("removeadminuser", "Remove a user from admin.", (ChatContext context, User user) async {
+  }, CommandAttributes(permissionsRequired: BotCommandPermissions.admin, category: "Server")),
+  BotCommand.command("removeadminuser", "Remove a user from admin.", (ChatContext context, User user) async {
     if (context.guild == null || context.member == null) return context.respondWithError("No guild/member found.");
     final settings = getSettings.call(context.guild!);
     if (settings == null) return context.respondWithError("Unable to load settings.");
@@ -342,8 +343,8 @@ List<BotCommand> adminRoles(ServerSettings? Function(Guild guild) getSettings) =
     context.respond(MessageBuilder(
       content: found ? "Removed ${await userToString(user)} from admin." : "${await userToString(user)} is not currently an admin.",
     ));
-  }), CommandAttributes(permissionsRequired: BotCommandPermissions.admin, category: "Server")),
-  BotCommand.command(ChatCommand("removeadminrole", "Remove a role from admin.", (ChatContext context, Role role) async {
+  }, CommandAttributes(permissionsRequired: BotCommandPermissions.admin, category: "Server")),
+  BotCommand.command("removeadminrole", "Remove a role from admin.", (ChatContext context, Role role) async {
     if (context.guild == null || context.member == null) return context.respondWithError("No guild/member found.");
     final settings = getSettings.call(context.guild!);
     if (settings == null) return context.respondWithError("Unable to load settings.");
@@ -376,8 +377,8 @@ List<BotCommand> adminRoles(ServerSettings? Function(Guild guild) getSettings) =
     context.respond(MessageBuilder(
       content: found ? "Removed role *${role.name}* from admin." : "Role *${role.name}* is not currently admin.",
     ));
-  }), CommandAttributes(permissionsRequired: BotCommandPermissions.admin, category: "Server")),
-  BotCommand.command(ChatCommand("claim", "Claim yourself as king of the bot!", (ChatContext context) async {
+  }, CommandAttributes(permissionsRequired: BotCommandPermissions.admin, category: "Server")),
+  BotCommand.command("claim", "Claim yourself as king of the bot!", (ChatContext context) async {
     if (context.guild == null || context.member == null) return context.respondWithError("No guild/member found.");
     final settings = getSettings.call(context.guild!);
     if (settings == null) return context.respondWithError("Unable to load settings.");
@@ -431,8 +432,8 @@ List<BotCommand> adminRoles(ServerSettings? Function(Guild guild) getSettings) =
         Logger.warn("Commands.Claim", "User $mainAdmin not found: $e");
       }
     }
-  }), CommandAttributes(category: "Bot")),
-  BotCommand.command(ChatCommand("unclaim", "Step down as king of the bot. This will not be made known to others.", (ChatContext context) async {
+  }, CommandAttributes(category: "Bot")),
+  BotCommand.command("unclaim", "Step down as king of the bot. This will not be made known to others.", (ChatContext context) async {
     if (context.guild == null || context.member == null) return context.respondWithError("No guild/member found.");
     final settings = getSettings.call(context.guild!);
     if (settings == null) return context.respondWithError("Unable to load settings.");
@@ -482,8 +483,8 @@ List<BotCommand> adminRoles(ServerSettings? Function(Guild guild) getSettings) =
         Logger.warn("Commands.Unclaim", "User $old not found: $e");
       }
     }
-  }), CommandAttributes(permissionsRequired: BotCommandPermissions.claimer, category: "Bot")),
-  BotCommand.command(ChatCommand("owner", "See stats about who owns the bot, who owns the server, and who's claimed the bot.", (ChatContext context) async {
+  }, CommandAttributes(permissionsRequired: BotCommandPermissions.claimer, category: "Bot")),
+  BotCommand.command("owner", "See stats about who owns the bot, who owns the server, and who's claimed the bot.", (ChatContext context) async {
     final settings = getSettings.call(context.guild!);
     final mainAdmin = settings?.mainAdmin.get();
     Map<String, String> results = {};
@@ -521,8 +522,8 @@ List<BotCommand> adminRoles(ServerSettings? Function(Guild guild) getSettings) =
         }),
       ),
     ]));
-  }), CommandAttributes(category: "Bot")),
-  BotCommand.command(ChatCommand("status", "See your status.", (ChatContext context, [@Description('The member to check') Member? member]) async {
+  }, CommandAttributes(category: "Bot")),
+  BotCommand.command("status", "See your status.", (ChatContext context, [@Description('The member to check') Member? member]) async {
     final m = member ?? context.member;
     final u = m?.user ?? context.user;
     List<String> attributes = ["Alive"];
@@ -568,12 +569,12 @@ List<BotCommand> adminRoles(ServerSettings? Function(Guild guild) getSettings) =
     } catch (e) {
       Logger.warn("Commands.Status", e);
     }
-  }), CommandAttributes(category: "User")),
-  BotCommand.command(ChatCommand("ignoreowner", "Ignore the bot owner's status temporarily.", (ChatContext context) async {
+  }, CommandAttributes(category: "User")),
+  BotCommand.command("ignoreowner", "Ignore the bot owner's status temporarily.", (ChatContext context) async {
     if (!isOwner(id: context.user.id, overrideIgnoreOwner: true)) return context.respondWithError("You are not the owner of me.");
     ignoreOwner = !ignoreOwner;
     await context.respond(MessageBuilder(content: "Owner is now **${ignoreOwner ? "temporarily ignored": "unignored"}**."));
-  }), CommandAttributes(category: "Debug", permissionsRequired: BotCommandPermissions.owner)),
+  }, CommandAttributes(category: "Debug", permissionsRequired: BotCommandPermissions.owner)),
 ];
 
 final Map<String? Function(MessageCreateEvent event), num> pingPhrases = {
