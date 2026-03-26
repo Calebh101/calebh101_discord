@@ -264,6 +264,11 @@ FutureOr<String> userOrMemberToString(Member? member, User user, {bool detailed 
   return await memberToString(member, detailed: detailed) ?? await userToString(user, detailed: detailed) ?? "`${user.id}`";
 }
 
+String? roleToString(Role? role) {
+  if (role == null) return null;
+  return "**${role.name}**";
+}
+
 String formatLatency(Duration latency) {
   return "${(latency.inMicroseconds / Duration.microsecondsPerMillisecond).toStringAsFixed(3)}ms";
 }
@@ -630,6 +635,38 @@ Future<bool> respondWithPagination(ChatContext context, PaginatedEmbedBuilder em
   Logger.print("Pagination", "Pagination session with user ${context.user.id} ended.");
   if (countdown.isActive) countdown.cancel();
   return true;
+}
+
+extension ToMention on int {
+  String toMention() {
+    return "<@$this>";
+  }
+
+  String toRoleMention() {
+    return "<@&$this>";
+  }
+
+  String toChannel() {
+    return "<#$this>";
+  }
+}
+
+extension RoleToMention on Role {
+  String toMention() {
+    return this.id.value.toRoleMention();
+  }
+}
+
+extension UserToMention on User {
+  String toMention() {
+    return this.id.value.toMention();
+  }
+}
+
+extension ChannelToMention on Channel {
+  String toMention() {
+    return this.id.value.toChannel();
+  }
 }
 
 extension ToDiscordCodeBlock on Object? {

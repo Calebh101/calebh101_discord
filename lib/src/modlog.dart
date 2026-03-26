@@ -68,7 +68,7 @@ class Modlog {
       if (event.settings?.modlogChannel.get() == null) return "No modlog channel set.";
 
       final enabledScopes = event.settings?.modlog.get();
-      if (enabledScopes != null && !enabledScopes.contains(event.eventId)) return "Event not in enabled scopes.";
+      if (enabledScopes != null && !enabledScopes.any((x) => event.triggers.contains(x))) return "Event not in enabled scopes.";
 
       final channels = await (event.guild!.fetchChannels());
       final channel = channels.firstWhere((x) => x.id == Snowflake(event.settings!.modlogChannel.get()!));
@@ -108,9 +108,12 @@ class ModlogEvent {
   final EmbedImageBuilder? image;
   final EmbedThumbnailBuilder? thumbail;
   DateTime? timestamp;
+  List<String>? alsoTriggerOn;
+  late List<String> triggers;
 
-  ModlogEvent(this.eventId, {this.severity = ModlogSeverity.log, required this.guild, required this.settings, required this.title, this.description, this.fields = const {}, this.timestamp, this.url, this.image, this.thumbail}) {
+  ModlogEvent(this.eventId, {this.severity = ModlogSeverity.log, required this.guild, required this.settings, required this.title, this.description, this.fields = const {}, this.timestamp, this.url, this.image, this.thumbail, this.alsoTriggerOn}) {
     timestamp ??= DateTime.now();
+    triggers = [eventId, ...?alsoTriggerOn];
   }
 }
 
