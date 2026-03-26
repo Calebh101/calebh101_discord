@@ -8,3 +8,4 @@ export 'src/modlog.dart';
 
 export 'package:nyxx/nyxx.dart' hide Logger;
 export 'package:nyxx_commands/nyxx_commands.dart';
+export 'package:localpkg/localpkg.dart';

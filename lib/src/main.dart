@@ -10,6 +10,7 @@ import 'package:localpkg/classes.dart';
 
 late DiscordColor primaryBotColor;
 late NyxxGateway client;
+late Version botVersion;
 bool ignoreOwner = false;
 
 List<T> flatten<T>(List<List<T>> lists) => lists.expand((e) => e).toList();
@@ -94,7 +95,8 @@ class TerminalCommand {
 /// [permissions] is a list of permissions. For bot apps, you should start out with `[...GatewayIntents.allUnprivileged, GatewayIntents.messageContent]`.
 ///
 /// [createBot] will create a bot user using `client.user.get()` if true.
-Future<BotContext?> load({required BotSettings settings, required FutureOr<Pattern> Function(MessageCreateEvent)? prefix, List<BotCommand>? Function(CommandsPlugin plugin)? commands, required List<Flag<GatewayIntents>> permissions, bool createBot = true, List<TerminalCommand> terminalCommands = const [], required DefinedUser owner, required DefinedServer? supportServer, required KVStore store, required DiscordColor primaryColor, required String botName}) async {
+Future<BotContext?> load({required BotSettings settings, required FutureOr<Pattern> Function(MessageCreateEvent)? prefix, List<BotCommand>? Function(CommandsPlugin plugin)? commands, required List<Flag<GatewayIntents>> permissions, bool createBot = true, List<TerminalCommand> terminalCommands = const [], required DefinedUser owner, required DefinedServer? supportServer, required KVStore store, required DiscordColor primaryColor, required String botName, required Version version}) async {
+  botVersion = version;
   globalBotName = botName;
   globalOwner = owner;
   primaryBotColor = primaryColor;
@@ -511,7 +513,11 @@ Future<bool> respondWithPagination(ChatContext context, PaginatedEmbedBuilder em
       List<ComponentBuilder<Component>> results = [];
 
       for (final x in emojis.entries) {
-        results.add(ButtonBuilder.primary(customId: "${x.key}.${context.interaction.id}", label: x.value, isDisabled: !switch (x.key) {
+        results.add(ButtonBuilder.primary(customId: "${x.key}.${context.interaction.id}", emoji: TextEmoji(
+          id: Snowflake.zero,
+          manager: context.client.application.emojis,
+          name: x.value,
+        ), isDisabled: !switch (x.key) {
           // For each expression, the button is enabled if true.
           "back" || "backAll" => page != 0,
           "forward" || "forwardAll" => page != embed.pages.length - 1,

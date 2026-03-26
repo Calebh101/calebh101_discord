@@ -13,3 +13,7 @@ dependencies:
       url: https://github.com/Calebh101/calebh101_discord.git
       ref: main
 ```
+
+## Example
+
+See `calebh101_bot`.

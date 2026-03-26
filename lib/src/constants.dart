@@ -1,9 +1,8 @@
 import 'dart:io';
 
 import 'package:calebh101_discord/calebh101_discord.dart';
-import 'package:calebh101_discord/src/main.dart';
 import 'package:collection/collection.dart';
-import 'package:localpkg/functions.dart';
+import 'package:system_info/system_info.dart';
 
 const defaultPrefix = "!";
 const enableKill = true;
@@ -47,17 +46,30 @@ BotCommand messageMe() => BotCommand.command("messageme", "DM me.", (ChatContext
   await context.respond(MessageBuilder(content: dmSuccessful ? "<@${context.user.id}>, I have DMed you." : "<@${context.user.id}>, I was **not** able to DM you."), level: ResponseLevel.hint);
 }, CommandAttributes(category: "Bot"));
 
-BotCommand supportCommand(KVStore? store) => BotCommand.command("support", "See help/support options for this bot.", (ChatContext context) async {
+BotCommand aboutCommand(KVStore? store) => BotCommand.command("about", "See stats about this bot.", (ChatContext context) async {
   final settings = store != null && context.guild != null ? ServerSettings(store, context.guild!.id) : null;
   final prefix = settings?.prefix.get() ?? "!";
 
   await context.respond(MessageBuilder(
     content: [
-      "$globalBotName Help/Support",
+      "**$globalBotName**: A bot that does something",
+      "Version $botVersion by [Calebh101](<https://github.com/Calebh101>)",
+      null,
       "Current prefix: `$prefix`",
       "To see all commands, run `${prefix}help`.",
-      if (globalSupportServer != null) "For support: ${globalSupportServer!.invite}",
-    ].join("\n"),
+      null,
+      [
+        "${SysInfo.operatingSystemName} ${SysInfo.kernelArchitecture} ${SysInfo.operatingSystemVersion}".trim(),
+        (() {
+          final processor = SysInfo.processors.first;
+          return "${processor.vendor} ${processor.name}".trim();
+        }()),
+      ].join("\n").trim().toDiscordCodeBlock(),
+      null,
+      "Built with [nyxx](<https://pub.dev/packages/nyxx>), running on Dart:",
+      Platform.version.trim().toDiscordCodeBlock(),
+      if (globalSupportServer != null) ...["For support: ${globalSupportServer!.invite}"],
+    ].map((x) => x ?? "").join("\n"),
   ));
 }, CommandAttributes(category: "Bot"));
 
