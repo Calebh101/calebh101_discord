@@ -35,6 +35,7 @@ void main(List<String> arguments) => onStart = () async {
 
       pingCommand(),
       messageMe(),
+      restartCommand(),
       aboutCommand(store),
 
       helpCommand((x) => Calebh101BotServerSettings(store, x.id), plugin),
@@ -76,11 +77,11 @@ void main(List<String> arguments) => onStart = () async {
               fields: [
                 EmbedFieldBuilder(name: "XP", value: getRoundedXp(settings).toString(), isInline: true),
                 EmbedFieldBuilder(name: "Level", value: level, isInline: true),
-                EmbedFieldBuilder(name: "Join Position", value: "${await getJoinPosition(guild, member) + 1} / ${(await guild.fetchPreview()).approximateMemberCount}", isInline: false),
                 EmbedFieldBuilder(name: "Joined On", value: "${member.joinedAt.toDiscordTimestamp(DiscordTimestamp.longDateTime)} (${member.joinedAt.toDiscordTimestamp(DiscordTimestamp.relative)})", isInline: false),
                 if (properties.isNotEmpty) EmbedFieldBuilder(name: "Properties", value: properties.join(", "), isInline: false),
               ],
               footer: isAdmin(settings: serverSettings, id: context.user.id) ? EmbedFooterBuilder(text: "Exact XP: ${settings.xp.get()}") : null,
+              thumbnail: member.avatar?.url != null ? EmbedThumbnailBuilder(url: member.avatar!.url) : null,
             ),
           ],
         ));
@@ -151,19 +152,34 @@ void main(List<String> arguments) => onStart = () async {
         ));
       }, CommandAttributes(category: "XP", permissionsRequired: BotCommandPermissions.admin)),
 
-      BotCommand.command("reassignxp", "Remove an XP level by name.", (ChatContext context) async {
+      BotCommand.command("setxpupdateschannel", "Set a channel for the bot to announce updates like level-ups.", (ChatContext context, [GuildTextChannel? channel]) async {
         if (context.guild == null) return context.respondWithError("No guild found.");
         final settings = Calebh101BotServerSettings(store, context.guild!.id);
         if (await context.assurePerms(BotCommandPermissions.admin, settings) == false) return;
-        final members = await getAllMembers(context.guild!);
+
+        settings.xpChannel.set(channel?.id.value);
+        await context.respond(MessageBuilder(content: "XP updates channel ${channel != null ? "to ${channel.toMention()}" : "removed"}!"));
+      }, CommandAttributes(category: "XP", permissionsRequired: BotCommandPermissions.admin)),
+
+      BotCommand.command("xpupdateschannel", "Get the channel for the bot to announce updates like level-ups.", (ChatContext context) async {
+        if (context.guild == null) return context.respondWithError("No guild found.");
+        final settings = Calebh101BotServerSettings(store, context.guild!.id);
+
+        final id = settings.xpChannel.get();
+        await context.respond(MessageBuilder(content: "XP updates channel ${id != null ? "is set to ${id.toChannel()}" : "not set"}."));
+      }, CommandAttributes(category: "XP", permissionsRequired: BotCommandPermissions.admin)),
+
+      BotCommand.command("reassignxp", "Reassign everyone's XP levels.", (ChatContext context) async {
+        if (context.guild == null) return context.respondWithError("No guild found.");
+        final settings = Calebh101BotServerSettings(store, context.guild!.id);
+        if (await context.assurePerms(BotCommandPermissions.admin, settings) == false) return;
 
         String getMessage(int progress) {
           return "XP levels are being reassigned, please wait...\n-# Progress: $progress%";
         }
 
-        final m = await context.respond(MessageBuilder(
-          content: getMessage(0),
-        ));
+        final m = await context.respond(MessageBuilder(content: getMessage(0)));
+        final members = await getAllMembers(context.guild!);
 
         for (int i = 0; i < members.length; i++) {
           try {
@@ -182,23 +198,40 @@ void main(List<String> arguments) => onStart = () async {
             if (newRole != null) await member.addRole(newRole.id);
 
             if (i % 100 == 1) {
-              if (context is InteractionChatContext) {
-                await context.interaction.updateOriginalResponse(MessageUpdateBuilder(content: getMessage(((i + 1) / members.length).floor())));
-              } else {
-                await m.update(MessageUpdateBuilder(content: getMessage(((i + 1) / members.length).floor())));
-              }
+              await context.updateMessage(m, MessageUpdateBuilder(content: getMessage(((i + 1) / members.length).floor())));
             }
           } catch (e) {
             final member = members[i];
             Logger.warn("ReassignXP", "Error with user $i (${member.id}): $e");
           }
+        }
 
-          if (context is InteractionChatContext) {
-            await context.interaction.updateOriginalResponse(MessageUpdateBuilder(content: "Process complete!"));
-          } else {
-            await m.update(MessageUpdateBuilder(content: "Process complete!"));
+        await context.updateMessage(m, MessageUpdateBuilder(content: "Process complete!"));
+      }, CommandAttributes(category: "XP", permissionsRequired: BotCommandPermissions.admin)),
+
+      BotCommand.command("resetxp", "Reset everyone's XP to 0.", (ChatContext context) async {
+        if (context.guild == null) return context.respondWithError("No guild found.");
+        final settings = Calebh101BotServerSettings(store, context.guild!.id);
+        if (await context.assurePerms(BotCommandPermissions.admin, settings) == false) return;
+
+        final m = await context.respond(MessageBuilder(content: "XP levels are being reset, please wait..."));
+        final members = await getAllMembers(context.guild!);
+
+        for (int i = 0; i < members.length; i++) {
+          try {
+            final member = members[i];
+            final userSettings = Calebh101BotUserPerServerSettings(store, context.guild!.id, member.id);
+
+            if (userSettings.xp.get() != null) {
+              userSettings.xp.set(0);
+            }
+          } catch (e) {
+            final member = members[i];
+            Logger.warn("ResetXP", "Error with user $i (${member.id}): $e");
           }
         }
+
+        await context.updateMessage(m, MessageUpdateBuilder(content: "Process complete! Run `reassignxp` to reassign levels."));
       }, CommandAttributes(category: "XP", permissionsRequired: BotCommandPermissions.admin)),
 
       BotCommand.command("setxp", "Set someone's XP level.", (ChatContext context, Member member, double amount) async {
@@ -221,6 +254,15 @@ void main(List<String> arguments) => onStart = () async {
 
         if (newRole != null) await member.addRole(newRole.id);
         await context.respond(MessageBuilder(content: "Set ${await memberToString(member)}'s XP to **$amount**.\nNew role: ${newRole?.name ?? null.toDiscordCodeString()}"));
+      }, CommandAttributes(category: "XP", permissionsRequired: BotCommandPermissions.admin)),
+
+      BotCommand.command("pingonlevelup", "Set if the bot should ping on level up.", (ChatContext context, bool value) async {
+        if (context.guild == null) return context.respondWithError("No guild found.");
+        final settings = Calebh101BotServerSettings(store, context.guild!.id);
+        if (await context.assurePerms(BotCommandPermissions.admin, settings) == false) return;
+
+        settings.pingOnLevelUp.set(value);
+        await context.respond(MessageBuilder(content: "The bot ${value ? "**will**" : "will **not**"} ping on level up."));
       }, CommandAttributes(category: "XP", permissionsRequired: BotCommandPermissions.admin)),
     ],
   );
@@ -287,6 +329,29 @@ Future<void> addXp(GatewayEvent event, Guild guild, Member member, double toAdd)
     },
     alsoTriggerOn: [if (levelUp) "xp.levelup"],
   ));
+
+  if (levelUp) {
+    try {
+      final ping = serverSettings.pingOnLevelUp.get() ?? true;
+      final channelId = serverSettings.xpChannel.get();
+      final channel = channelId != null ? await client.channels.get(Snowflake(channelId)) : null;
+
+      if (channel is GuildTextChannel) {
+        await channel.sendMessage(MessageBuilder(
+          content: ping ? member.toMention() : null,
+          embeds: [
+            EmbedBuilder(
+              description: "## ${member.toMention()} has leveled up to ${newLevel.roleId.toRoleMention()}!",
+              thumbnail: member.avatar?.url != null ? EmbedThumbnailBuilder(url: member.avatar!.url) : null,
+              color: await getPrimaryColor(member) ?? primaryBotColor,
+            ),
+          ],
+        ));
+      }
+    } catch (e) {
+      Logger.warn("addXp", "Unable to find channel: $e");
+    }
+  }
 }
 
 int getRoundedXp(Calebh101BotUserPerServerSettings settings) {
@@ -297,12 +362,6 @@ int roundXp(double xp) {
   return xp.floor();
 }
 
-Future<int> getJoinPosition(Guild guild, Member member) async {
-  final members = await getAllMembers(guild)..sort((a, b) => a.joinedAt.compareTo(b.joinedAt));
-  final index = members.indexWhere((m) => m.id == member.id);
-  return index;
-}
-
 Future<List<Member>> getAllMembers(Guild guild, {int limitPer = 1000}) async {
   List<Member> result = [];
 
@@ -310,8 +369,10 @@ Future<List<Member>> getAllMembers(Guild guild, {int limitPer = 1000}) async {
     try {
       final members = await guild.members.list(limit: limitPer, after: result.lastOrNull?.id);
       Logger.print("getAllMembers", "Found ${members.length} (${result.length} existing)");
+
       if (members.isEmpty) break;
       result.addAll(members);
+      if (members.length < limitPer) break;
     } catch (e) {
       Logger.warn("getAllMembers", "Error: $e (${result.length} existing)");
       break;
@@ -339,6 +400,8 @@ Role? getRole(Guild guild, Snowflake id) {
 
 class Calebh101BotServerSettings extends ServerSettings {
   SettingsObject<List<XPLevel>> get xpLevels => SettingsObject(this, "levels", encodeFunction: (input) => input.map((x) => x.toJson()).toList(), decodeFunction: (input) => (input as List?)?.map((x) => XPLevel.fromJson(x)).toList());
+  SettingsObject<int> get xpChannel => SettingsObject(this, "xpChannel");
+  SettingsObject<bool> get pingOnLevelUp => SettingsObject(this, "pingOnLevelUp");
 
   Calebh101BotServerSettings(super.store, super.id);
 }

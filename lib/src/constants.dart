@@ -30,6 +30,16 @@ Future<String> Function(MessageCreateEvent) prefixFromServerSettings(ServerSetti
   return prefix;
 };
 
+BotCommand restartCommand() => BotCommand.command("restart", "Restart the bot.", (ChatContext context) async {
+  if (await context.assureOwner() == false) return;
+  final m = await context.respond(MessageBuilder(content: "Restarting..."));
+  await restart();
+
+  await context.updateMessage(m, MessageUpdateBuilder(
+    content: "Restart either failed or took too long.",
+  ));
+}, CommandAttributes(category: "Bot", permissionsRequired: BotCommandPermissions.owner));
+
 BotCommand messageMe() => BotCommand.command("messageme", "DM me.", (ChatContext context) async {
   bool dmSuccessful = false;
 

@@ -221,6 +221,9 @@ Future<BotContext?> load({required BotSettings settings, required FutureOr<Patte
       _onStart.call();
       Logger.print("Reloader", "Reload complete!");
     }),*/
+    TerminalCommand(Char.from("r"), () {
+      restart();
+    }),
   ], ...terminalCommands];
 
   stdin.echoMode = false;
@@ -251,6 +254,13 @@ Future<BotContext?> load({required BotSettings settings, required FutureOr<Patte
 
   stdinInitialized = true;
   return BotContext(client: client);
+}
+
+Future<void> restart({int delay = 5}) async {
+  Logger.print("Restart", "Restarting...");
+  Logger.signal("Restart", "CDR_RESTART_HARD");
+  await Future.delayed(Duration(seconds: delay));
+  Logger.warn("Restart", "Restart is either taking longer than expected, or failed.\nMake sure you use the custom run script to run your bot.\nOtherwise the restart won't work.");
 }
 
 FutureOr<String?> memberToString(Member? member, {bool detailed = false}) async {
@@ -685,6 +695,12 @@ extension UserToMention on User {
   }
 }
 
+extension MemberToMention on Member {
+  String toMention() {
+    return this.id.value.toMention();
+  }
+}
+
 extension ChannelToMention on Channel {
   String toMention() {
     return this.id.value.toChannel();
@@ -737,11 +753,11 @@ extension ContextHelper on ChatContext {
     }
   }
 
-  bool verifyPerms(BotCommandPermissions perms, ServerSettings settings) {
+  bool verifyPerms(BotCommandPermissions perms, ServerSettings? settings) {
     switch (perms) {
       case BotCommandPermissions.any: return true;
-      case BotCommandPermissions.admin: return isAdmin(settings: settings, id: user.id);
-      case BotCommandPermissions.claimer: return isClaimer(settings: settings, id: user.id);
+      case BotCommandPermissions.admin: return isAdmin(settings: settings!, id: user.id);
+      case BotCommandPermissions.claimer: return isClaimer(settings: settings!, id: user.id);
       case BotCommandPermissions.owner: return isOwner(id: user.id);
     }
   }
@@ -757,5 +773,24 @@ extension ContextHelper on ChatContext {
     return true;
   }
 
+  Future<bool> assureOwner() async {
+    final result = verifyPerms(BotCommandPermissions.owner, null);
+
+    if (result == false) {
+      await respond(MessageBuilder(content: "You don't have the required permissions to access this command.\n-# Permissions required: `${BotCommandPermissions.owner.name}`"));
+      return false;
+    }
+
+    return true;
+  }
+
   FutureOr<String?> userString({bool detailed = false}) async => userOrMemberToString(member, user, detailed: detailed);
+
+  Future<Message> updateMessage(Message message, MessageUpdateBuilder builder) async {
+    if (this is InteractionChatContext) {
+      return await (this as InteractionChatContext).interaction.updateOriginalResponse(builder);
+    } else {
+      return await message.update(builder);
+    }
+  }
 }
