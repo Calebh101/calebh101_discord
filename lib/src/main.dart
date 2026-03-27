@@ -6,7 +6,6 @@ import 'package:async/async.dart';
 import 'package:calebh101_discord/calebh101_discord.dart';
 import 'package:calebh101_discord/src/logger_override.dart';
 import 'package:collection/collection.dart';
-import 'package:localpkg/classes.dart';
 
 late DiscordColor primaryBotColor;
 late NyxxGateway client;
@@ -84,6 +83,15 @@ class TerminalCommand {
   const TerminalCommand(this.key, this.callback);
 }
 
+typedef OnStart = void Function();
+late OnStart _onStart;
+bool stdinInitialized = false;
+
+set onStart(OnStart value) {
+  _onStart = value;
+  _onStart.call();
+}
+
 /// Create a new gateway and bot.
 ///
 /// [settings] is a [BotSettings] object. To use the default settings, just input `BotSettings()`. However, you can extend [BotSettings] and add your own fields.
@@ -96,6 +104,13 @@ class TerminalCommand {
 ///
 /// [createBot] will create a bot user using `client.user.get()` if true.
 Future<BotContext?> load({required BotSettings settings, required FutureOr<Pattern> Function(MessageCreateEvent)? prefix, List<BotCommand>? Function(CommandsPlugin plugin)? commands, required List<Flag<GatewayIntents>> permissions, bool createBot = true, List<TerminalCommand> terminalCommands = const [], required DefinedUser owner, required DefinedServer? supportServer, required KVStore store, required DiscordColor primaryColor, required String botName, required Version version}) async {
+  try {
+    final _ = _onStart.hashCode;
+  } catch (e) {
+    Logger.error("load", "onStart must be initialized.\n$e");
+    return null;
+  }
+
   botVersion = version;
   globalBotName = botName;
   globalOwner = owner;
@@ -187,6 +202,8 @@ Future<BotContext?> load({required BotSettings settings, required FutureOr<Patte
     }
   });
 
+  late List<StreamSubscription<ProcessSignal>> subscriptions;
+
   final tcmd = [...[
     TerminalCommand(Char.from("q"), () async {
       Process.killPid(pid, ProcessSignal.sigint);
@@ -198,12 +215,16 @@ Future<BotContext?> load({required BotSettings settings, required FutureOr<Patte
 
       Logger.print("Ping", "HTTP latency: ${formatLatency(latency)}\nReal latency: ${formatLatency(realLatency)}\nGateway latency: ${formatLatency(gatewayLatency)}");
     }),
+    /*TerminalCommand(Char.from("r"), () async {
+      Logger.print("Reloader", "Reloading...");
+      await client.close();
+      _onStart.call();
+      Logger.print("Reloader", "Reload complete!");
+    }),*/
   ], ...terminalCommands];
 
   stdin.echoMode = false;
   stdin.lineMode = false;
-
-  late List<StreamSubscription<ProcessSignal>> subscriptions;
 
   void onClose(ProcessSignal signal) {
     Logger.print("onClose", "Received ${signal.name}, closing...");
@@ -220,7 +241,7 @@ Future<BotContext?> load({required BotSettings settings, required FutureOr<Patte
     if (!Platform.isWindows) ProcessSignal.sigterm.watch().listen(onClose),
   ];
 
-  stdin.listen((List<int> data) {
+  if (!stdinInitialized) stdin.listen((List<int> data) {
     for (final x in tcmd) {
       if (x.key.code == data[0]) {
         x.callback.call();
@@ -228,6 +249,7 @@ Future<BotContext?> load({required BotSettings settings, required FutureOr<Patte
     }
   });
 
+  stdinInitialized = true;
   return BotContext(client: client);
 }
 

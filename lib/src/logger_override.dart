@@ -6,6 +6,6 @@ import 'package:calebh101_discord/calebh101_discord.dart' as c;
 void loggerOverride() {
   Logger.root.onRecord.listen((record) {
     if (record.error is CommandNotFoundException) return;
-    c.Logger.log(record.level, "Nyxx.${record.loggerName}", record.message);
+    c.Logger.log(record.level, record.loggerName, record.message);
   });
 }

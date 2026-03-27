@@ -9,7 +9,7 @@ final double Function(String content) xpPerMessage = (content) => min(content.le
 
 final store = KVStore("database.db");
 
-void main(List<String> arguments) async {
+void main(List<String> arguments) => onStart = () async {
   Modlog({
     ModLogGroup.all: (levelBelow) => {...levelBelow, "xp.add"},
     ModLogGroup.normal: (levelBelow) => {...levelBelow, "xp.levelup"},
@@ -46,6 +46,10 @@ void main(List<String> arguments) async {
       ...adminRoles((x) => Calebh101BotServerSettings(store, x.id)),
       ...modLogCommands((x) => Calebh101BotServerSettings(store, x.id)),
       ...prefixCommands((x) => Calebh101BotServerSettings(store, x.id)),
+
+      BotCommand.command("fart", "Fart", (ChatContext context) async {
+        await context.respond(MessageBuilder(content: "fart"));
+      }, CommandAttributes(category: "Fun")),
 
       BotCommand.command("stats", "See your stats, or somebody else's.", (ChatContext context, [Member? member]) async {
         member ??= context.member;
@@ -239,7 +243,7 @@ void main(List<String> arguments) async {
     if (guild == null || !checkIsValidForXp(member)) return;
     addXp(event, guild, member!, xpPerReaction);
   });
-}
+};
 
 bool checkIsValidForXp(Member? member) {
   if (member == null) return false;
