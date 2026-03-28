@@ -38,11 +38,10 @@ Future<void> main(List<String> arguments) async {
 
     if (++crashes >= maxCrashes) {
       Logger.error("Runner", "Process has crashed $crashes times too quickly. The process will not be restarted.");
-      return;
+      exit(1);
     }
 
     Logger.error("Runner", "Invalid exit code: $code. Process has crashed $crashes times. The process will be restarted.");
     await Future.delayed(Duration(seconds: 5));
-    exit(1);
   }
 }

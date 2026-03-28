@@ -32,11 +32,9 @@ Future<String> Function(MessageCreateEvent) prefixFromServerSettings(ServerSetti
 
 BotCommand restartCommand() => BotCommand.command("restart", "Restart the bot.", (ChatContext context) async {
   if (await context.assureOwner() == false) return;
-  final m = await context.respond(MessageBuilder(content: "Restarting..."));
-
-  await context.updateMessage(m, MessageUpdateBuilder(
-    content: "Restart failed.",
-  ));
+  await context.respond(MessageBuilder(content: "Restarting..."));
+  Logger.print("Commands.Kill", "User ${context.user.id} requested my restart.");
+  await close.call(ExitCode.restart);
 }, CommandAttributes(category: "Bot", permissionsRequired: BotCommandPermissions.owner));
 
 BotCommand messageMe() => BotCommand.command("messageme", "DM me.", (ChatContext context) async {
@@ -138,7 +136,7 @@ BotCommand killCommand(ServerSettings? Function(Guild guild) getSettings) => Bot
 
   await context.respond(MessageBuilder(content: "I am now dead."));
   Logger.print("Commands.Kill", "User ${context.user.id} requested my death.");
-  Process.killPid(pid, ProcessSignal.sigint);
+  close.call();
 }, CommandAttributes(permissionsRequired: BotCommandPermissions.owner, category: "Bot"));
 
 List<BotCommand> prefixCommands(ServerSettings? Function(Guild guild) getSettings) => [

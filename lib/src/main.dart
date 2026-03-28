@@ -91,6 +91,8 @@ class TerminalCommand {
   const TerminalCommand(this.key, this.callback);
 }
 
+late Future<Never> Function([int code]) close;
+
 typedef OnStart = void Function();
 late OnStart _onStart;
 bool stdinInitialized = false;
@@ -233,17 +235,21 @@ Future<BotContext?> load({required BotSettings settings, required FutureOr<Patte
     }
   }
 
+  close = ([int code = ExitCode.success]) async {
+    try {
+      Logger.print("Close", "Closing client...");
+      await client.close();
+    } catch (e) {
+      Logger.warn("Close", "Unable to close client: $e");
+    }
+
+    onClose(null);
+    exit(code);
+  };
+
   final tcmd = [...[
     TerminalCommand(Char.from("q"), () async {
-      try {
-        Logger.print("Close", "Closing client...");
-        await client.close();
-      } catch (e) {
-        Logger.warn("Close", "Unable to close client: $e");
-      }
-
-      onClose(null);
-      exit(ExitCode.success);
+      await close();
     }),
     TerminalCommand(Char.from("p"), () async {
       final latency = client.httpHandler.latency;
@@ -253,15 +259,7 @@ Future<BotContext?> load({required BotSettings settings, required FutureOr<Patte
       Logger.print("Ping", "HTTP latency: ${formatLatency(latency)}\nReal latency: ${formatLatency(realLatency)}\nGateway latency: ${formatLatency(gatewayLatency)}");
     }),
     TerminalCommand(Char.from("r"), () async {
-      try {
-        Logger.print("Restart", "Restarting...");
-        await client.close();
-      } catch (e) {
-        Logger.warn("Restart", "Unable to close client: $e");
-      }
-
-      onClose(null);
-      exit(ExitCode.restart);
+      await close.call(ExitCode.restart);
     }),
   ], ...terminalCommands];
 
