@@ -33,10 +33,9 @@ Future<String> Function(MessageCreateEvent) prefixFromServerSettings(ServerSetti
 BotCommand restartCommand() => BotCommand.command("restart", "Restart the bot.", (ChatContext context) async {
   if (await context.assureOwner() == false) return;
   final m = await context.respond(MessageBuilder(content: "Restarting..."));
-  await restart();
 
   await context.updateMessage(m, MessageUpdateBuilder(
-    content: "Restart either failed or took too long.",
+    content: "Restart failed.",
   ));
 }, CommandAttributes(category: "Bot", permissionsRequired: BotCommandPermissions.owner));
 

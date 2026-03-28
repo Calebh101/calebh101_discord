@@ -32,7 +32,7 @@ class Logger {
     }
 
     if (level == LogLevel.signal) {
-      stdout.writeln("SIGNAL:$input");
+      _log(level: LogLevel.warning, module: "Logger", input: "Signals are deprecated and will not function correctly. Please use exit codes.");
     }
   }
 

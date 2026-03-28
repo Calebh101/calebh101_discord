@@ -7,6 +7,13 @@ import 'package:calebh101_discord/calebh101_discord.dart';
 import 'package:calebh101_discord/src/logger_override.dart';
 import 'package:collection/collection.dart';
 
+class ExitCode {
+  const ExitCode._();
+
+  static const int success = 0;
+  static const int restart = 101;
+}
+
 late DiscordColor primaryBotColor;
 late NyxxGateway client;
 late Version botVersion;
@@ -204,33 +211,8 @@ Future<BotContext?> load({required BotSettings settings, required FutureOr<Patte
 
   late List<StreamSubscription<ProcessSignal>> subscriptions;
 
-  final tcmd = [...[
-    TerminalCommand(Char.from("q"), () async {
-      Process.killPid(pid, ProcessSignal.sigint);
-    }),
-    TerminalCommand(Char.from("p"), () async {
-      final latency = client.httpHandler.latency;
-      final realLatency = client.httpHandler.realLatency;
-      final gatewayLatency = client.gateway.latency;
-
-      Logger.print("Ping", "HTTP latency: ${formatLatency(latency)}\nReal latency: ${formatLatency(realLatency)}\nGateway latency: ${formatLatency(gatewayLatency)}");
-    }),
-    /*TerminalCommand(Char.from("r"), () async {
-      Logger.print("Reloader", "Reloading...");
-      await client.close();
-      _onStart.call();
-      Logger.print("Reloader", "Reload complete!");
-    }),*/
-    TerminalCommand(Char.from("r"), () {
-      restart();
-    }),
-  ], ...terminalCommands];
-
-  stdin.echoMode = false;
-  stdin.lineMode = false;
-
-  void onClose(ProcessSignal signal) {
-    Logger.print("onClose", "Received ${signal.name}, closing...");
+  void onClose(ProcessSignal? signal) {
+    Logger.print("onClose", "Received ${signal?.name ?? "generic signal"}, closing...");
     stdin.echoMode = true;
     stdin.lineMode = true;
 
@@ -239,28 +221,58 @@ Future<BotContext?> load({required BotSettings settings, required FutureOr<Patte
     }
   }
 
+  final tcmd = [...[
+    TerminalCommand(Char.from("q"), () async {
+      try {
+        Logger.print("Close", "Closing client...");
+        await client.close();
+      } catch (e) {
+        Logger.warn("Close", "Unable to close client: $e");
+      }
+
+      onClose(null);
+      exit(ExitCode.success);
+    }),
+    TerminalCommand(Char.from("p"), () async {
+      final latency = client.httpHandler.latency;
+      final realLatency = client.httpHandler.realLatency;
+      final gatewayLatency = client.gateway.latency;
+
+      Logger.print("Ping", "HTTP latency: ${formatLatency(latency)}\nReal latency: ${formatLatency(realLatency)}\nGateway latency: ${formatLatency(gatewayLatency)}");
+    }),
+    TerminalCommand(Char.from("r"), () async {
+      try {
+        Logger.print("Restart", "Restarting...");
+        await client.close();
+      } catch (e) {
+        Logger.warn("Restart", "Unable to close client: $e");
+      }
+
+      onClose(null);
+      exit(ExitCode.restart);
+    }),
+  ], ...terminalCommands];
+
+  stdin.echoMode = false;
+  stdin.lineMode = false;
+
   subscriptions = [
     ProcessSignal.sigint.watch().listen(onClose),
     if (!Platform.isWindows) ProcessSignal.sigterm.watch().listen(onClose),
   ];
 
-  if (!stdinInitialized) stdin.listen((List<int> data) {
-    for (final x in tcmd) {
-      if (x.key.code == data[0]) {
-        x.callback.call();
+  if (!stdinInitialized) {
+    stdin.listen((List<int> data) {
+      for (final x in tcmd) {
+        if (x.key.code == data[0]) {
+          x.callback.call();
+        }
       }
-    }
-  });
+    });
+  }
 
   stdinInitialized = true;
   return BotContext(client: client);
-}
-
-Future<void> restart({int delay = 5}) async {
-  Logger.print("Restart", "Restarting...");
-  Logger.signal("Restart", "CDR_RESTART_HARD");
-  await Future.delayed(Duration(seconds: delay));
-  Logger.warn("Restart", "Restart is either taking longer than expected, or failed.\nMake sure you use the custom run script to run your bot.\nOtherwise the restart won't work.");
 }
 
 FutureOr<String?> memberToString(Member? member, {bool detailed = false}) async {
