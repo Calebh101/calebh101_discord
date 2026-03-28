@@ -57,6 +57,7 @@ void main(List<String> arguments) => onStart = () async {
         member ??= context.member;
         if (member == null || context.guild == null) return context.respondWithError("No guild/member found.");
         final guild = context.guild!;
+        final avatar = member.avatar ?? member.user?.avatar;
 
         final serverSettings = Calebh101BotServerSettings(store, guild.id);
         final settings = Calebh101BotUserPerServerSettings(store, guild.id, member.id);
@@ -82,7 +83,7 @@ void main(List<String> arguments) => onStart = () async {
                 if (properties.isNotEmpty) EmbedFieldBuilder(name: "Properties", value: properties.join(", "), isInline: false),
               ],
               footer: isAdmin(settings: serverSettings, id: context.user.id) ? EmbedFooterBuilder(text: "Exact XP: ${settings.xp.get()}") : null,
-              thumbnail: member.avatar?.url != null ? EmbedThumbnailBuilder(url: member.avatar!.url) : null,
+              thumbnail: avatar != null ? EmbedThumbnailBuilder(url: avatar.url) : null,
             ),
           ],
         ));
@@ -221,6 +222,7 @@ void main(List<String> arguments) => onStart = () async {
         for (int i = 0; i < members.length; i++) {
           try {
             final member = members[i];
+            if (isXpBanned(settings, member)) continue;
             final userSettings = Calebh101BotUserPerServerSettings(store, context.guild!.id, member.id);
 
             if (userSettings.xp.get() != null) {
@@ -239,6 +241,7 @@ void main(List<String> arguments) => onStart = () async {
         if (context.guild == null) return context.respondWithError("No guild found.");
         final settings = Calebh101BotServerSettings(store, context.guild!.id);
         if (await context.assurePerms(BotCommandPermissions.admin, settings) == false) return;
+        if (!xpEnabled(settings)) return context.respondWithError("The XP system is disabled.");
 
         final userSettings = Calebh101BotUserPerServerSettings(store, context.guild!.id, member.id);
         userSettings.xp.set(amount);
@@ -254,16 +257,89 @@ void main(List<String> arguments) => onStart = () async {
         }
 
         if (newRole != null) await member.addRole(newRole.id);
-        await context.respond(MessageBuilder(content: "Set ${await memberToString(member)}'s XP to **$amount**.\nNew role: ${newRole?.name ?? null.toDiscordCodeString()}"));
+        await context.respond(MessageBuilder(content: "Set ${await memberToString(member)}'s XP to **$amount**.\nNew role: **${newRole?.name ?? null.toDiscordCodeString()}**"));
       }, CommandAttributes(category: "XP", permissionsRequired: BotCommandPermissions.admin)),
 
-      BotCommand.command("pingonlevelup", "Set if the bot should ping on level up.", (ChatContext context, bool value) async {
+      BotCommand.command("addxp", "Add to someone's XP.", (ChatContext context, Member member, double amount, [bool overrideXpPerHour = true]) async {
+        if (context.guild == null) return context.respondWithError("No guild found.");
+        final settings = Calebh101BotServerSettings(store, context.guild!.id);
+        if (await context.assurePerms(BotCommandPermissions.admin, settings) == false) return;
+        if (!xpEnabled(settings)) return context.respondWithError("The XP system is disabled.");
+
+        final added = await addXp(null, context.guild!, member, amount, overrideXpPerHour: overrideXpPerHour);
+        await context.respond(MessageBuilder(content: ["Added ${added?.added ?? 0} XP to ${await memberToString(member)}'s XP.", if (added?.newRole != null) "New role: **${added!.newRole!.name}**"].join("\n")));
+      }, CommandAttributes(category: "XP", permissionsRequired: BotCommandPermissions.admin)),
+
+      BotCommand.command("pingonlevelup", "Set if the bot should ping on XP level up.", (ChatContext context, bool value) async {
         if (context.guild == null) return context.respondWithError("No guild found.");
         final settings = Calebh101BotServerSettings(store, context.guild!.id);
         if (await context.assurePerms(BotCommandPermissions.admin, settings) == false) return;
 
         settings.pingOnLevelUp.set(value);
         await context.respond(MessageBuilder(content: "The bot ${value ? "**will**" : "will **not**"} ping on level up."));
+      }, CommandAttributes(category: "XP", permissionsRequired: BotCommandPermissions.admin)),
+
+      BotCommand.command("xpban", "Ban a user from the XP system.", (ChatContext context, Member member) async {
+        if (context.guild == null) return context.respondWithError("No guild found.");
+        final settings = Calebh101BotServerSettings(store, context.guild!.id);
+        if (await context.assurePerms(BotCommandPermissions.admin, settings) == false) return;
+
+        final current = settings.xpBanned.get() ?? [];
+        current.add(member.id);
+        settings.xpBanned.set(current);
+
+        await context.respond(MessageBuilder(
+          content: "${await memberToString(member)} has been **banned** from the XP system.",
+        ));
+      }, CommandAttributes(category: "XP", permissionsRequired: BotCommandPermissions.admin)),
+
+      BotCommand.command("xpunban", "Unban a user from the XP system.", (ChatContext context, Member member) async {
+        if (context.guild == null) return context.respondWithError("No guild found.");
+        final settings = Calebh101BotServerSettings(store, context.guild!.id);
+        if (await context.assurePerms(BotCommandPermissions.admin, settings) == false) return;
+
+        final current = settings.xpBanned.get() ?? [];
+        current.removeWhere((x) => x == member.id);
+        settings.xpBanned.set(current);
+
+        await context.respond(MessageBuilder(
+          content: "${await memberToString(member)} has been **unbanned** from the XP system.",
+        ));
+      }, CommandAttributes(category: "XP", permissionsRequired: BotCommandPermissions.admin)),
+
+      BotCommand.command("isxpbanned", "Get if a user is banned from the XP system.", (ChatContext context, [Member? member]) async {
+        member ??= context.member;
+        if (context.guild == null || member == null) return context.respondWithError("No guild/member found.");
+        final settings = Calebh101BotServerSettings(store, context.guild!.id);
+
+        final current = settings.xpBanned.get() ?? [];
+        final banned = current.any((x) => x == member!.id);
+
+        await context.respond(MessageBuilder(
+          content: "${await memberToString(member)} is currently **${banned ? "banned" : "unbanned"}** from the XP system.",
+        ));
+      }, CommandAttributes(category: "XP")),
+
+      BotCommand.command("xpenable", "Enable/disable the XP system.", (ChatContext context, [bool enabled = true]) async {
+        if (context.guild == null) return context.respondWithError("No guild found.");
+        final settings = Calebh101BotServerSettings(store, context.guild!.id);
+        if (await context.assurePerms(BotCommandPermissions.admin, settings) == false) return;
+        settings.xpEnabled.set(enabled);
+
+        await context.respond(MessageBuilder(
+          content: ["The XP system has been **${enabled ? "enabled" : "disabled"}**.", if (!enabled) "-# To clear everyone's roles, run `resetxp`, then `reassignxp`."].join("\n"),
+        ));
+      }, CommandAttributes(category: "XP", permissionsRequired: BotCommandPermissions.admin)),
+
+      BotCommand.command("xpenabled", "See if the XP system is enabled.", (ChatContext context) async {
+        if (context.guild == null) return context.respondWithError("No guild found.");
+        final settings = Calebh101BotServerSettings(store, context.guild!.id);
+        if (await context.assurePerms(BotCommandPermissions.admin, settings) == false) return;
+        final enabled = settings.xpEnabled.get() ?? false;
+
+        await context.respond(MessageBuilder(
+          content: "The XP system is **${enabled ? "enabled" : "disabled"}**.",
+        ));
       }, CommandAttributes(category: "XP", permissionsRequired: BotCommandPermissions.admin)),
     ],
   );
@@ -286,6 +362,18 @@ void main(List<String> arguments) => onStart = () async {
     if (guild == null || !checkIsValidForXp(member)) return;
     addXp(event, guild, member!, xpPerReaction);
   });
+
+  context.client.updatePresence(PresenceBuilder(
+    since: DateTime(1434, 7, 13, 13, 42, 58),
+    status: CurrentUserStatus.online,
+    activities: [
+      ActivityBuilder(
+        name: "Holding down the server",
+        type: ActivityType.watching,
+      ),
+    ],
+    isAfk: false,
+  ));
 };
 
 bool checkIsValidForXp(Member? member) {
@@ -295,20 +383,47 @@ bool checkIsValidForXp(Member? member) {
   return true;
 }
 
-Future<void> addXp(GatewayEvent event, Guild guild, Member member, double toAdd) async {
+bool isXpBanned(Calebh101BotServerSettings settings, Member member) {
+  final list = settings.xpBanned.get() ?? [];
+  return list.any((x) => x == member.id);
+}
+
+bool xpEnabled(Calebh101BotServerSettings settings) {
+  return settings.xpEnabled.get() ?? false;
+}
+
+class AddXPResult {
+  final double added;
+  final bool levelUp;
+
+  final XPLevel? oldLevel;
+  final XPLevel? newLevel;
+  final Role? oldRole;
+  final Role? newRole;
+
+  const AddXPResult({required this.added, required this.levelUp, required this.oldLevel, required this.newLevel, required this.oldRole, required this.newRole});
+}
+
+Future<AddXPResult?> addXp(GatewayEvent? event, Guild guild, Member member, double toAdd, {bool overrideXpPerHour = false}) async {
   final serverSettings = Calebh101BotServerSettings(store, guild.id);
+  if (!xpEnabled(serverSettings)) return null;
+  if (isXpBanned(serverSettings, member)) return null;
+
   final settings = Calebh101BotUserPerServerSettings(store, guild.id, member.id);
   final value = settings.xp.get() ?? 0;
 
-  if (settings.lastXpHour.get() == getHour()) {
-    final xpThisHour = settings.xpThisHour.get() ?? 0;
-    if (xpThisHour >= maxXpPerHour) return;
+  if (!overrideXpPerHour) {
+    if (settings.lastXpHour.get() == getHour()) {
+      final xpThisHour = settings.xpThisHour.get() ?? 0;
+      if (xpThisHour >= maxXpPerHour) return null;
 
-    if (xpThisHour + toAdd > maxXpPerHour) toAdd = xpThisHour - maxXpPerHour;
-    settings.xpThisHour.set(xpThisHour + toAdd);
-  } else {
-    settings.lastXpHour.set(getHour());
-    settings.xpThisHour.set(toAdd);
+      if (xpThisHour + toAdd > maxXpPerHour) toAdd = maxXpPerHour - xpThisHour;
+      settings.xpThisHour.set(xpThisHour + toAdd);
+    } else {
+      if (toAdd > maxXpPerHour) toAdd = maxXpPerHour;
+      settings.lastXpHour.set(getHour());
+      settings.xpThisHour.set(toAdd);
+    }
   }
 
   final newValue = value + toAdd;
@@ -365,6 +480,8 @@ Future<void> addXp(GatewayEvent event, Guild guild, Member member, double toAdd)
       Logger.warn("addXp", "Unable to find channel: $e");
     }
   }
+
+  return AddXPResult(added: toAdd, levelUp: levelUp, oldLevel: oldLevel, newLevel: newLevel, oldRole: oldRole, newRole: newRole);
 }
 
 int getRoundedXp(Calebh101BotUserPerServerSettings settings) {
@@ -419,6 +536,8 @@ class Calebh101BotServerSettings extends ServerSettings {
   SettingsObject<List<XPLevel>> get xpLevels => SettingsObject(this, "levels", encodeFunction: (input) => input.map((x) => x.toJson()).toList(), decodeFunction: (input) => (input as List?)?.map((x) => XPLevel.fromJson(x)).toList());
   SettingsObject<int> get xpChannel => SettingsObject(this, "xpChannel");
   SettingsObject<bool> get pingOnLevelUp => SettingsObject(this, "pingOnLevelUp");
+  SettingsObject<List<Snowflake>> get xpBanned => SettingsObject(this, "xpBanned", encodeFunction: (input) => input.map((x) => x.value).toList(), decodeFunction: (input) => (input as List?)?.map((x) => Snowflake(x)).toList());
+  SettingsObject<bool> get xpEnabled => SettingsObject(this, "xpEnabled");
 
   Calebh101BotServerSettings(super.store, super.id);
 }

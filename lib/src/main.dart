@@ -269,7 +269,7 @@ FutureOr<String?> memberToString(Member? member, {bool detailed = false}) async 
 
   try {
     return [
-      "**${member.nick ?? user.username}**",
+      "**${member.nick ?? user.globalName ?? user.username}**",
       "(*${user.username}*)",
       if (detailed) "(`${member.id}`)",
     ].join(" ");
