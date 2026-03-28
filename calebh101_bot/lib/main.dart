@@ -40,6 +40,7 @@ void main(List<String> arguments) => onStart = () async {
       pingCommand(),
       messageMe(),
       restartCommand(),
+      sendMessageAs(),
       aboutCommand(store),
 
       helpCommand((x) => Calebh101BotServerSettings(store, x.id), plugin),

@@ -30,6 +30,16 @@ Future<String> Function(MessageCreateEvent) prefixFromServerSettings(ServerSetti
   return prefix;
 };
 
+BotCommand sendMessageAs() => BotCommand.command("sendmessage", "Send a message on my behalf.", (ChatContext context, String content, [GuildTextChannel? channel]) async {
+  if (await context.assureOwner() == false) return;
+  final c = channel ?? context.channel;
+  if (c is! GuildTextChannel) return context.respondWithError("The selected channel is not a valid channel.\nExpected: `GuildTextChannel`, got: `${c.runtimeType}`");
+  if (context.guild == null) return context.respondWithError("No guild found.");
+
+  await c.sendMessage(MessageBuilder(content: content));
+  await context.respond(MessageBuilder(content: "Message sent to ${c.toMention()}."), level: ResponseLevel.hint);
+}, CommandAttributes(category: "Bot"));
+
 BotCommand restartCommand() => BotCommand.command("restart", "Restart the bot.", (ChatContext context) async {
   if (await context.assureOwner() == false) return;
   await context.respond(MessageBuilder(content: "Restarting..."));
