@@ -4,6 +4,7 @@ import 'package:calebh101_bot/types.dart';
 import 'package:calebh101_discord/calebh101_discord.dart';
 import 'package:collection/collection.dart';
 
+final double maxXpPerHour = 1;
 final double xpPerReaction = 0.01;
 final double Function(String content) xpPerMessage = (content) => min(content.length / 1000, 0.2); // Message length of 200+ => 0.2, 20 => 0.02, 2 => 0.02
 
@@ -17,7 +18,7 @@ void main(List<String> arguments) => onStart = () async {
   });
 
   final context = await load(
-    botName: "Caleb-Bot",
+    botName: "Kyle",
     version: Version.parse("0.0.0A"),
 
     owner: calebh101,
@@ -298,6 +299,18 @@ Future<void> addXp(GatewayEvent event, Guild guild, Member member, double toAdd)
   final serverSettings = Calebh101BotServerSettings(store, guild.id);
   final settings = Calebh101BotUserPerServerSettings(store, guild.id, member.id);
   final value = settings.xp.get() ?? 0;
+
+  if (settings.lastXpHour.get() == getHour()) {
+    final xpThisHour = settings.xpThisHour.get() ?? 0;
+    if (xpThisHour >= maxXpPerHour) return;
+
+    if (xpThisHour + toAdd > maxXpPerHour) toAdd = xpThisHour - maxXpPerHour;
+    settings.xpThisHour.set(xpThisHour + toAdd);
+  } else {
+    settings.lastXpHour.set(getHour());
+    settings.xpThisHour.set(toAdd);
+  }
+
   final newValue = value + toAdd;
   settings.xp.set(newValue);
 
@@ -398,6 +411,10 @@ Role? getRole(Guild guild, Snowflake id) {
   return guild.roleList.firstWhereOrNull((y) => y.id == id);
 }
 
+int getHour() {
+  return DateTime.now().difference(DateTime(2025)).inHours;
+}
+
 class Calebh101BotServerSettings extends ServerSettings {
   SettingsObject<List<XPLevel>> get xpLevels => SettingsObject(this, "levels", encodeFunction: (input) => input.map((x) => x.toJson()).toList(), decodeFunction: (input) => (input as List?)?.map((x) => XPLevel.fromJson(x)).toList());
   SettingsObject<int> get xpChannel => SettingsObject(this, "xpChannel");
@@ -412,6 +429,8 @@ class Calebh101BotUserSettings extends UserSettings {
 
 class Calebh101BotUserPerServerSettings extends UserPerServerSettings {
   SettingsObject<double> get xp => SettingsObject(this, "xp");
+  SettingsObject<int> get lastXpHour => SettingsObject(this, "lastXpHour");
+  SettingsObject<double> get xpThisHour => SettingsObject(this, "xpThisHour");
 
   Calebh101BotUserPerServerSettings(super.store, super.server, super.user);
 }

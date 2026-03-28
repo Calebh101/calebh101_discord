@@ -70,8 +70,7 @@ class Modlog {
       final enabledScopes = event.settings?.modlog.get();
       if (enabledScopes != null && !enabledScopes.any((x) => event.triggers.contains(x))) return "Event not in enabled scopes.";
 
-      final channels = await (event.guild!.fetchChannels());
-      final channel = channels.firstWhere((x) => x.id == Snowflake(event.settings!.modlogChannel.get()!));
+      final channel = await client.channels.get(Snowflake(event.settings!.modlogChannel.get()!));
       if (channel is! GuildTextChannel) return "Specified channel is not a text channel.";
 
       await channel.sendMessage(MessageBuilder(embeds: [
