@@ -24,12 +24,15 @@ void main(List<String> arguments) => onStart = () async {
     owner: calebh101,
     supportServer: calebh101Server,
 
+    argParser: (args) => args,
+    args: arguments,
+
     primaryColor: DiscordColor.parseHexString("#00FFF0"),
     prefix: mentionOr(prefixFromServerSettings((x) => Calebh101BotServerSettings(store, x.id))),
     permissions: [...GatewayIntents.all],
 
     store: store,
-    settings: BotSettings(),
+    settings: BotSettings(store),
 
     commands: (plugin) => [
       BotCommand.converter((plugin) => plugin.getConverter(RuntimeType<GuildTextChannel>(), logWarn: false)),
@@ -49,9 +52,145 @@ void main(List<String> arguments) => onStart = () async {
       ...modLogCommands((x) => Calebh101BotServerSettings(store, x.id)),
       ...prefixCommands((x) => Calebh101BotServerSettings(store, x.id)),
 
-      BotCommand.command("fart", "Fart", (ChatContext context) async {
-        await context.respond(MessageBuilder(content: "fart"));
+      BotCommand.command("fart", "Fart.", (ChatContext context, [int amount = 1]) async {
+        if (amount != 1 && !isOwner(id: context.user.id)) return context.respondWithError("You cannot control the amount.");
+        if (amount < 1) return context.respondWithError("Invalid amount: $amount");
+
+        int rn(int min, int max) {
+          // Inclusive
+          return Random().nextInt(max - min + 1) + min;
+        }
+
+        String random(int min, int max, String phrase) {
+          return phrase * rn(min, max);
+        }
+
+        T ro<T>(List<T> options) {
+          return options[Random().nextInt(options.length)];
+        }
+
+        String maybe(String option, [int factor = 1]) {
+          return ro([option, ...List.generate(factor, (_) => "")]);
+        }
+
+        final List<String Function()> farts = [
+          () => "P${random(2, 20, "o")}t",
+          () => "P${random(4, 40, "r")}t",
+          () => "F${random(1, 5, "a")}rt",
+          () => "Th${List.generate(rn(4, 20), (_) => random(1, 4, ro(["h", "t"]))).join("")}",
+          () => "B${maybe("h")}l${random(6, 24, "a")}${maybe("h")}n${maybe("h")}k",
+          () => "Squ${random(1, 2, ro(["i", "e"]))}rk",
+        ];
+
+        await context.respond(MessageBuilder(
+          content: List.generate(amount, (_) => ro(farts).call()).join("\n"),
+        ));
       }, CommandAttributes(category: "Fun")),
+
+      BotCommand.command("leaderboard", "Get the current XP leaderboard.", (ChatContext context) async {
+        if (context.guild == null) return context.respondWithError("No guild found.");
+        final settings = Calebh101BotServerSettings(store, context.guild!.id);
+        if (settings.xpEnabled.get() != true) return context.respondWithError("XP is not enabled.");
+        final banned = settings.xpBanned.get() ?? [];
+
+        final values = store.getAllForKey<double>(Scope.userPerServer, "xp").entries
+          .where((x) {
+            final ids = UserPerServerSettings.parseId(x.key);
+            if (ids.server != context.guild!.id) return false;
+            if (banned.contains(ids.user)) return false;
+            if (x.value <= 0) return false;
+            return true;
+          }).map((x) => MapEntry(UserPerServerSettings.parseId(x.key).user, x.value)).toList()
+          ..sort((a, b) => b.value.compareTo(a.value));
+
+        const int maxLinesPerPage = 20;
+        List<(int i, List<String>)> pages = [];
+        List<String> currentPage = [];
+        int currentPageLength = 0;
+
+        for (int i = 0; i < values.length; i++) {
+          final v = values[i];
+          final Role? level = getRole(context.guild!, Snowflake(levelFromXp(settings.xpLevels.get() ?? [], getRoundedXp(Calebh101BotUserPerServerSettings(store, context.guild!.id, v.key)))?.roleId ?? 0));
+
+          currentPage.add([(v.key.value.toMention()), "**${roundXp(v.value)}** XP", ?level?.toMention()].join(" "));
+          currentPageLength++;
+
+          if (currentPageLength >= maxLinesPerPage) {
+            pages.add((pages.length, List.of(currentPage)));
+            currentPage = [];
+            currentPageLength = 0;
+          }
+        }
+
+        if (currentPage.isNotEmpty) pages.add((pages.length, List.of(currentPage)));
+
+        await respondWithPagination(
+          context,
+          PaginatedEmbedBuilder(
+            title: "Leaderboard for ${context.guild!.name}",
+            color: await getPrimaryColor(context.member) ?? primaryBotColor,
+            timestamp: DateTime.now().toUtc(),
+            pages: pages.map((x) {
+              final i = x.$1;
+              final value = x.$2;
+              final length = value.length;
+
+              return EmbedPage(fields: [
+                EmbedFieldBuilder(name: "Members ${maxLinesPerPage * i + 1} - ${(maxLinesPerPage * i) + length}", value: value.join("\n"), isInline: false),
+              ]);
+            }).toList(),
+          ),
+          settings: settings,
+        );
+      }, CommandAttributes(category: "XP")),
+
+      BotCommand.command("gamble", "Gamble your XP away.", (ChatContext context, double amountToBet) async {
+        final member = context.member;
+        final guild = context.guild;
+
+        if (member == null || guild == null) return context.respondWithError("No guild/member found.");
+        if (amountToBet % 10 != 0) return context.respondWithError("Bets must be in multiples of 10.");
+
+        final serverSettings = Calebh101BotServerSettings(store, guild.id);
+        final settings = Calebh101BotUserPerServerSettings(store, guild.id, member.id);
+        final amount = amountToBet.toInt();
+        final banned = serverSettings.xpBanned.get() ?? [];
+        final current = settings.xp.get() ?? 0;
+
+        if (banned.any((x) => x == member.id)) {
+          return context.respondWithError("You are currently banned from the XP system.");
+        }
+
+        if (amount > current) {
+          return context.respondWithError("You don't have enough XP! You only have **${roundXp(current)}**.");
+        }
+
+        late int chance;
+        late num payout;
+
+        if (amount < 100) {
+          chance = 5;
+          payout = amount / 10;
+        } else if (amount < 500) {
+          chance = 15;
+          payout = amount / 5;
+        } else {
+          chance = 25;
+          payout = amount / 2;
+        }
+
+        final value = Random.secure().nextInt(chance);
+        final win = value == 0;
+        Logger.print("Gamble", "Member ${member.id} bet $amount with chance $chance and payout $payout to get $value and ${win ? "win" : "lose"}");
+
+        if (win) {
+          await addXp(null, guild, member, payout.toDouble());
+          await context.respond(MessageBuilder(content: "${await memberToString(member)} bet **$amount** and **won** ${roundXp(payout.toDouble())} XP! That puts them at **${roundXp(current + payout)}** XP."));
+        } else {
+          await addXp(null, guild, member, -amount.toDouble());
+          await context.respond(MessageBuilder(content: "${await memberToString(member)} bet **$amount** and *lost*. That puts them at **${roundXp(current - amount)}** XP."));
+        }
+      }, CommandAttributes(category: "XP", extendedDescription: "- Each bet has to be a multiple of 10.\n- The more you bet, the less chance you have to win.\n- ")),
 
       BotCommand.command("stats", "See your stats, or somebody else's.", (ChatContext context, [Member? member]) async {
         member ??= context.member;
@@ -75,7 +214,7 @@ void main(List<String> arguments) => onStart = () async {
             EmbedBuilder(
               title: "Stats for ${await memberToString(member)}",
               color: (await getPrimaryColor(member)) ?? primaryBotColor,
-              timestamp: DateTime.now(),
+              timestamp: DateTime.now().toUtc(),
               fields: [
                 EmbedFieldBuilder(name: "XP", value: getRoundedXp(settings).toString(), isInline: true),
                 EmbedFieldBuilder(name: "Level", value: level, isInline: true),
@@ -199,7 +338,7 @@ void main(List<String> arguments) => onStart = () async {
 
             if (newRole != null) await member.addRole(newRole.id);
 
-            if (i % 100 == 1) {
+            if (i % 100 == 0) {
               await context.updateMessage(m, MessageUpdateBuilder(content: getMessage(((i + 1) / members.length).floor())));
             }
           } catch (e) {
@@ -368,7 +507,7 @@ void main(List<String> arguments) => onStart = () async {
     status: CurrentUserStatus.online,
     activities: [
       ActivityBuilder(
-        name: "Holding down the server",
+        name: "Holding down the server${dev ? " (dev mode)" : ""}",
         type: ActivityType.watching,
       ),
     ],
@@ -433,7 +572,7 @@ Future<AddXPResult?> addXp(GatewayEvent? event, Guild guild, Member member, doub
   final newLevel = levelFromXp(serverSettings.xpLevels.get() ?? [], roundXp(newValue));
   final oldRole = oldLevel != null ? getRole(guild, Snowflake(oldLevel.roleId)) : null;
   final newRole = newLevel != null ? getRole(guild, Snowflake(newLevel.roleId)) : null;
-  final levelUp = oldLevel?.roleId != newLevel?.roleId && newLevel != null;
+  final levelUp = toAdd > 0 && oldLevel?.roleId != newLevel?.roleId && newLevel != null;
 
   for (final XPLevel x in serverSettings.xpLevels.get() ?? []) {
     final role = getRole(guild, Snowflake(x.roleId));

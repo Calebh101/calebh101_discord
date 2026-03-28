@@ -24,6 +24,7 @@ dependencies:
   collection: ^1.19.1
   system_info: ^1.0.1
   hotreloader: ^4.3.0
+  args: ^2.7.0
   # path: ^1.9.0
 
 dev_dependencies:

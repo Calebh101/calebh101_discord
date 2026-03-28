@@ -15,7 +15,8 @@ analyzer:
   errors:
     curly_braces_in_flow_control_structures: ignore
     prefer_function_declarations_over_variables: ignore
-include: package:lints/recommended.yaml
+    unused_local_variable: ignore
+include: package:localpkg/lints/default.yaml
 
 # Uncomment the following section to specify additional rules.
 

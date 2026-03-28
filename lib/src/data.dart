@@ -4,12 +4,27 @@ import 'dart:io';
 import 'package:calebh101_discord/calebh101_discord.dart';
 import 'package:calebh101_discord/recursive_caster.g.dart';
 import 'package:meta/meta.dart';
-import 'package:path/path.dart' as p;
 import 'package:sqlite3/sqlite3.dart';
+
+enum Scope {
+  bot,
+  server,
+  user,
+  userPerServer,
+}
+
+String scopeToString(Scope scope) {
+  return switch (scope) {
+    Scope.bot => "bot",
+    Scope.server => "server",
+    Scope.user => "user",
+    Scope.userPerServer => "userPerServer",
+  };
+}
 
 bool isStdinLocked = false;
 
-class BotSettingsItem<T> {
+/*class BotSettingsItem<T> {
   final String key;
   final BotSettings settings;
 
@@ -96,7 +111,7 @@ class BotSettings {
     isStdinLocked = false;
     return true;
   }
-}
+}*/
 
 class KVStore {
   final Database _db;
@@ -113,44 +128,53 @@ class KVStore {
     ''');
   }
 
-  dynamic get(String scope, String id, String key) {
+  dynamic get(Scope scope, String id, String key) {
     final result = _db.select(
       'SELECT value FROM kv WHERE scope=? AND id=? AND key=?',
-      [scope, id, key],
+      [scopeToString(scope), id, key],
     );
 
     if (result.isEmpty) return null;
     return jsonDecode(result.first['value']);
   }
 
-  void set(String scope, String id, String key, dynamic value) {
+  void set(Scope scope, String id, String key, dynamic value) {
     _db.execute(
       'INSERT INTO kv (scope, id, key, value) VALUES (?,?,?,?)'
       ' ON CONFLICT(scope,id,key) DO UPDATE SET value=excluded.value',
-      [scope, id, key, jsonEncode(value)],
+      [scopeToString(scope), id, key, jsonEncode(value)],
     );
   }
 
-  void delete(String scope, String id, String key) {
+  void delete(Scope scope, String id, String key) {
     _db.execute(
       'DELETE FROM kv WHERE scope=? AND id=? AND key=?',
-      [scope, id, key],
+      [scopeToString(scope), id, key],
     );
   }
 
-  Map<String, dynamic> getAll(String scope, String id) {
+  Map<String, dynamic> getAll(Scope scope, String id) {
     final rows = _db.select(
       'SELECT key, value FROM kv WHERE scope=? AND id=?',
-      [scope, id],
+      [scopeToString(scope), id],
     );
 
     return {for (final r in rows) r['key'] as String: jsonDecode(r['value'])};
   }
 
-  Map<String, Map<String, dynamic>> getScope(String scope) {
+  Map<String, T> getAllForKey<T>(Scope scope, String key) {
+    final rows = _db.select(
+      'SELECT id, value FROM kv WHERE scope=? AND key=?',
+      [scopeToString(scope), key],
+    );
+
+    return {for (final r in rows) r['id'] as String: jsonDecode(r['value']) as T};
+  }
+
+  Map<String, Map<String, dynamic>> getScope(Scope scope) {
     final rows = _db.select(
       'SELECT id, key, value FROM kv WHERE scope=?',
-      [scope],
+      [scopeToString(scope)],
     );
 
     final result = <String, Map<String, dynamic>>{};
@@ -164,12 +188,6 @@ class KVStore {
   }
 }
 
-enum Scope {
-  server,
-  user,
-  userPerServer,
-}
-
 class SettingsObject<T> {
   final EntitySettings obj;
   final String key;
@@ -181,7 +199,7 @@ class SettingsObject<T> {
 
   T? get() {
     try {
-      return (decodeFunction ?? cast).call(obj.store.get(obj.scope.name, obj.id.toString(), key));
+      return (decodeFunction ?? cast).call(obj.store.get(obj.scope, obj.id.toString(), key));
     } catch (e) {
       Logger.warn("SettingsObject($key, $T)", "Unable to decode: $e");
       return null;
@@ -192,14 +210,14 @@ class SettingsObject<T> {
     try {
       if (value == null) return delete();
       final v = encodeFunction?.call(value) ?? value;
-      return obj.store.set(obj.scope.name, obj.id.toString(), key, v);
+      return obj.store.set(obj.scope, obj.id.toString(), key, v);
     } catch (e) {
       Logger.warn("SettingsObject($key, $T)", "Unable to encode value ${value.runtimeType}: $e");
     }
   }
 
   void delete() {
-    return obj.store.delete(obj.scope.name, obj.id.toString(), key);
+    return obj.store.delete(obj.scope, obj.id.toString(), key);
   }
 
   static R cast<R>(dynamic input) {
@@ -215,7 +233,49 @@ abstract class EntitySettings {
   const EntitySettings(this.store, {required this.id, required this.scope});
 
   Map<String, dynamic> getAll() {
-    return store.getAll(scope.name, id.toString());
+    return store.getAll(scope, id.toString());
+  }
+
+  static Future<bool> askForInput<T extends SettingsObject<String>>(T item) async {
+    isStdinLocked = true;
+    stdin.echoMode = true;
+    stdin.lineMode = true;
+
+    stdout.write('Enter value for ${item.key}: >> ');
+    final input = stdin.readLineSync();
+
+    if (input == null || input.isEmpty) {
+      Logger.error("BotSettings", 'No input provided.');
+      return false;
+    }
+
+    item.set(input);
+    stdin.echoMode = false;
+    stdin.lineMode = false;
+    isStdinLocked = false;
+    return true;
+  }
+}
+
+class BotSettings extends EntitySettings {
+  BotSettings(super.store) : super(id: "_", scope: Scope.server);
+
+  SettingsObject<String> get botToken => SettingsObject(this, "botToken");
+
+  Future<bool> init() async {
+    // Meant to be overridden
+    return true;
+  }
+
+  @nonVirtual
+  Future<bool> initCore() async {
+    if (botToken.get() == null) {
+      final result = await EntitySettings.askForInput(botToken);
+      if (result == false) return false;
+    }
+
+    if (botToken.get() == null) return false;
+    return true;
   }
 }
 
@@ -234,7 +294,17 @@ class UserSettings extends EntitySettings {
 }
 
 class UserPerServerSettings extends EntitySettings {
-  UserPerServerSettings(super.store, Snowflake server, Snowflake user) : super(id: "$server.$user", scope: Scope.userPerServer);
+  UserPerServerSettings(super.store, Snowflake server, Snowflake user) : super(id: getId(server, user), scope: Scope.userPerServer);
+
+  static String getId(Snowflake server, Snowflake user) {
+    return [server, user].join(".");
+  }
+
+  static ({Snowflake server, Snowflake user}) parseId(String id) {
+    final elements = id.split(".");
+    if (elements.length != 2) throw Exception("Unable to parse ID $id: Expected 2 elements, got ${elements.length}.");
+    return (server: Snowflake(int.parse(elements[0])), user: Snowflake(int.parse(elements[1])));
+  }
 }
 
 enum IsAdminType {

@@ -2,12 +2,14 @@ import 'dart:io';
 
 import 'package:calebh101_discord/calebh101_discord.dart';
 
-const int maxCrashes = 2;
+const int maxCrashes = 20;
 const Duration crashResetTimer = Duration(minutes: 30);
 
 int crashes = 0;
 
 Future<void> main(List<String> arguments) async {
+  Logger.print("Runner", "Starting runner...");
+
   () async {
     // Every X minutes, reset our crash count to 0. So if we crashed 19 times over the last 5 years, it doesn't build up.
     await Future.delayed(crashResetTimer);
@@ -17,7 +19,7 @@ Future<void> main(List<String> arguments) async {
 
   while (true) {
     final process = await Process.start(
-      "dart", ["run"],
+      "dart", ["run", "bin/main.dart", ...arguments],
       mode: ProcessStartMode.inheritStdio,
     );
 
@@ -30,7 +32,7 @@ Future<void> main(List<String> arguments) async {
         exit(0);
       case ExitCode.restart:
         Logger.print("Runner", "Restarting...");
-        await Future.delayed(Duration(seconds: 1));
+        await Future.delayed(Duration(milliseconds: 250));
         continue;
     }
 
