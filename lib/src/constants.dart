@@ -243,10 +243,13 @@ List<BotCommand> prefixCommands(ServerSettings? Function(Guild guild) getSetting
   }, CommandAttributes(category: "Bot", permissionsRequired: BotCommandPermissions.admin))
 ];
 
-BotCommand helpCommand(ServerSettings? Function(Guild guild) getSettings, CommandsPlugin plugin, {bool useCategories = true}) => BotCommand.command("help", "Show help for all commands, or a specific command${useCategories ? "/category" : ""}.", (ChatContext context, [@Description("Command or category to search.") String? command]) async {
+BotCommand helpCommand(ServerSettings? Function(Guild guild) getSettings, CommandsPlugin plugin, {bool useCategories = true}) => BotCommand.command("help", "Show help for all commands, or a specific command${useCategories ? "/category" : ""}.", (ChatContext context, [@Description("Command or category to search.") String? command, bool dump = false]) async {
+  Logger.print("Help", "Loading help with input $command (dump=$dump)");
+  if (command?.trim() == "all") command = null;
   final settings = context.guild != null ? getSettings.call(context.guild!) : null;
   final commands = plugin.walkCommands().toList()..sort((a, b) => a.name.compareTo(b.name));
   final categories = BotCommand.getAllCategories();
+  PaginatedEmbedBuilder? embed;
 
   String getDescription(Command command) {
     if (command is ChatCommand) return command.description;
@@ -263,44 +266,49 @@ BotCommand helpCommand(ServerSettings? Function(Guild guild) getSettings, Comman
   }
 
   if (command == null) {
-    await respondWithPagination(
-      context,
-      PaginatedEmbedBuilder(
-        title: "All Commands for $globalBotName",
-        description: "Current prefix: `${settings?.prefix.get() ?? "!"}`",
-        footer: ElementBasedEmbedFooterBuilder(elements: ["${commands.length} commands", if (categories.isNotEmpty) "${categories.length} categories"]),
-        color: await getPrimaryColor(context.member) ?? primaryBotColor,
-        pages: EmbedPage.generate(List.generate(commands.length, (i) {
-          final command = commands.elementAt(i);
-          final attributes = getAttributes(command);
-          return EmbedFieldBuilder(name: [command.name, if (attributes != null) attributes.category].join(" - "), value: [getDescription(command), if (getPerms(command) != null) "Requires perms: `${getPerms(command)}`"].join(" "), isInline: false);
-        })),
-      ),
-      settings: settings,
+    embed = PaginatedEmbedBuilder(
+      title: "All Commands for $globalBotName",
+      description: dump ? null : "Current prefix: `${settings?.prefix.get() ?? "!"}`",
+      footer: ElementBasedEmbedFooterBuilder(elements: ["${commands.length} commands", if (categories.isNotEmpty) "${categories.length} categories"]),
+      color: await getPrimaryColor(context.member) ?? primaryBotColor,
+      pages: EmbedPage.generate(List.generate(commands.length, (i) {
+        final command = commands.elementAt(i);
+        final attributes = getAttributes(command);
+        return EmbedFieldBuilder(name: [command.name, if (attributes != null) attributes.category].join(" - "), value: [getDescription(command), if (getPerms(command) != null) "Requires perms: `${getPerms(command)}`"].join(" "), isInline: false);
+      })),
+    );
+  } else if (command.trim() == "categories") {
+    embed = PaginatedEmbedBuilder(
+      title: "All Categories",
+      footer: ElementBasedEmbedFooterBuilder(elements: ["${categories.length} categories"]),
+      color: await getPrimaryColor(context.member) ?? primaryBotColor,
+      pages: EmbedPage.generate(List.generate(categories.length, (i) {
+        final command = categories.entries.elementAt(i);
+
+        return EmbedFieldBuilder(name: command.key, value: [
+          "${command.value} commands",
+        ].join("\n"), isInline: false);
+      })),
     );
   } else {
-    final category = useCategories ? categories.entries.firstWhereOrNull((x) => x.key == command.trim()) : null;
+    final category = useCategories ? categories.entries.firstWhereOrNull((x) => x.key == command!.trim()) : null;
 
     if (category != null) {
       if (category.value <= 0) return context.respondWithError("Category ${category.key} has no commands.");
       final commandsInCategory = commands.where((x) => getAttributes(x)?.category == category.key);
 
-      await respondWithPagination(
-        context,
-        PaginatedEmbedBuilder(
-          title: "All Commands for Category ${category.key}",
-          footer: ElementBasedEmbedFooterBuilder(elements: ["${commandsInCategory.length} commands"]),
-          color: await getPrimaryColor(context.member) ?? primaryBotColor,
-          pages: EmbedPage.generate(List.generate(commandsInCategory.length, (i) {
-            final command = commandsInCategory.elementAt(i);
+      embed = PaginatedEmbedBuilder(
+        title: "All Commands for Category ${category.key}",
+        footer: ElementBasedEmbedFooterBuilder(elements: ["${commandsInCategory.length} commands"]),
+        color: await getPrimaryColor(context.member) ?? primaryBotColor,
+        pages: EmbedPage.generate(List.generate(commandsInCategory.length, (i) {
+          final command = commandsInCategory.elementAt(i);
 
-            return EmbedFieldBuilder(name: command.name, value: [
-              getDescription(command),
-              if (getPerms(command) != null) "Requires perms: `${getPerms(command)}`",
-            ].join(" "), isInline: false);
-          })),
-        ),
-        settings: settings,
+          return EmbedFieldBuilder(name: command.name, value: [
+            getDescription(command),
+            if (getPerms(command) != null) "Requires perms: `${getPerms(command)}`",
+          ].join(" "), isInline: false);
+        })),
       );
     } else {
       final c = plugin.getCommand(StringView(command));
@@ -321,7 +329,20 @@ BotCommand helpCommand(ServerSettings? Function(Guild guild) getSettings, Comman
       ]));
     }
   }
-}, CommandAttributes(category: "Bot"));
+
+  if (embed != null) {
+    Logger.print("Help", "Received embed of ${embed.pages.length} pages");
+
+    if (dump) {
+      await context.respond(MessageBuilder(content: "Embed dumped. Pages: ${embed.pages.length}"), level: ResponseLevel.hint);
+      await dumpPagination(embed, context.channel);
+    } else {
+      await respondWithPagination(context, embed, settings: settings);
+    }
+  } else {
+    Logger.print("Help", "No embed received");
+  }
+}, CommandAttributes(category: "Bot", extendedDescription: "Other options:\n- `help all`: Same as just `help`\n- `help categories`: Display all categories"));
 
 BotCommand echoDebugCommand(ServerSettings? Function(Guild guild) getSettings) => BotCommand.command("echo", "Echo the input text from the bot.", (ChatContext context, String text, [int count = 1]) async {
   if (context.guild == null || context.member == null) return context.respondWithError("No guild/member found.");

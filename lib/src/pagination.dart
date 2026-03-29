@@ -93,6 +93,21 @@ class PaginatedEmbedBuilder {
   }
 }
 
+Future<bool> dumpPagination(PaginatedEmbedBuilder embed, TextChannel channel) async {
+  try {
+    for (int i = 0; i < embed.pages.length; i++) {
+      await channel.sendMessage(MessageBuilder(embeds: [
+        embed.build(i),
+      ]));
+    }
+
+    return true;
+  } catch (e) {
+    Logger.warn("Pagination", "Unable to dump pagination: $e");
+    return false;
+  }
+}
+
 Future<bool> respondWithPagination(ChatContext context, PaginatedEmbedBuilder embed, {ResponseLevel? level, Duration timeLimit = const Duration(seconds: 60), bool notifyIfNotOwner = true, required ServerSettings? settings}) async {
   final hasPages = embed.pages.length > 1;
   Logger.print("Pagination", "Pagination session with user ${context.user.id} started. context=${context.runtimeType}, hasPages=$hasPages");
