@@ -46,7 +46,7 @@ BotCommand sendMessageAs() => BotCommand.command("sendmessage", "Send a message 
 }, CommandAttributes(category: "Bot"));
 
 BotCommand deleteMyMessageCommand(ServerSettings? Function(Guild guild) getSettings) => BotCommand.command(
-  "deletemymessage", "Delete my message.",
+  "deletemessage", "Delete my message.",
   (ChatContext context, Snowflake id, [GuildTextChannel? targetChannel]) async {
     final owner = isOwner(id: context.user.id);
 
@@ -74,7 +74,7 @@ BotCommand deleteMyMessageCommand(ServerSettings? Function(Guild guild) getSetti
 );
 
 BotCommand editMyMessageCommand(ServerSettings? Function(Guild guild) getSettings) => BotCommand.command(
-  "deletemymessage", "Edit a message of mine.",
+  "editmessage", "Edit a message of mine.",
   (ChatContext context, Snowflake id, String content, [GuildTextChannel? targetChannel]) async {
     final owner = isOwner(id: context.user.id);
 
