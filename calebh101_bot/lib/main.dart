@@ -48,6 +48,7 @@ void main(List<String> arguments) => onStart = () async {
       killCommand((x) => Calebh101BotServerSettings(store, x.id)),
       echoDebugCommand((x) => Calebh101BotServerSettings(store, x.id)),
       deleteMyMessageCommand((x) => Calebh101BotServerSettings(store, x.id)),
+      editMyMessageCommand((x) => Calebh101BotServerSettings(store, x.id)),
 
       ...adminRoles((x) => Calebh101BotServerSettings(store, x.id)),
       ...modLogCommands((x) => Calebh101BotServerSettings(store, x.id)),
