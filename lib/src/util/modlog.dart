@@ -181,7 +181,7 @@ List<BotCommand> modLogCommands(ServerSettings? Function(Guild guild) getSetting
 
     await context.respond(MessageBuilder(
       content: [
-        "**${enabled.length}** ${Word.fromCount(enabled.length, singular: Word("scope"))} enabled${enabled.isNotEmpty ? enabled.map((x) => "`$x`").join(", ") : ""}",
+        "**${enabled.length}** ${Word.fromCount(enabled.length, singular: Word("scope"))} enabled: ${enabled.isNotEmpty ? enabled.map((x) => "`$x`").join(", ") : ""}",
         if (group != null) "From group: `${group.name}`",
         if (invalid.isNotEmpty) "-# **${invalid.length}** ${Word.fromCount(invalid.length, singular: Word("scope"))} are invalid: ${invalid.map((x) => "`$x`").join(", ")}",
         "-# **${Modlog.events?.length}** ${Word.fromCount(Modlog.events!.length, singular: Word("scope"))} available: ${Modlog.events!.map((x) => "`$x`").join(", ")}",

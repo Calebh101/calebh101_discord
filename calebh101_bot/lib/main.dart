@@ -36,6 +36,7 @@ void main(List<String> arguments) => onStart = () async {
 
     commands: (plugin) => [
       BotCommand.converter((plugin) => plugin.getConverter(RuntimeType<GuildTextChannel>(), logWarn: false)),
+      defaultCheck(store),
 
       pingCommand(),
       messageMe(),
@@ -50,9 +51,10 @@ void main(List<String> arguments) => onStart = () async {
       deleteMyMessageCommand((x) => Calebh101BotServerSettings(store, x.id)),
       editMyMessageCommand((x) => Calebh101BotServerSettings(store, x.id)),
 
-      ...adminRoles((x) => Calebh101BotServerSettings(store, x.id)),
+      ...adminCommands((x) => Calebh101BotServerSettings(store, x.id)),
       ...modLogCommands((x) => Calebh101BotServerSettings(store, x.id)),
       ...prefixCommands((x) => Calebh101BotServerSettings(store, x.id)),
+      ...ignoreCommands(store),
 
       BotCommand.command("fart", "Fart.", (ChatContext context, [int amount = 1]) async {
         if (amount != 1 && !isOwner(id: context.user.id)) return context.respondWithError("You cannot control the amount.");

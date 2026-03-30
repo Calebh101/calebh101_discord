@@ -4,7 +4,7 @@ import 'dart:math';
 
 import 'package:args/args.dart';
 import 'package:calebh101_discord/calebh101_discord.dart';
-import 'package:calebh101_discord/src/logger_override.dart';
+import 'package:calebh101_discord/src/logger/logger_override.dart';
 
 class ExitCode {
   const ExitCode._();
@@ -17,8 +17,6 @@ late DiscordColor primaryBotColor;
 late NyxxGateway client;
 late Version botVersion;
 bool ignoreOwner = false;
-
-List<T> flatten<T>(List<List<T>> lists) => lists.expand((e) => e).toList();
 
 String randomPingPhrase(Map<String? Function(MessageCreateEvent event), num> phrases, MessageCreateEvent event) {
   while (true) {
@@ -38,50 +36,18 @@ String randomPingPhrase(Map<String? Function(MessageCreateEvent event), num> phr
   }
 }
 
+bool dev = false;
+
+ArgParser defaultArgParser() {
+  return ArgParser()
+    ..addFlag("dev", help: "If the bot is in dev mode.", callback: (value) => dev = value);
+}
+
 class BotContext {
   final NyxxGateway client;
   final ArgResults args;
 
   const BotContext({required this.client, required this.args});
-}
-
-class BotCommand {
-  late Command? command;
-  final Converter? Function(CommandsPlugin plugin)? converter;
-
-  BotCommand.converter(this.converter) : command = null;
-
-  BotCommand.command(String name, String description, Function execute, CommandAttributes attributes, {CommandOptions? options}) : converter = null {
-    command = ChatCommand(name, description, id(name, execute), options: options ?? CommandOptions());
-    commandAttributesMap[command!.name] = attributes;
-  }
-
-  static Map<String, CommandAttributes> commandAttributesMap = {};
-
-  static Map<String, int> getAllCategories() {
-    Map<String, int> results = {};
-
-    for (final x in commandAttributesMap.entries) {
-      results[x.value.category] = (results[x.value.category] ?? 0) + 1;
-    }
-
-    return results;
-  }
-}
-
-enum BotCommandPermissions {
-  any,
-  admin,
-  claimer,
-  owner,
-}
-
-class CommandAttributes {
-  final BotCommandPermissions permissionsRequired;
-  final String category;
-  final String? extendedDescription;
-
-  const CommandAttributes({this.permissionsRequired = BotCommandPermissions.any, required this.category, this.extendedDescription});
 }
 
 class TerminalCommand {
@@ -146,7 +112,7 @@ Future<BotContext?> load({required BotSettings settings, required FutureOr<Patte
   Flags<GatewayIntents> intents = Flag(0);
   final cmd = CommandsPlugin(prefix: prefix);
 
-  for (final c in commands?.call(cmd) ?? []) {
+  for (final c in commands?.call(cmd) ?? [] as List<BotCommand>) {
     if (c.command != null) cmd.addCommand(c.command!);
 
     if (c.converter != null) {
@@ -155,6 +121,15 @@ Future<BotContext?> load({required BotSettings settings, required FutureOr<Patte
       if (x != null) {
         cmd.addConverter(x);
         Logger.print("Commands", "Added convertor ${x.runtimeType}");
+      }
+    }
+
+    if (c.check != null) {
+      final x = c.check!.call(cmd);
+
+      if (x != null) {
+        cmd.check(x);
+        Logger.print("Commands", "Added check ${x.runtimeType}");
       }
     }
   }
@@ -182,7 +157,7 @@ Future<BotContext?> load({required BotSettings settings, required FutureOr<Patte
   }
 
   cmd.onCommandError.listen((e) async {
-    if (e is CommandNotFoundException) return;
+    if (e is CommandNotFoundException || e is CheckFailedException) return;
     Logger.warn("Commands", "Command error: $e (error: ${e.runtimeType}, context: ${e is ContextualException ? e.context.runtimeType : null})", trace: e.stackTrace);
 
     void handleError<T extends ContextualException>(T e, String message, {String? codeblock, String? codeblocklang, bool showHelp = false}) {
@@ -285,48 +260,6 @@ Future<BotContext?> load({required BotSettings settings, required FutureOr<Patte
   return BotContext(client: client, args: results);
 }
 
-FutureOr<String?> memberToString(Member? member, {bool detailed = false}) async {
-  if (member == null) return null;
-  final user = member.user ?? await client.users[member.id].get();
-
-  try {
-    return [
-      "**${member.nick ?? user.globalName ?? user.username}**",
-      "(*${user.username}*)",
-      if (detailed) "(`${member.id}`)",
-    ].join(" ");
-  } catch (e) {
-    Logger.print("memberToString", "$e (member=${member.runtimeType}, user=${member.user.runtimeType}, nick=${member.nick}, id=${member.id}, detailed=$detailed)");
-    return userToString(user);
-  }
-}
-
-FutureOr<String?> userToString(User? user, {bool detailed = false}) async {
-  if (user == null) return null;
-
-  try {
-    return [
-      "**${user.globalName ?? user.username}** (*${user.username}*)",
-      if (detailed) "(`${user.id}`)",
-    ].join(" ");
-  } catch (_) {
-    return null;
-  }
-}
-
-FutureOr<String> userOrMemberToString(Member? member, User user, {bool detailed = false}) async {
-  return await memberToString(member, detailed: detailed) ?? await userToString(user, detailed: detailed) ?? "`${user.id}`";
-}
-
-String? roleToString(Role? role) {
-  if (role == null) return null;
-  return "**${role.name}**";
-}
-
-String formatLatency(Duration latency) {
-  return "${(latency.inMicroseconds / Duration.microsecondsPerMillisecond).toStringAsFixed(3)}ms";
-}
-
 Future<DiscordColor?> getPrimaryColor(Member? member) async {
   if (member == null) return null;
   final roles = await Future.wait(member.roles.map((id) => id.get()));
@@ -334,137 +267,4 @@ Future<DiscordColor?> getPrimaryColor(Member? member) async {
   if (colored.isEmpty) return null;
   colored.sort((a, b) => b.position.compareTo(a.position));
   return colored.first.colors.primary;
-}
-
-extension ToMention on int {
-  String toMention() {
-    return "<@$this>";
-  }
-
-  String toRoleMention() {
-    return "<@&$this>";
-  }
-
-  String toChannel() {
-    return "<#$this>";
-  }
-}
-
-extension RoleToMention on Role {
-  String toMention() {
-    return this.id.value.toRoleMention();
-  }
-}
-
-extension UserToMention on User {
-  String toMention() {
-    return this.id.value.toMention();
-  }
-}
-
-extension MemberToMention on Member {
-  String toMention() {
-    return this.id.value.toMention();
-  }
-}
-
-extension ChannelToMention on Channel {
-  String toMention() {
-    return this.id.value.toChannel();
-  }
-}
-
-extension ToDiscordCodeBlock on Object? {
-  String toDiscordCodeBlock({String? language}) {
-    return "```${language ?? ""}\n$this\n```";
-  }
-
-  String toDiscordCodeString() {
-    return "`$this`";
-  }
-}
-
-extension DiscordTimestamp on DateTime {
-  String toDiscordTimestamp([String? flag]) {
-    return "<t:${((toUtc().millisecondsSinceEpoch) / Duration.millisecondsPerSecond).floor()}${flag != null ? ":$flag" : ""}>";
-  }
-
-  /// Short time (e.g. `9:30 AM`)
-  static const String shortTime = 't';
-
-  /// Long time (e.g. `9:30:00 AM`)
-  static const String longTime = 'T';
-
-  /// Short date (e.g. `03/24/2026`)
-  static const String shortDate = 'd';
-
-  /// Long date (e.g. `March 24, 2026`)
-  static const String longDate = 'D';
-
-  /// Short date and time — default (e.g. `March 24, 2026 9:30 AM`)
-  static const String shortDateTime = 'f';
-
-  /// Long date and time (e.g. `Tuesday, March 24, 2026 9:30 AM`)
-  static const String longDateTime = 'F';
-
-  /// Relative time (e.g. `in 5 minutes` / `3 hours ago`)
-  static const String relative = 'R';
-}
-
-extension ContextHelper on ChatContext {
-  void respondWithError(String message, {ResponseLevel? level}) async {
-    try {
-      await respond(MessageBuilder(content: message), level: level);
-    } catch (e) {
-      Logger.warn("ChatContext.respondWithError", "Unable to respond with error '$message': $e");
-    }
-  }
-
-  bool verifyPerms(BotCommandPermissions perms, ServerSettings? settings) {
-    switch (perms) {
-      case BotCommandPermissions.any: return true;
-      case BotCommandPermissions.admin: return isAdmin(settings: settings!, id: user.id);
-      case BotCommandPermissions.claimer: return isClaimer(settings: settings!, id: user.id);
-      case BotCommandPermissions.owner: return isOwner(id: user.id);
-    }
-  }
-
-  Future<bool> assurePerms(BotCommandPermissions perms, ServerSettings settings) async {
-    final result = verifyPerms(perms, settings);
-
-    if (result == false) {
-      await respond(MessageBuilder(content: "You don't have the required permissions to access this command.\n-# Permissions required: `${perms.name}`"));
-      return false;
-    }
-
-    return true;
-  }
-
-  Future<bool> assureOwner() async {
-    final result = verifyPerms(BotCommandPermissions.owner, null);
-
-    if (result == false) {
-      await respond(MessageBuilder(content: "You don't have the required permissions to access this command.\n-# Permissions required: `${BotCommandPermissions.owner.name}`"));
-      return false;
-    }
-
-    return true;
-  }
-
-  FutureOr<String?> userString({bool detailed = false}) async => userOrMemberToString(member, user, detailed: detailed);
-
-  Future<Message> updateMessage(Message message, MessageUpdateBuilder builder) async {
-    if (this is InteractionChatContext) {
-      return await (this as InteractionChatContext).interaction.updateOriginalResponse(builder);
-    } else {
-      return await message.update(builder);
-    }
-  }
-}
-
-bool dev = false;
-
-ArgParser defaultArgParser() {
-  return ArgParser()
-    ..addFlag("dev", help: "If the bot is in dev mode.", callback: (value) => dev = value);
 }

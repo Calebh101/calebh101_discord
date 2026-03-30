@@ -261,6 +261,7 @@ class BotSettings extends EntitySettings {
   BotSettings(super.store) : super(id: "_", scope: Scope.server);
 
   SettingsObject<String> get botToken => SettingsObject(this, "botToken");
+  SettingsObject<List<Snowflake>> get ignored => SettingsObject(this, "ignored", encodeFunction: (input) => input.map((x) => x.value).toList(), decodeFunction: (input) => (input as List?)?.map((x) => Snowflake(x)).toList());
 
   Future<bool> init() async {
     // Meant to be overridden
@@ -317,7 +318,7 @@ DefinedServer? globalSupportServer;
 late String globalBotName;
 
 bool isAdmin({required ServerSettings settings, IsAdminType type = IsAdminType.user, required Snowflake id, Snowflake? owner}) {
-  if (isOwner(id: id, owner: owner)) return true;
+  if (isOwner(id: id, owner: owner) || isClaimer(settings: settings, id: id)) return true;
   if (type == IsAdminType.user && settings.mainAdmin.get() == id.toString()) return true;
 
   for (final x in settings.admins.get() ?? []) {

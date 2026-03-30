@@ -1,0 +1,65 @@
+import 'dart:async';
+
+import 'package:calebh101_discord/calebh101_discord.dart';
+
+extension CommandContextHelper on CommandContext {
+  void respondWithError(String message, {ResponseLevel? level}) async {
+    try {
+      await respond(MessageBuilder(content: message), level: level);
+    } catch (e) {
+      Logger.warn("ChatContext.respondWithError", "Unable to respond with error '$message': $e");
+    }
+  }
+
+  bool verifyPerms(BotCommandPermissions perms, ServerSettings? settings) {
+    switch (perms) {
+      case BotCommandPermissions.any: return true;
+      case BotCommandPermissions.admin: return isAdmin(settings: settings!, id: user.id);
+      case BotCommandPermissions.claimer: return isClaimer(settings: settings!, id: user.id);
+      case BotCommandPermissions.owner: return isOwner(id: user.id);
+    }
+  }
+
+  Future<bool> assurePerms(BotCommandPermissions perms, ServerSettings settings) async {
+    final result = verifyPerms(perms, settings);
+
+    if (result == false) {
+      await respond(MessageBuilder(content: "You don't have the required permissions to access this command.\n-# Permissions required: `${perms.name}`"));
+      return false;
+    }
+
+    return true;
+  }
+
+  Future<bool> assureOwner() async {
+    final result = verifyPerms(BotCommandPermissions.owner, null);
+
+    if (result == false) {
+      await respond(MessageBuilder(content: "You don't have the required permissions to access this command.\n-# Permissions required: `${BotCommandPermissions.owner.name}`"));
+      return false;
+    }
+
+    return true;
+  }
+
+  FutureOr<String?> userString({bool detailed = false}) async => userOrMemberToString(member, user, detailed: detailed);
+
+  Future<Message> updateMessage(Message message, MessageUpdateBuilder builder) async {
+    if (this is InteractionChatContext) {
+      return await (this as InteractionChatContext).interaction.updateOriginalResponse(builder);
+    } else {
+      return await message.update(builder);
+    }
+  }
+
+  Future<bool> assureGuild() async {
+    final success = guild != null && member != null;
+
+    if (!success) {
+      respondWithError("No guild/member found.");
+      return false;
+    }
+
+    return true;
+  }
+}
