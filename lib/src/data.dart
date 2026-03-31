@@ -258,18 +258,16 @@ abstract class EntitySettings {
 
   static Future<String?> getFromLocalFile<T extends SettingsObject<String>>(T item) async {
     try {
-      return await File("${item.key}.setting").readAsString();
+      return (await File("${item.key}.setting").readAsString()).trim();
     } catch (_) {
       return null;
     }
   }
 
   static Future<bool> setFromLocalFile<T extends SettingsObject<String>>(T item) async {
-    if (item.get() != null) return true;
-
     final value = await () async {
       try {
-        return await File("${item.key}.setting").readAsString();
+        return (await File("${item.key}.setting").readAsString()).trim();
       } catch (_) {
         return null;
       }
