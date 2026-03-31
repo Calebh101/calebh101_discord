@@ -102,7 +102,7 @@ void main(List<String> arguments) => onStart = () async {
   Logger.print("main", "Bot loaded!");
 
   context.client.onMessageCreate.listen((event) async {
-    if (event.member == null || isIgnored(store, event.member!.id)) return;
+    if (isIgnored(store, event.message.author.id)) return;
     final guild = await event.guild?.get();
     final member = await event.member?.get();
 
@@ -111,7 +111,7 @@ void main(List<String> arguments) => onStart = () async {
   });
 
   context.client.onMessageReactionAdd.listen((event) async {
-    if (event.member == null || isIgnored(store, event.member!.id)) return;
+    if (isIgnored(store, event.userId)) return;
     final guild = await event.guild?.get();
     final member = await event.member?.get();
 

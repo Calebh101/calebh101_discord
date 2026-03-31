@@ -255,6 +255,33 @@ abstract class EntitySettings {
     isStdinLocked = false;
     return true;
   }
+
+  static Future<String?> getFromLocalFile<T extends SettingsObject<String>>(T item) async {
+    try {
+      return await File("${item.key}.setting").readAsString();
+    } catch (_) {
+      return null;
+    }
+  }
+
+  static Future<bool> setFromLocalFile<T extends SettingsObject<String>>(T item) async {
+    if (item.get() != null) return true;
+
+    final value = await () async {
+      try {
+        return await File("${item.key}.setting").readAsString();
+      } catch (_) {
+        return null;
+      }
+    }();
+
+    if (value != null) {
+      item.set(value);
+      return true;
+    } else {
+      return false;
+    }
+  }
 }
 
 class BotSettings extends EntitySettings {
@@ -270,6 +297,8 @@ class BotSettings extends EntitySettings {
 
   @nonVirtual
   Future<bool> initCore() async {
+    await EntitySettings.setFromLocalFile(botToken);
+
     if (botToken.get() == null) {
       final result = await EntitySettings.askForInput(botToken);
       if (result == false) return false;
