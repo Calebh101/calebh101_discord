@@ -45,6 +45,7 @@ void main(List<String> arguments) => onStart = () async {
       restartCommand(),
       sendMessageAs(),
       aboutCommand(store),
+      statusCommand(),
       fart(),
 
       helpCommand((x) => Calebh101BotServerSettings(store, x.id), plugin),

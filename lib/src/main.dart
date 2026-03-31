@@ -236,6 +236,10 @@ Future<BotContext?> load({required BotSettings settings, required FutureOr<Patte
     TerminalCommand(Char.from("r"), () async {
       await close.call(ExitCode.restart);
     }),
+    TerminalCommand(Char.from("s"), () async {
+      final status = await getStatus();
+      if (status != null) Logger.print("Status", "Bot status: $status");
+    }),
   ], ...terminalCommands];
 
   stdin.echoMode = false;
@@ -267,4 +271,15 @@ Future<DiscordColor?> getPrimaryColor(Member? member) async {
   if (colored.isEmpty) return null;
   colored.sort((a, b) => b.position.compareTo(a.position));
   return colored.first.colors.primary;
+}
+
+Future<String?> getStatus() async {
+  try {
+    final result = await Process.run("dev_status", []);
+    final output = result.stderr.toString().trim();
+    return output;
+  } catch (e) {
+    Logger.warn("Status", "Unable to get status: $e\nMake sure the dev_status command is set up on your system.");
+    return null;
+  }
 }

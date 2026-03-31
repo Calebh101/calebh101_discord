@@ -276,7 +276,7 @@ List<BotCommand> adminCommands(ServerSettings? Function(Guild guild) getSettings
       ),
     ]));
   }, CommandAttributes(category: "Bot")),
-  BotCommand.command("status", "See your status.", (ChatContext context, [@Description('The member to check') Member? member]) async {
+  BotCommand.command("attributes", "See your attributes.", (ChatContext context, [@Description('The member to check') Member? member]) async {
     final m = member ?? context.member;
     final u = m?.user ?? context.user;
     List<String> attributes = ["Alive"];

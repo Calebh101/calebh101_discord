@@ -77,3 +77,11 @@ BotCommand listAllServerSettings(ServerSettings? Function(Guild guild) getSettin
     content: "All settings for *${context.guild?.name}*:\n${all.map((x) => "- `${x.key}`: `${x.value}`").join("\n")}",
   ), level: ResponseLevel.private);
 }, CommandAttributes(permissionsRequired: BotCommandPermissions.admin, category: "Server"));
+
+BotCommand statusCommand() => BotCommand("status", "Bot", "See the bot's status.", (ChatContext context) async {
+  final m = await context.respond(MessageBuilder(content: "Fetching status..."));
+  final status = await getStatus();
+
+  Logger.print("Status", "Bot status: $status");
+  await context.updateMessage(m, MessageUpdateBuilder(content: status?.toDiscordCodeBlock() ?? "No status found."));
+});
