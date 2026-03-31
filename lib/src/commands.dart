@@ -23,7 +23,7 @@ class BotCommand {
 
   @Deprecated("Use the unnamed constructor instead.")
   BotCommand.command(this.name, this.description, this.execute, CommandAttributes attributes, {this.options}) : converter = null {
-    commands[name] = BotCommand(name, attributes.category, description, execute, permissionsRequired: attributes.permissionsRequired, extendedDescription: attributes.extendedDescription);
+    commands[name] = BotCommand(name, attributes.category, description, execute, extendedDescription: attributes.extendedDescription);
     command = ChatCommand(name, description, id(name, execute), options: options ?? CommandOptions());
   }
 
