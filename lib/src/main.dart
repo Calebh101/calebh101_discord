@@ -296,7 +296,8 @@ Future<DiscordColor?> getPrimaryColor(Member? member) async {
 Future<String?> getStatus() async {
   try {
     final result = await Process.run("dev_status", []);
-    final output = result.stderr.toString().trim();
+    final output = result.stdout.toString().trim();
+    if (output.trim().isEmpty) throw Exception("Output was empty: '$output'");
     return output;
   } catch (e) {
     Logger.warn("Status", "Unable to get status: $e\nMake sure the dev_status command is set up on your system.");
