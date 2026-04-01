@@ -70,7 +70,7 @@ class Modlog {
       final enabledScopes = event.settings?.modlog.get();
       if (enabledScopes != null && !enabledScopes.any((x) => event.triggers.contains(x))) return "Event not in enabled scopes.";
 
-      final channel = await client.channels.get(Snowflake(event.settings!.modlogChannel.get()!));
+      final channel = await event.client.channels.get(Snowflake(event.settings!.modlogChannel.get()!));
       if (channel is! GuildTextChannel) return "Specified channel is not a text channel.";
 
       await channel.sendMessage(MessageBuilder(embeds: [
@@ -96,6 +96,7 @@ class Modlog {
 }
 
 class ModlogEvent {
+  final NyxxGateway client;
   final Guild? guild;
   final ServerSettings? settings;
   final String eventId;
@@ -110,7 +111,7 @@ class ModlogEvent {
   List<String>? alsoTriggerOn;
   late List<String> triggers;
 
-  ModlogEvent(this.eventId, {this.severity = ModlogSeverity.log, required this.guild, required this.settings, required this.title, this.description, this.fields = const {}, this.timestamp, this.url, this.image, this.thumbail, this.alsoTriggerOn}) {
+  ModlogEvent(this.eventId, {this.severity = ModlogSeverity.log, required this.guild, required this.settings, required this.title, this.description, this.fields = const {}, this.timestamp, this.url, this.image, this.thumbail, this.alsoTriggerOn, required this.client}) {
     timestamp ??= DateTime.now();
     triggers = [eventId, ...?alsoTriggerOn];
   }
@@ -194,6 +195,7 @@ List<BotCommand> modLogCommands(ServerSettings? Function(Guild guild) getSetting
     if (await context.assurePerms(BotCommandPermissions.admin, settings) == false) return;
 
     final result = await Modlog.add(ModlogEvent("test",
+      client: context.client,
       guild: context.guild,
       settings: settings,
       title: title,

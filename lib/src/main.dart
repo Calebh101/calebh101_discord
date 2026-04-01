@@ -5,6 +5,20 @@ import 'dart:math';
 import 'package:args/args.dart';
 import 'package:calebh101_discord/calebh101_discord.dart';
 import 'package:calebh101_discord/src/logger/logger_override.dart';
+import 'package:collection/collection.dart';
+
+class ClientStore<T extends Nyxx> {
+  Map<String, T> clients = {};
+  ClientStore(this.clients);
+
+  Iterable<R> run<R>(R Function(T client) callback) {
+    return clients.entries.map((x) => callback.call(x.value));
+  }
+
+  Iterable<R> runIndexed<R>(R Function(int i, String key, T client) callback) {
+    return clients.entries.mapIndexed((i, x) => callback.call(i, x.key, x.value));
+  }
+}
 
 class ExitCode {
   const ExitCode._();
@@ -14,7 +28,6 @@ class ExitCode {
 }
 
 late DiscordColor primaryBotColor;
-late NyxxGateway client;
 late Version botVersion;
 bool ignoreOwner = false;
 
@@ -44,7 +57,7 @@ ArgParser defaultArgParser() {
 }
 
 class BotContext {
-  final NyxxGateway client;
+  final ClientStore<NyxxGateway> client;
   final ArgResults args;
 
   const BotContext({required this.client, required this.args});
@@ -79,7 +92,7 @@ set onStart(OnStart value) {
 /// [permissions] is a list of permissions. For bot apps, you should start out with `[...GatewayIntents.allUnprivileged, GatewayIntents.messageContent]`.
 ///
 /// [createBot] will create a bot user using `client.user.get()` if true.
-Future<BotContext?> load({required BotSettings settings, required FutureOr<Pattern> Function(MessageCreateEvent)? prefix, List<BotCommand>? Function(CommandsPlugin plugin)? commands, required List<Flag<GatewayIntents>> permissions, bool createBot = true, List<TerminalCommand> terminalCommands = const [], required DefinedUser owner, required DefinedServer? supportServer, required KVStore store, required DiscordColor primaryColor, required String botName, required Version version, required List<String> args, required ArgParser Function(ArgParser parser) argParser}) async {
+Future<BotContext?> load({required BotSettings settings, required FutureOr<Pattern> Function(MessageCreateEvent)? prefix, List<BotCommand>? Function(CommandsPlugin plugin)? commands, required List<Flag<GatewayIntents>> permissions, bool createBot = true, List<TerminalCommand> terminalCommands = const [], required DefinedUser owner, required DefinedServer? supportServer, required KVStore store, required DiscordColor primaryColor, required String botName, required Version version, required List<String> args, required ArgParser Function(ArgParser parser) argParser, required Map<String, String> tokens}) async {
   try {
     final _ = _onStart.hashCode;
   } catch (e) {
@@ -108,7 +121,6 @@ Future<BotContext?> load({required BotSettings settings, required FutureOr<Patte
   if (!(await settings.init())) return null;
   loggerOverride();
 
-  final token = settings.botToken.get();
   Flags<GatewayIntents> intents = Flag(0);
   final cmd = CommandsPlugin(prefix: prefix);
 
@@ -138,17 +150,23 @@ Future<BotContext?> load({required BotSettings settings, required FutureOr<Patte
     intents = intents | x;
   }
 
-  if (token == null) {
-    Logger.warn("load", "No token provided!");
+  if (tokens.isEmpty) {
+    Logger.warn("load", "No tokens provided!");
     return null;
   }
 
-  client = await Nyxx.connectGateway(
-    token, intents,
-    options: GatewayClientOptions(plugins: [cliIntegration, cmd]),
-  );
+  ClientStore<NyxxGateway> clients = ClientStore(Map.fromEntries(await Future.wait(
+    tokens.entries.map((token) async {
+      Logger.print("main", "Loading client ${token.key}...");
 
-  Future<User?> user() async {
+      return MapEntry(token.key, await Nyxx.connectGateway(
+        token.value, intents,
+        options: GatewayClientOptions(plugins: [cliIntegration, cmd]),
+      ));
+    }),
+  )));
+
+  Future<User?> user(NyxxGateway client) async {
     try {
       return await client.user.get();
     } catch (_) {
@@ -186,8 +204,8 @@ Future<BotContext?> load({required BotSettings settings, required FutureOr<Patte
     }
   });
 
-  client.onMessageCreate.listen((event) async {
-    final u = await user();
+  clients.run((client) => client.onMessageCreate.listen((event) async {
+    final u = await user(event.gateway.client);
 
     if (u != null && event.message.content.trim() == "<@${u.id}>") {
       final latency = client.httpHandler.latency;
@@ -196,7 +214,7 @@ Future<BotContext?> load({required BotSettings settings, required FutureOr<Patte
 
       event.message.channel.sendMessage(MessageBuilder(referencedMessage: MessageReferenceBuilder(type: MessageReferenceType.defaultType, messageId: event.message.id), content: "$message\n-# Latency: ${formatLatency(latency)} (Real: ${formatLatency(realLatency)})"));
     }
-  });
+  }));
 
   late List<StreamSubscription<ProcessSignal>> subscriptions;
 
@@ -213,7 +231,7 @@ Future<BotContext?> load({required BotSettings settings, required FutureOr<Patte
   close = ([int code = ExitCode.success]) async {
     try {
       Logger.print("Close", "Closing client...");
-      await client.close();
+      await Future.wait(clients.run((client) => client.close()));
     } catch (e) {
       Logger.warn("Close", "Unable to close client: $e");
     }
@@ -227,11 +245,13 @@ Future<BotContext?> load({required BotSettings settings, required FutureOr<Patte
       await close();
     }),
     TerminalCommand(Char.from("p"), () async {
-      final latency = client.httpHandler.latency;
-      final realLatency = client.httpHandler.realLatency;
-      final gatewayLatency = client.gateway.latency;
+      clients.runIndexed((i, k, client) {
+        final latency = client.httpHandler.latency;
+        final realLatency = client.httpHandler.realLatency;
+        final gatewayLatency = client.gateway.latency;
 
-      Logger.print("Ping", "HTTP latency: ${formatLatency(latency)}\nReal latency: ${formatLatency(realLatency)}\nGateway latency: ${formatLatency(gatewayLatency)}");
+        Logger.print("Ping", "$i. HTTP latency: ${formatLatency(latency)}\n$i. Real latency: ${formatLatency(realLatency)}\n$i. Gateway latency: ${formatLatency(gatewayLatency)}");
+      });
     }),
     TerminalCommand(Char.from("r"), () async {
       await close.call(ExitCode.restart);
@@ -261,7 +281,7 @@ Future<BotContext?> load({required BotSettings settings, required FutureOr<Patte
   }
 
   stdinInitialized = true;
-  return BotContext(client: client, args: results);
+  return BotContext(client: clients, args: results);
 }
 
 Future<DiscordColor?> getPrimaryColor(Member? member) async {

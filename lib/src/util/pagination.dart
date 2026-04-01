@@ -115,6 +115,7 @@ Future<bool> respondWithPagination(ChatContext context, PaginatedEmbedBuilder em
   Modlog.add(ModlogEvent(
     "pagination",
     severity: ModlogSeverity.verbose,
+    client: context.client,
     guild: context.guild,
     settings: settings,
     title: "Pagination Start",
@@ -358,6 +359,7 @@ Future<bool> respondWithPagination(ChatContext context, PaginatedEmbedBuilder em
 
   Modlog.add(ModlogEvent(
     "pagination",
+    client: context.client,
     severity: ModlogSeverity.verbose,
     guild: context.guild,
     settings: settings,

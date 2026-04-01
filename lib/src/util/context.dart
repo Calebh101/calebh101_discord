@@ -42,7 +42,7 @@ extension CommandContextHelper on CommandContext {
     return true;
   }
 
-  FutureOr<String?> userString({bool detailed = false}) async => userOrMemberToString(member, user, detailed: detailed);
+  FutureOr<String?> userString(NyxxGateway client, {bool detailed = false}) async => userOrMemberToString(member, user, detailed: detailed, client: client);
 
   Future<Message> updateMessage(Message message, MessageUpdateBuilder builder) async {
     if (this is InteractionChatContext) {

@@ -2,7 +2,7 @@ import 'dart:async';
 
 import 'package:calebh101_discord/calebh101_discord.dart';
 
-FutureOr<String?> memberToString(Member? member, {bool detailed = false}) async {
+FutureOr<String?> memberToString(Member? member, {bool detailed = false, required NyxxGateway client}) async {
   if (member == null) return null;
   final user = member.user ?? await client.users[member.id].get();
 
@@ -31,8 +31,8 @@ FutureOr<String?> userToString(User? user, {bool detailed = false}) async {
   }
 }
 
-FutureOr<String> userOrMemberToString(Member? member, User user, {bool detailed = false}) async {
-  return await memberToString(member, detailed: detailed) ?? await userToString(user, detailed: detailed) ?? "`${user.id}`";
+FutureOr<String> userOrMemberToString(Member? member, User user, {bool detailed = false, required NyxxGateway client}) async {
+  return await memberToString(member, detailed: detailed, client: client) ?? await userToString(user, detailed: detailed) ?? "`${user.id}`";
 }
 
 String? roleToString(Role? role) {

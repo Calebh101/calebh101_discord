@@ -21,6 +21,7 @@ List<BotCommand> prefixCommands(ServerSettings? Function(Guild guild) getSetting
     Modlog.add(ModlogEvent(
       "prefix.change",
       guild: context.guild,
+      client: context.client,
       title: "Prefix Changed",
       fields: {
         "Was": old.toDiscordCodeBlock(),
@@ -46,6 +47,7 @@ List<BotCommand> prefixCommands(ServerSettings? Function(Guild guild) getSetting
     Modlog.add(ModlogEvent(
       "prefix.change",
       guild: context.guild,
+      client: context.client,
       title: "Prefix Reset",
       fields: {
         "Was": old.toDiscordCodeBlock(),

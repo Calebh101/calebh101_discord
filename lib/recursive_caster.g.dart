@@ -13,12 +13,14 @@ class RecursiveCaster {
   /// This function is the bridge to the generated casting code and your code. [T] is the type you are requesting the conversion to. If [T] is not in the generated list, then a [RecursiveCasterTypeError] is thrown. Currently supported types are:
   ///
   /// - [List<String>] (`List<String>`)
+  /// - [Map<String, String>] (`Map<String, String>`)
   static T cast<T>(Object? input) {
     if (T == List<String>) return ((dynamic value) => (value as List).map((e) => e as String).toList())(input) as T;
+    if (T == Map<String, String>) return ((dynamic value) => Map<String, String>.from(value.map((e, a) => MapEntry(e as String, a as String))))(input) as T;
     throw RecursiveCasterTypeError(T);
   }
   /// This function returns an [Iterable<Type>] of all types supported by your configuration.
-  static Iterable<Type> getAll() => [List<String>];
+  static Iterable<Type> getAll() => [List<String>, Map<String, String>];
 }
 /// This error is called if a casting object is not defined for the specified type.
 class RecursiveCasterTypeError extends Error {

@@ -103,11 +103,11 @@ List<BotCommand> xpCommands(KVStore store) => [
     Logger.print("Gamble", "Member ${member.id} bet $amount with chance $chance and payout $payout to get $value and ${win ? "win" : "lose"}");
 
     if (win) {
-      await addXp(null, guild, member, payout.toDouble());
-      await context.respond(MessageBuilder(content: "${await memberToString(member)} bet **$amount** and **won** ${roundXp(payout.toDouble())} XP! That puts them at **${roundXp(current + payout)}** XP."));
+      await addXp(null, guild, member, payout.toDouble(), client: context.client);
+      await context.respond(MessageBuilder(content: "${await memberToString(member, client: context.client)} bet **$amount** and **won** ${roundXp(payout.toDouble())} XP! That puts them at **${roundXp(current + payout)}** XP."));
     } else {
-      await addXp(null, guild, member, -amount.toDouble());
-      await context.respond(MessageBuilder(content: "${await memberToString(member)} bet **$amount** and *lost*. That puts them at **${roundXp(current - amount)}** XP."));
+      await addXp(null, guild, member, -amount.toDouble(), client: context.client);
+      await context.respond(MessageBuilder(content: "${await memberToString(member, client: context.client)} bet **$amount** and *lost*. That puts them at **${roundXp(current - amount)}** XP."));
     }
   }, CommandAttributes(category: "XP", extendedDescription: "- Each bet has to be a multiple of 10.\n- The more you bet, the less chance you have to win.\n- ")),
   BotCommand.command("xplevels", "List all set XP levels.", (ChatContext context) async {
@@ -278,7 +278,7 @@ List<BotCommand> xpCommands(KVStore store) => [
     }
 
     if (newRole != null) await member.addRole(newRole.id);
-    await context.respond(MessageBuilder(content: "Set ${await memberToString(member)}'s XP to **$amount**.\nNew role: **${newRole?.name ?? null.toDiscordCodeString()}**"));
+    await context.respond(MessageBuilder(content: "Set ${await memberToString(member, client: context.client)}'s XP to **$amount**.\nNew role: **${newRole?.name ?? null.toDiscordCodeString()}**"));
   }, CommandAttributes(category: "XP", permissionsRequired: BotCommandPermissions.admin)),
 
   BotCommand.command("addxp", "Add to someone's XP.", (ChatContext context, Member member, double amount, [bool overrideXpPerHour = true]) async {
@@ -287,8 +287,8 @@ List<BotCommand> xpCommands(KVStore store) => [
     if (await context.assurePerms(BotCommandPermissions.admin, settings) == false) return;
     if (!xpEnabled(settings)) return context.respondWithError("The XP system is disabled.");
 
-    final added = await addXp(null, context.guild!, member, amount, overrideXpPerHour: overrideXpPerHour);
-    await context.respond(MessageBuilder(content: ["Added ${added?.added ?? 0} XP to ${await memberToString(member)}'s XP.", if (added?.newRole != null) "New role: **${added!.newRole!.name}**"].join("\n")));
+    final added = await addXp(null, context.guild!, member, amount, overrideXpPerHour: overrideXpPerHour, client: context.client);
+    await context.respond(MessageBuilder(content: ["Added ${added?.added ?? 0} XP to ${await memberToString(member, client: context.client)}'s XP.", if (added?.newRole != null) "New role: **${added!.newRole!.name}**"].join("\n")));
   }, CommandAttributes(category: "XP", permissionsRequired: BotCommandPermissions.admin)),
 
   BotCommand.command("pingonlevelup", "Set if the bot should ping on XP level up.", (ChatContext context, bool value) async {
@@ -310,7 +310,7 @@ List<BotCommand> xpCommands(KVStore store) => [
     settings.xpBanned.set(current);
 
     await context.respond(MessageBuilder(
-      content: "${await memberToString(member)} has been **banned** from the XP system.",
+      content: "${await memberToString(member, client: context.client)} has been **banned** from the XP system.",
     ));
   }, CommandAttributes(category: "XP", permissionsRequired: BotCommandPermissions.admin)),
 
@@ -324,7 +324,7 @@ List<BotCommand> xpCommands(KVStore store) => [
     settings.xpBanned.set(current);
 
     await context.respond(MessageBuilder(
-      content: "${await memberToString(member)} has been **unbanned** from the XP system.",
+      content: "${await memberToString(member, client: context.client)} has been **unbanned** from the XP system.",
     ));
   }, CommandAttributes(category: "XP", permissionsRequired: BotCommandPermissions.admin)),
 
@@ -337,7 +337,7 @@ List<BotCommand> xpCommands(KVStore store) => [
     final banned = current.any((x) => x == member!.id);
 
     await context.respond(MessageBuilder(
-      content: "${await memberToString(member)} is currently **${banned ? "banned" : "unbanned"}** from the XP system.",
+      content: "${await memberToString(member, client: context.client)} is currently **${banned ? "banned" : "unbanned"}** from the XP system.",
     ));
   }, CommandAttributes(category: "XP")),
 
@@ -392,7 +392,7 @@ class AddXPResult {
   const AddXPResult({required this.added, required this.levelUp, required this.oldLevel, required this.newLevel, required this.oldRole, required this.newRole});
 }
 
-Future<AddXPResult?> addXp(GatewayEvent? event, Guild guild, Member member, double toAdd, {bool overrideXpPerHour = false}) async {
+Future<AddXPResult?> addXp(GatewayEvent? event, Guild guild, Member member, double toAdd, {bool overrideXpPerHour = false, required NyxxGateway client}) async {
   final serverSettings = Calebh101BotServerSettings(store, guild.id);
   if (!xpEnabled(serverSettings)) return null;
   if (isXpBanned(serverSettings, member)) return null;
@@ -436,6 +436,7 @@ Future<AddXPResult?> addXp(GatewayEvent? event, Guild guild, Member member, doub
     "xp.add",
     settings: serverSettings,
     guild: guild,
+    client: client,
     title: "XP Added",
     fields: {
       "Receiver": "<@${member.id}>",

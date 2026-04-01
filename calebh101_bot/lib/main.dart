@@ -11,6 +11,7 @@ final double xpPerReaction = 0.01;
 final double Function(String content) xpPerMessage = (content) => min(content.length / 1000, 0.2); // Message length of 200+ => 0.2, 20 => 0.02, 2 => 0.02
 
 final store = KVStore("database.db");
+final tokens = BotTokenStore("settings.json");
 
 void main(List<String> arguments) => onStart = () async {
   Modlog({
@@ -25,6 +26,7 @@ void main(List<String> arguments) => onStart = () async {
 
     owner: calebh101,
     supportServer: calebh101Server,
+    tokens: tokens.single(),
 
     argParser: (args) => args,
     args: arguments,
@@ -81,7 +83,7 @@ void main(List<String> arguments) => onStart = () async {
         await context.respond(MessageBuilder(
           embeds: [
             EmbedBuilder(
-              title: "Stats for ${await memberToString(member)}",
+              title: "Stats for ${await memberToString(member, client: context.client)}",
               color: (await getPrimaryColor(member)) ?? primaryBotColor,
               timestamp: DateTime.now().toUtc(),
               fields: [
@@ -102,25 +104,25 @@ void main(List<String> arguments) => onStart = () async {
   if (context == null) return;
   Logger.print("main", "Bot loaded!");
 
-  context.client.onMessageCreate.listen((event) async {
+  context.client.run((client) => client.onMessageCreate.listen((event) async {
     if (isIgnored(store, event.message.author.id)) return;
     final guild = await event.guild?.get();
     final member = await event.member?.get();
 
     if (guild == null || !checkIsValidForXp(member)) return;
-    addXp(event, guild, member!, xpPerMessage.call(event.message.content));
-  });
+    addXp(event, guild, member!, xpPerMessage.call(event.message.content), client: event.gateway.client);
+  }));
 
-  context.client.onMessageReactionAdd.listen((event) async {
+  context.client.run((client) => client.onMessageReactionAdd.listen((event) async {
     if (isIgnored(store, event.userId)) return;
     final guild = await event.guild?.get();
     final member = await event.member?.get();
 
     if (guild == null || !checkIsValidForXp(member)) return;
-    addXp(event, guild, member!, xpPerReaction);
-  });
+    addXp(event, guild, member!, xpPerReaction, client: event.gateway.client);
+  }));
 
-  context.client.updatePresence(PresenceBuilder(
+  context.client.run((client) => client.updatePresence(PresenceBuilder(
     since: DateTime(1434, 7, 13, 13, 42, 58),
     status: CurrentUserStatus.online,
     activities: [
@@ -130,7 +132,7 @@ void main(List<String> arguments) => onStart = () async {
       ),
     ],
     isAfk: false,
-  ));
+  )));
 };
 
 Future<List<Member>> getAllMembers(Guild guild, {int limitPer = 1000}) async {

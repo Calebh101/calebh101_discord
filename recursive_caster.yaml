@@ -5,6 +5,7 @@
 
 types:
 - List<String>
+- Map<String, String>
 
 # This is how you add types that you can cast to. This is a list of strings, where each item is the target type. Imports don't matter at this stage.
 #

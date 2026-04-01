@@ -19,6 +19,7 @@ List<BotCommand> adminCommands(ServerSettings? Function(Guild guild) getSettings
 
     Modlog.add(ModlogEvent(
       "adminuser.add",
+      client: context.client,
       guild: context.guild,
       title: "Admin User Added",
       fields: {
@@ -50,6 +51,7 @@ List<BotCommand> adminCommands(ServerSettings? Function(Guild guild) getSettings
 
     Modlog.add(ModlogEvent(
       "adminrole.add",
+      client: context.client,
       guild: context.guild,
       title: "Admin Role Added",
       fields: {
@@ -83,6 +85,7 @@ List<BotCommand> adminCommands(ServerSettings? Function(Guild guild) getSettings
 
       Modlog.add(ModlogEvent(
         "adminuser.remove",
+      client: context.client,
         guild: context.guild,
         title: "Admin User Removed",
         fields: {
@@ -117,6 +120,7 @@ List<BotCommand> adminCommands(ServerSettings? Function(Guild guild) getSettings
 
       Modlog.add(ModlogEvent(
         "adminrole.remove",
+      client: context.client,
         guild: context.guild,
         title: "Admin Role Removed",
         fields: {
@@ -144,6 +148,7 @@ List<BotCommand> adminCommands(ServerSettings? Function(Guild guild) getSettings
       Modlog.add(ModlogEvent(
         "claim",
         guild: context.guild,
+      client: context.client,
         title: "I Have Been Claimed",
         fields: {
           "Who": "<@${context.user.id}>",
@@ -168,7 +173,7 @@ List<BotCommand> adminCommands(ServerSettings? Function(Guild guild) getSettings
         try {
           if (m == null) return;
           final member = (await context.guild!.members.get(Snowflake(int.parse(mainAdmin))));
-          await m.edit(MessageUpdateBuilder(content: "I have been reclaimed by ${await memberToString(context.member)}.\n-# I was claimed by ${await memberToString(member)}."));
+          await m.edit(MessageUpdateBuilder(content: "I have been reclaimed by ${await memberToString(context.member, client: context.client)}.\n-# I was claimed by ${await memberToString(member, client: context.client)}."));
         } catch (e) {
           Logger.warn("Commands.Claim", "User $mainAdmin not found: $e");
         }
@@ -180,7 +185,7 @@ List<BotCommand> adminCommands(ServerSettings? Function(Guild guild) getSettings
 
       try {
         final member = (await context.guild!.members.get(Snowflake(int.parse(mainAdmin))));
-        m.edit(MessageUpdateBuilder(content: "I've already been claimed by ${await memberToString(member)}."));
+        m.edit(MessageUpdateBuilder(content: "I've already been claimed by ${await memberToString(member, client: context.client)}."));
       } catch (e) {
         Logger.warn("Commands.Claim", "User $mainAdmin not found: $e");
       }
@@ -208,6 +213,7 @@ List<BotCommand> adminCommands(ServerSettings? Function(Guild guild) getSettings
       Modlog.add(ModlogEvent(
         "claim",
         guild: context.guild,
+      client: context.client,
         title: "I Have Been Unclaimed",
         fields: {
           "Who": "<@${context.user.id}>",
@@ -231,7 +237,7 @@ List<BotCommand> adminCommands(ServerSettings? Function(Guild guild) getSettings
       try {
         if (m == null) return;
         final member = (await context.guild!.members.get(Snowflake(int.parse(old))));
-        await m.edit(MessageUpdateBuilder(content: "I have been unclaimed.\n-# I was claimed by ${await memberToString(member)}."));
+        await m.edit(MessageUpdateBuilder(content: "I have been unclaimed.\n-# I was claimed by ${await memberToString(member, client: context.client)}."));
       } catch (e) {
         Logger.warn("Commands.Unclaim", "User $old not found: $e");
       }
@@ -249,7 +255,7 @@ List<BotCommand> adminCommands(ServerSettings? Function(Guild guild) getSettings
     if (mainAdmin != null) {
       try {
         final member = await context.guild!.members.get(Snowflake(int.parse(mainAdmin)));
-        results["Bot Claimer"] = (await memberToString(member))!;
+        results["Bot Claimer"] = (await memberToString(member, client: context.client))!;
       } catch (e) {
         Logger.warn("Commands.Owner", "Unable to get claimer $mainAdmin: $e");
         results["Bot Claimer"] = "User `$mainAdmin`";
@@ -261,7 +267,7 @@ List<BotCommand> adminCommands(ServerSettings? Function(Guild guild) getSettings
     if (context.guild != null) {
       try {
         final serverOwner = await context.guild!.members.get(context.guild!.ownerId);
-        results["Server Owner"] = (await memberToString(serverOwner))!;
+        results["Server Owner"] = (await memberToString(serverOwner, client: context.client))!;
       } catch (e) {
         Logger.warn("Commands.Owner", "Unable to get server owner: $e");
       }
@@ -317,7 +323,7 @@ List<BotCommand> adminCommands(ServerSettings? Function(Guild guild) getSettings
 
     try {
       await context.respond(MessageBuilder(
-        content: "### Attributes for ${await userOrMemberToString(m, u)}${context.guild != null ? " in *${context.guild!.name}*" : ""}\n\n${attributes.map((x) => "- $x").join("\n")}",
+        content: "### Attributes for ${await userOrMemberToString(m, u, client: context.client)}${context.guild != null ? " in *${context.guild!.name}*" : ""}\n\n${attributes.map((x) => "- $x").join("\n")}",
       ));
     } catch (e) {
       Logger.warn("Commands.Status", e);

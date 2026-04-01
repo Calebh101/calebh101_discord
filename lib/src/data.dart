@@ -236,24 +236,30 @@ abstract class EntitySettings {
     return store.getAll(scope, id.toString());
   }
 
-  static Future<bool> askForInput<T extends SettingsObject<String>>(T item) async {
+  static bool askForInput<T extends SettingsObject<String>>(T item) {
+    final input = ask(item.key);
+    if (input == null) return false;
+    item.set(input);
+    return true;
+  }
+
+  static String? ask(String key) {
     isStdinLocked = true;
     stdin.echoMode = true;
     stdin.lineMode = true;
 
-    stdout.write('Enter value for ${item.key}: >> ');
+    stdout.write('Enter value for $key: >> ');
     final input = stdin.readLineSync();
 
-    if (input == null || input.isEmpty) {
-      Logger.error("BotSettings", 'No input provided.');
-      return false;
+    if (input == null || input.trim().isEmpty) {
+      Logger.error("EntitySettings", 'No input provided.');
+      return null;
     }
 
-    item.set(input);
     stdin.echoMode = false;
     stdin.lineMode = false;
     isStdinLocked = false;
-    return true;
+    return input;
   }
 
   static Future<String?> getFromLocalFile<T extends SettingsObject<String>>(T item) async {
@@ -285,7 +291,7 @@ abstract class EntitySettings {
 class BotSettings extends EntitySettings {
   BotSettings(super.store) : super(id: "_", scope: Scope.server);
 
-  SettingsObject<String> get botToken => SettingsObject(this, "botToken");
+  @Deprecated("Use BotTokenStore instead.")
   SettingsObject<List<Snowflake>> get ignored => SettingsObject(this, "ignored", encodeFunction: (input) => input.map((x) => x.value).toList(), decodeFunction: (input) => (input as List?)?.map((x) => Snowflake(x)).toList());
 
   Future<bool> init() async {
@@ -295,14 +301,6 @@ class BotSettings extends EntitySettings {
 
   @nonVirtual
   Future<bool> initCore() async {
-    await EntitySettings.setFromLocalFile(botToken);
-
-    if (botToken.get() == null) {
-      final result = await EntitySettings.askForInput(botToken);
-      if (result == false) return false;
-    }
-
-    if (botToken.get() == null) return false;
     return true;
   }
 }
@@ -332,6 +330,70 @@ class UserPerServerSettings extends EntitySettings {
     final elements = id.split(".");
     if (elements.length != 2) throw Exception("Unable to parse ID $id: Expected 2 elements, got ${elements.length}.");
     return (server: Snowflake(int.parse(elements[0])), user: Snowflake(int.parse(elements[1])));
+  }
+}
+
+class BotTokenStore {
+  final String file;
+  Map<String, String>? data;
+
+  BotTokenStore(this.file) {
+    data = load() ?? {};
+  }
+
+  Map<String, String>? load() {
+    try {
+      return RecursiveCaster.cast<Map<String, String>>(jsonDecode(File(file).readAsStringSync()));
+    } catch (e) {
+      File(file).createSync(recursive: true);
+      File(file).writeAsStringSync(jsonEncode({}));
+
+      Logger.print("BotTokenStore", "Wrote to file $file: $e");
+      return null;
+    }
+  }
+
+  bool save(Map<String, String> data) {
+    try {
+      File(file).createSync(recursive: true);
+      File(file).writeAsStringSync(jsonEncode(data));
+      return true;
+    } catch (e) {
+      Logger.warn("BotTokenStore", "Can't save to file $file: $e");
+      return false;
+    }
+  }
+
+  String? get(String key) {
+    return data?[key];
+  }
+
+  String? getOrAsk(String key) {
+    if (data?.containsKey(key) ?? false) {
+      return data![key]!;
+    } else {
+      final input = EntitySettings.ask("BotToken.$key");
+      if (input == null) return null;
+      set(key, input);
+      return input;
+    }
+  }
+
+  void set(String key, String token) {
+    data ??= {};
+    data![key] = token;
+    save(data!);
+  }
+
+  Map<String, String> all(List<String> keys) {
+    data ??= {};
+    final results = keys.asMap().map((_, x) => MapEntry(x, data![x] ?? getOrAsk(x) ?? (throw Exception("You must provide a token for key $x."))));
+    Logger.print("BotTokenStore", "Loaded ${results.length} tokens out of ${keys.length} requested");
+    return results;
+  }
+
+  Map<String, String> single() {
+    return all(["_"]);
   }
 }
 
