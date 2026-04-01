@@ -11,12 +11,12 @@ class ClientStore<T extends Nyxx> {
   Map<String, T> clients = {};
   ClientStore(this.clients);
 
-  Iterable<R> run<R>(R Function(T client) callback) {
-    return clients.entries.map((x) => callback.call(x.value));
+  List<R> run<R>(R Function(T client) callback) {
+    return clients.entries.map((x) => callback.call(x.value)).toList();
   }
 
-  Iterable<R> runIndexed<R>(R Function(int i, String key, T client) callback) {
-    return clients.entries.mapIndexed((i, x) => callback.call(i, x.key, x.value));
+  List<R> runIndexed<R>(R Function(int i, String key, T client) callback) {
+    return clients.entries.mapIndexed((i, x) => callback.call(i, x.key, x.value)).toList();
   }
 }
 
@@ -250,7 +250,7 @@ Future<BotContext?> load({required BotSettings settings, required FutureOr<Patte
         final realLatency = client.httpHandler.realLatency;
         final gatewayLatency = client.gateway.latency;
 
-        Logger.print("Ping", "$i. HTTP latency: ${formatLatency(latency)}\n$i. Real latency: ${formatLatency(realLatency)}\n$i. Gateway latency: ${formatLatency(gatewayLatency)}");
+        Logger.print("Ping", "${i + 1}. HTTP latency: ${formatLatency(latency)}\n${i + 1}. Real latency: ${formatLatency(realLatency)}\n${i + 1}. Gateway latency: ${formatLatency(gatewayLatency)}");
       });
     }),
     TerminalCommand(Char.from("r"), () async {
@@ -258,7 +258,7 @@ Future<BotContext?> load({required BotSettings settings, required FutureOr<Patte
     }),
     TerminalCommand(Char.from("s"), () async {
       final status = await getStatus();
-      if (status != null) Logger.print("Status", "Bot status: $status");
+      if (status != null) Logger.print("Status", status);
     }),
   ], ...terminalCommands];
 
