@@ -295,7 +295,7 @@ Future<DiscordColor?> getPrimaryColor(Member? member) async {
 
 Future<String?> getStatus() async {
   try {
-    final result = await Process.run("dev_status", []);
+    final result = await Process.run("dev_status", [pid.toString()]);
     final output = result.stdout.toString().trim();
     if (output.trim().isEmpty) throw Exception("Output was empty: '$output'");
     return output;
