@@ -9,5 +9,6 @@ pubspec.lock
 suggestions_plus
 
 settings.json
+tokens.json
 *.db
 *.setting
