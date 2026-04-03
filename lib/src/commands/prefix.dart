@@ -1,18 +1,19 @@
 import 'package:calebh101_discord/calebh101_discord.dart';
 
 List<BotCommand> prefixCommands(ServerSettings? Function(Guild guild) getSettings) => [
-  BotCommand.command("prefix", "Get/set the bot's prefix.", (ChatContext context, [String? prefix]) async {
+  BotCommand.command("prefix", "Get the bot's prefix.", (ChatContext context) async {
     if (context.guild == null || context.member == null) return context.respondWithError("No guild/member found.");
     final settings = getSettings.call(context.guild!);
     if (settings == null) return context.respondWithError("Unable to load settings.");
 
-    if (prefix == null) {
-      await context.respond(MessageBuilder(
-        content: "Prefix is currently set to `${settings.prefix.get() ?? defaultPrefix}`.",
-      ));
-
-      return;
-    }
+    await context.respond(MessageBuilder(
+      content: "Prefix is currently set to `${settings.prefix.get() ?? defaultPrefix}`.",
+    ));
+  }, CommandAttributes(category: "Bot")),
+  BotCommand.command("setprefix", "Set the bot's prefix.", (ChatContext context, String prefix) async {
+    if (context.guild == null || context.member == null) return context.respondWithError("No guild/member found.");
+    final settings = getSettings.call(context.guild!);
+    if (settings == null) return context.respondWithError("Unable to load settings.");
 
     if (await context.assurePerms(BotCommandPermissions.admin, settings) == false) return;
     final old = settings.prefix.get();
@@ -34,7 +35,7 @@ List<BotCommand> prefixCommands(ServerSettings? Function(Guild guild) getSetting
     await context.respond(MessageBuilder(
       content: "Prefix set to `$prefix`!",
     ));
-  }, CommandAttributes(category: "Bot")),
+  }, CommandAttributes(category: "Bot", permissionsRequired: BotCommandPermissions.admin)),
   BotCommand.command("resetprefix", "Reset the bot's prefix for this server.", (ChatContext context) async {
     if (context.guild == null || context.member == null) return context.respondWithError("No guild/member found.");
     final settings = getSettings.call(context.guild!);

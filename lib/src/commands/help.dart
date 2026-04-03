@@ -20,7 +20,7 @@ BotCommand helpCommand(ServerSettings? Function(Guild guild) getSettings, Comman
   if (command == null) {
     embed = PaginatedEmbedBuilder(
       title: "All Commands for $globalBotName",
-      description: dump ? null : "Current prefix: `${settings?.prefix.get() ?? "!"}`",
+      description: dump ? null : "Current prefix: `${settings?.prefix.get() ?? defaultPrefix}`",
       footer: ElementBasedEmbedFooterBuilder(elements: ["${commands.length} commands", if (categories.isNotEmpty) "${categories.length} categories"]),
       color: await getPrimaryColor(context.member) ?? primaryBotColor,
       pages: EmbedPage.generate(List.generate(commands.length, (i) {

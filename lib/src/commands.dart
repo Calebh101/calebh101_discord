@@ -58,7 +58,7 @@ class CommandAttributes {
 BotCommand defaultCheck(KVStore store) => BotCommand.check((plugin) {
   return Check((context) async {
     if (isIgnored(store, context.user.id)) return false;
-    final command = BotCommand.commands[context.command.name];
+    final command = BotCommand.commands[context.command.name.replaceFirst("dev_", "")];
 
     if (command == null) {
       Logger.error("Check", "Invalid command: ${context.command.name}");

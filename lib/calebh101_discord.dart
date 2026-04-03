@@ -17,6 +17,7 @@ export 'src/commands/help.dart';
 export 'src/commands/mymessages.dart';
 export 'src/commands/prefix.dart';
 export 'src/commands/ignore.dart';
+export 'src/commands/stats.dart';
 
 export 'package:nyxx/nyxx.dart' hide Logger;
 export 'package:nyxx_commands/nyxx_commands.dart';

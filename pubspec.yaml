@@ -25,6 +25,7 @@ dependencies:
   system_info: ^1.0.1
   hotreloader: ^4.3.0
   args: ^2.7.0
+  system_info2: ^4.1.0
   # path: ^1.9.0
 
 dev_dependencies:

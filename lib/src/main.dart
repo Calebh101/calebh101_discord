@@ -161,7 +161,9 @@ Future<BotContext?> load({required BotSettings settings, required FutureOr<Patte
 
       return MapEntry(token.key, await Nyxx.connectGateway(
         token.value, intents,
-        options: GatewayClientOptions(plugins: [cliIntegration, cmd]),
+        options: GatewayClientOptions(
+          plugins: [cliIntegration, cmd],
+        ),
       ));
     }),
   )));

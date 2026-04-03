@@ -1,7 +1,4 @@
-import 'dart:io';
-
 import 'package:calebh101_discord/calebh101_discord.dart';
-import 'package:system_info/system_info.dart';
 
 BotCommand messageMe() => BotCommand.command("messageme", "DM me.", (ChatContext context) async {
   bool dmSuccessful = false;
@@ -17,33 +14,6 @@ BotCommand messageMe() => BotCommand.command("messageme", "DM me.", (ChatContext
   }
 
   await context.respond(MessageBuilder(content: dmSuccessful ? "<@${context.user.id}>, I have DMed you." : "<@${context.user.id}>, I was **not** able to DM you."), level: ResponseLevel.hint);
-}, CommandAttributes(category: "Bot"));
-
-BotCommand aboutCommand(KVStore? store) => BotCommand.command("about", "See stats about this bot.", (ChatContext context) async {
-  final settings = store != null && context.guild != null ? ServerSettings(store, context.guild!.id) : null;
-  final prefix = settings?.prefix.get() ?? "!";
-
-  await context.respond(MessageBuilder(
-    content: [
-      "**$globalBotName**: A bot that does something",
-      "Version $botVersion by [Calebh101](<https://github.com/Calebh101>)",
-      null,
-      "Current prefix: `$prefix`",
-      "To see all commands, run `${prefix}help`.",
-      null,
-      [
-        "${SysInfo.operatingSystemName} ${SysInfo.kernelArchitecture} ${SysInfo.operatingSystemVersion}".trim(),
-        (() {
-          final processor = SysInfo.processors.first;
-          return "${processor.vendor} ${processor.name}".trim();
-        }()),
-      ].join("\n").trim().toDiscordCodeBlock(),
-      null,
-      "Built with [nyxx](<https://pub.dev/packages/nyxx>), running on Dart:",
-      Platform.version.trim().toDiscordCodeBlock(),
-      if (globalSupportServer != null) ...["For support: ${globalSupportServer!.invite}"],
-    ].map((x) => x ?? "").join("\n"),
-  ));
 }, CommandAttributes(category: "Bot"));
 
 BotCommand pingCommand() => BotCommand.command(
@@ -77,11 +47,3 @@ BotCommand listAllServerSettings(ServerSettings? Function(Guild guild) getSettin
     content: "All settings for *${context.guild?.name}*:\n${all.map((x) => "- `${x.key}`: `${x.value}`").join("\n")}",
   ), level: ResponseLevel.private);
 }, CommandAttributes(permissionsRequired: BotCommandPermissions.admin, category: "Server"));
-
-BotCommand statusCommand() => BotCommand("status", "Bot", "See the bot's status.", (ChatContext context) async {
-  final m = await context.respond(MessageBuilder(content: "Fetching status..."));
-  final status = await getStatus();
-
-  Logger.print("Status", "Bot status: $status");
-  await context.updateMessage(m, MessageUpdateBuilder(content: status?.toDiscordCodeBlock() ?? "No status found."));
-});
