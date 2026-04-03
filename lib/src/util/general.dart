@@ -10,3 +10,18 @@ Future<String> Function(MessageCreateEvent) prefixFromServerSettings(ServerSetti
   final prefix = settings.prefix.get() ?? defaultPrefix;
   return prefix;
 };
+
+BotCommand enumConverter<T extends Enum>(List<T> values) => BotCommand.converter((plugin) => Converter<T>(
+  (value, context) {
+    for (final x in values) {
+      if (x.name == value.buffer) {
+        return x;
+      }
+    }
+
+    return null;
+  },
+  choices: values.map(
+    (e) => CommandOptionChoiceBuilder(name: e.name, value: e.name),
+  ).toList(),
+));
