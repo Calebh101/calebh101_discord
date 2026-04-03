@@ -15,6 +15,7 @@ class BotCommand {
 
   BotCommand(this.name, this.category, this.description, this.execute, {this.permissionsRequired = BotCommandPermissions.any, this.extendedDescription}) {
     commands[name] = this;
+    if (dev) name = "dev_$name";
     command = ChatCommand(name, description, id(name, execute), options: options ?? CommandOptions());
   }
 
@@ -23,9 +24,7 @@ class BotCommand {
 
   @Deprecated("Use the unnamed constructor instead.")
   BotCommand.command(this.name, this.description, this.execute, CommandAttributes attributes, {this.options}) : converter = null {
-    if (dev) name = "dev_$name";
-    commands[name] = BotCommand(name, attributes.category, description, execute, extendedDescription: attributes.extendedDescription);
-    command = ChatCommand(name, description, id(name, execute), options: options ?? CommandOptions());
+    final _ = BotCommand(name, attributes.category, description, execute, extendedDescription: attributes.extendedDescription);
   }
 
   static Map<String, BotCommand> commands = {};
