@@ -5,7 +5,7 @@ class BotCommand {
   Check? Function(CommandsPlugin plugin)? check;
   Command? command;
 
-  late final String name;
+  late String name;
   late final String category;
   late final String description;
   late final Function execute;
@@ -23,6 +23,7 @@ class BotCommand {
 
   @Deprecated("Use the unnamed constructor instead.")
   BotCommand.command(this.name, this.description, this.execute, CommandAttributes attributes, {this.options}) : converter = null {
+    if (dev) name = "dev_$name";
     commands[name] = BotCommand(name, attributes.category, description, execute, extendedDescription: attributes.extendedDescription);
     command = ChatCommand(name, description, id(name, execute), options: options ?? CommandOptions());
   }
