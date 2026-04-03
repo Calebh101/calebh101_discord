@@ -14,7 +14,7 @@ Future<String> Function(MessageCreateEvent) prefixFromServerSettings(ServerSetti
 BotCommand enumConverter<T extends Enum>(List<T> values) => BotCommand.converter((plugin) => Converter<T>(
   (value, context) {
     for (final x in values) {
-      if (x.name == value.buffer) {
+      if (x.name == value.getQuotedWord()) {
         return x;
       }
     }
