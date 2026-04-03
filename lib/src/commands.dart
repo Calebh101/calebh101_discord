@@ -23,8 +23,8 @@ class BotCommand {
   BotCommand.check(this.check);
 
   @Deprecated("Use the unnamed constructor instead.")
-  BotCommand.command(this.name, this.description, this.execute, CommandAttributes attributes, {this.options}) : converter = null {
-    final _ = BotCommand(name, attributes.category, description, execute, extendedDescription: attributes.extendedDescription);
+  factory BotCommand.command(String name, String description, Function execute, CommandAttributes attributes, {CommandOptions? options}) {
+    return BotCommand(name, attributes.category, description, execute, extendedDescription: attributes.extendedDescription);
   }
 
   static Map<String, BotCommand> commands = {};
