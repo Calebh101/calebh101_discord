@@ -32,6 +32,7 @@ BotCommand aboutCommand(KVStore? store) => BotCommand.command("about", "See stat
 }, CommandAttributes(category: "Bot"));
 
 BotCommand statusCommand() => BotCommand("status", "Bot", "See the bot's status.", (ChatContext context) async {
+  const factor = 1024;
   final m = await context.respond(MessageBuilder(content: "Fetching status..."));
   Map<String, String> elements = {};
 
@@ -41,11 +42,11 @@ BotCommand statusCommand() => BotCommand("status", "Bot", "See the bot's status.
   final storage = await getStorage();
 
   String megabytes(num input) {
-    return "${input ~/ (1000 * 1000)} MB";
+    return "${input ~/ (factor * factor)} MiB";
   }
 
   String gigabytes(num input) {
-    return "${input ~/ (1000 * 1000 * 1000)} GB";
+    return "${input ~/ (factor * factor * factor)} GiB";
   }
 
   elements["System"] = [
