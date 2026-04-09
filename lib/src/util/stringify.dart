@@ -18,6 +18,22 @@ FutureOr<String?> memberToString(Member? member, {bool detailed = false, require
   }
 }
 
+FutureOr<String?> memberFromUserToString(User? user, {bool detailed = false, required NyxxGateway client, required Guild? guild}) async {
+  if (user == null) return null;
+  final member = await userToMember(user, guild: guild);
+
+  try {
+    return [
+      "**${member!.nick ?? user.globalName ?? user.username}**",
+      "(*${user.username}*)",
+      if (detailed) "(`${member.id}`)",
+    ].join(" ");
+  } catch (e) {
+    Logger.print("memberToString", "$e (member=${member.runtimeType}, user=${member?.user.runtimeType}, nick=${member?.nick}, id=${member?.id}, detailed=$detailed)");
+    return await userToString(user);
+  }
+}
+
 FutureOr<String?> userToString(User? user, {bool detailed = false}) async {
   if (user == null) return null;
 

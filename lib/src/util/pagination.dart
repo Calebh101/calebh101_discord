@@ -73,7 +73,7 @@ class PaginatedEmbedBuilder {
       image: image,
       thumbnail: thumbnail,
       author: author,
-      fields: pages[page].fields,
+      fields: pages.elementAtOrNull(page)?.fields,
     );
   }
 

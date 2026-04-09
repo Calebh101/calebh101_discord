@@ -27,3 +27,13 @@ BotCommand enumConverter<T extends Enum>(List<T> values) => BotCommand.converter
     (e) => CommandOptionChoiceBuilder(name: e.name, value: e.name),
   ).toList(),
 ));
+
+Future<Member?> userToMember(User? user, {required Guild? guild}) async {
+  if (user == null || guild == null) return null;
+
+try {
+    return guild.members.get(user.id);
+  } catch (_) {
+    return null;
+  }
+}

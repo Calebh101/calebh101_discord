@@ -107,19 +107,19 @@ void main(List<String> arguments) => onStart = () async {
   context.client.run((client) => client.onMessageCreate.listen((event) async {
     if (isIgnored(store, event.message.author.id)) return;
     final guild = await event.guild?.get();
-    final member = await event.member?.get();
+    final user = await client.users.get(event.message.author.id);
 
-    if (guild == null || !checkIsValidForXp(member)) return;
-    addXp(event, guild, member!, xpPerMessage.call(event.message.content), client: event.gateway.client);
+    if (guild == null || !checkIsValidForXp(user)) return;
+    addXp(event, guild, user, xpPerMessage.call(event.message.content), client: event.gateway.client);
   }));
 
   context.client.run((client) => client.onMessageReactionAdd.listen((event) async {
     if (isIgnored(store, event.userId)) return;
     final guild = await event.guild?.get();
-    final member = await event.member?.get();
+    final user = await event.user.get();
 
-    if (guild == null || !checkIsValidForXp(member)) return;
-    addXp(event, guild, member!, xpPerReaction, client: event.gateway.client);
+    if (guild == null || !checkIsValidForXp(user)) return;
+    addXp(event, guild, user, xpPerReaction, client: event.gateway.client);
   }));
 
   context.client.run((client) => client.updatePresence(PresenceBuilder(
