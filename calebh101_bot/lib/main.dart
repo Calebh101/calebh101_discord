@@ -12,6 +12,7 @@ final double Function(String content) xpPerMessage = (content) => min(content.le
 
 final store = KVStore("database.db");
 final tokens = BotTokenStore("settings.json");
+final plugins = PluginStore();
 
 void main(List<String> arguments) => onStart = () async {
   Modlog({
@@ -20,6 +21,11 @@ void main(List<String> arguments) => onStart = () async {
     ModLogGroup.quiet: (levelBelow) => levelBelow,
   });
 
+  plugins.registerAll([
+    AdminPlugin(),
+    //SelfReactPlugin(),
+  ]);
+
   final context = await load(
     botName: "Kyle",
     version: Version.parse("0.0.0A"),
@@ -27,6 +33,7 @@ void main(List<String> arguments) => onStart = () async {
     owner: calebh101,
     supportServer: calebh101Server,
     tokens: tokens.single(),
+    plugins: plugins,
 
     argParser: (args) => args,
     args: arguments,
@@ -57,7 +64,6 @@ void main(List<String> arguments) => onStart = () async {
       deleteMyMessageCommand((x) => Calebh101BotServerSettings(store, x.id)),
       editMyMessageCommand((x) => Calebh101BotServerSettings(store, x.id)),
 
-      ...adminCommands((x) => Calebh101BotServerSettings(store, x.id)),
       ...modLogCommands((x) => Calebh101BotServerSettings(store, x.id)),
       ...prefixCommands((x) => Calebh101BotServerSettings(store, x.id)),
       ...ignoreCommands(store),
@@ -104,7 +110,7 @@ void main(List<String> arguments) => onStart = () async {
   if (context == null) return;
   Logger.print("main", "Bot loaded!");
 
-  context.client.run((client) => client.onMessageCreate.listen((event) async {
+  context.clients.run((client) => client.onMessageCreate.listen((event) async {
     if (isIgnored(store, event.message.author.id)) return;
     final guild = await event.guild?.get();
     final user = await client.users.get(event.message.author.id);
@@ -113,7 +119,7 @@ void main(List<String> arguments) => onStart = () async {
     addXp(event, guild, user, xpPerMessage.call(event.message.content), client: event.gateway.client);
   }));
 
-  context.client.run((client) => client.onMessageReactionAdd.listen((event) async {
+  context.clients.run((client) => client.onMessageReactionAdd.listen((event) async {
     if (isIgnored(store, event.userId)) return;
     final guild = await event.guild?.get();
     final user = await event.user.get();
@@ -122,7 +128,7 @@ void main(List<String> arguments) => onStart = () async {
     addXp(event, guild, user, xpPerReaction, client: event.gateway.client);
   }));
 
-  context.client.run((client) => client.updatePresence(PresenceBuilder(
+  context.clients.run((client) => client.updatePresence(PresenceBuilder(
     since: DateTime(1434, 7, 13, 13, 42, 58),
     status: CurrentUserStatus.online,
     activities: [

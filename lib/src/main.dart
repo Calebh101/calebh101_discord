@@ -57,10 +57,11 @@ ArgParser defaultArgParser() {
 }
 
 class BotContext {
-  final ClientStore<NyxxGateway> client;
+  final ClientStore<NyxxGateway> clients;
+  final KVStore store;
   final ArgResults args;
 
-  const BotContext({required this.client, required this.args});
+  const BotContext({required this.clients, required this.args, required this.store});
 }
 
 class TerminalCommand {
@@ -92,7 +93,7 @@ set onStart(OnStart value) {
 /// [permissions] is a list of permissions. For bot apps, you should start out with `[...GatewayIntents.allUnprivileged, GatewayIntents.messageContent]`.
 ///
 /// [createBot] will create a bot user using `client.user.get()` if true.
-Future<BotContext?> load({required BotSettings settings, required FutureOr<Pattern> Function(MessageCreateEvent)? prefix, List<BotCommand>? Function(CommandsPlugin plugin)? commands, required List<Flag<GatewayIntents>> permissions, bool createBot = true, List<TerminalCommand> terminalCommands = const [], required DefinedUser owner, required DefinedServer? supportServer, required KVStore store, required DiscordColor primaryColor, required String botName, required Version version, required List<String> args, required ArgParser Function(ArgParser parser) argParser, required Map<String, String> tokens}) async {
+Future<BotContext?> load({required BotSettings settings, required FutureOr<Pattern> Function(MessageCreateEvent)? prefix, List<BotCommand>? Function(CommandsPlugin plugin)? commands, required List<Flag<GatewayIntents>> permissions, bool createBot = true, List<TerminalCommand> terminalCommands = const [], required DefinedUser owner, required DefinedServer? supportServer, required KVStore store, required DiscordColor primaryColor, required String botName, required Version version, required List<String> args, required ArgParser Function(ArgParser parser) argParser, required Map<String, String> tokens, required PluginStore plugins}) async {
   try {
     final _ = _onStart.hashCode;
   } catch (e) {
@@ -124,7 +125,10 @@ Future<BotContext?> load({required BotSettings settings, required FutureOr<Patte
   Flags<GatewayIntents> intents = Flag(0);
   final cmd = CommandsPlugin(prefix: prefix);
 
-  for (final c in commands?.call(cmd) ?? [] as List<BotCommand>) {
+  final cmds = commands?.call(cmd) ?? [];
+  cmds.addAll(await plugins.commands(cmd, store));
+
+  for (final c in cmds) {
     if (c.command != null) cmd.addCommand(c.command!);
 
     if (c.converter != null) {
@@ -283,7 +287,9 @@ Future<BotContext?> load({required BotSettings settings, required FutureOr<Patte
   }
 
   stdinInitialized = true;
-  return BotContext(client: clients, args: results);
+  final context = BotContext(clients: clients, args: results, store: store);
+  plugins.load(context);
+  return context;
 }
 
 Future<DiscordColor?> getPrimaryColor(Member? member) async {

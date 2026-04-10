@@ -31,21 +31,21 @@ DiscordColor? modLogSeverityToColor(ModlogSeverity severity) {
 
 class Modlog {
   static Set<String> ignoredEvents = {"pagination"};
-  static Set<String>? events;
+  static Set<String> events = {};
 
   Modlog(ModlogGroupCollection collection) {
-    events = getGroup(ModLogGroup.all, addExtraGroups: false).union(getGroup(ModLogGroup.all, collection: collection, addExtraGroups: false));
-    extraGroups = collection;
+    events.addAll(getGroup(ModLogGroup.all, addExtraGroups: false).union(getGroup(ModLogGroup.all, collection: collection, addExtraGroups: false)));
+    extraGroupCollections.add(collection);
   }
 
   static ModlogGroupCollection groups = {
-    ModLogGroup.all: (levelBelow) => {...levelBelow, "pagination"},
-    ModLogGroup.normal: (levelBelow) => {...levelBelow, "prefix.change"},
-    ModLogGroup.quiet: (levelBelow) => {...levelBelow, "test", "adminuser.add", "adminuser.remove", "adminrole.add", "adminrole.remove", "claim"},
+    ModLogGroup.all: (levelBelow) => {...levelBelow, "pagination", "prefix.change"},
+    ModLogGroup.normal: (levelBelow) => {...levelBelow},
+    ModLogGroup.quiet: (levelBelow) => {...levelBelow, "test"},
     ModLogGroup.off: (_) => {},
   };
 
-  static ModlogGroupCollection extraGroups = {};
+  static List<ModlogGroupCollection> extraGroupCollections = [];
 
   static Set<String> getGroup(ModLogGroup group, {ModlogGroupCollection? collection, bool addExtraGroups = true}) {
     Set<String> current = {};
@@ -55,15 +55,15 @@ class Modlog {
       if (level == group) break;
     }
 
-    if (addExtraGroups) current = current.union(getGroup(group, collection: extraGroups, addExtraGroups: false));
+    if (addExtraGroups) current = current.union(extraGroupCollections.map((x) => getGroup(group, collection: x, addExtraGroups: false)).flatten().toSet());
     return current.where((x) => !ignoredEvents.contains(x)).toSet();
   }
 
   static Future<String?> add(ModlogEvent event) async {
     try {
       if (ignoredEvents.contains(event.eventId)) return "Event is ignored.";
-      if (events == null) return "Not set up.";
-      if (!events!.contains(event.eventId)) throw Exception("Invalid event ID: ${event.eventId}");
+      if (events.isEmpty) return "Not set up.";
+      if (!events.contains(event.eventId)) throw Exception("Invalid event ID: ${event.eventId}");
       if (event.guild == null) return "No guild found.";
       if (event.settings?.modlogChannel.get() == null) return "No modlog channel set.";
 
@@ -145,7 +145,7 @@ List<BotCommand> modLogCommands(ServerSettings? Function(Guild guild) getSetting
     CommandAttributes(permissionsRequired: BotCommandPermissions.admin, category: "modlog"),
   ),
   BotCommand.command("modlogscopes", "Select scopes to log.", (ChatContext context, [String? input]) async {
-    if (Modlog.events == null) return context.respondWithError("Modlog is not enabled.\n-# No events allowed. Did you forget to call `Modlog()`?");
+    if (Modlog.events.isEmpty) return context.respondWithError("Modlog is not enabled.\n-# No events allowed. Did you forget to call `Modlog()`?");
     if (context.guild == null || context.member == null) return context.respondWithError("No guild/member found.");
     final settings = getSettings.call(context.guild!);
     if (settings == null) return context.respondWithError("No settings found.");
@@ -156,7 +156,7 @@ List<BotCommand> modLogCommands(ServerSettings? Function(Guild guild) getSetting
 
       await context.respond(MessageBuilder(
         content: [
-          "**${Modlog.events?.length}** ${Word.fromCount(Modlog.events!.length, singular: Word("scope"))} available: ${Modlog.events!.map((x) => "`$x`").join(", ")}",
+          "**${Modlog.events.length}** ${Word.fromCount(Modlog.events.length, singular: Word("scope"))} available: ${Modlog.events.map((x) => "`$x`").join(", ")}",
           if (current?.isNotEmpty ?? false) "**${current!.length}** ${Word.fromCount(current.length, singular: Word("scope"))} enabled: ${current.map((x) => "`$x`").join(", ")}",
         ].join("\n"),
       ));
@@ -171,7 +171,7 @@ List<BotCommand> modLogCommands(ServerSettings? Function(Guild guild) getSetting
     final Set<String> items = group != null ? Modlog.getGroup(group) : input.split(',').map((s) => s.trim()).where((x) => x.isNotEmpty).toSet();
 
     for (final x in items) {
-      if (Modlog.events!.contains(x)) {
+      if (Modlog.events.contains(x)) {
         enabled.add(x);
       } else {
         invalid.add(x);
@@ -185,7 +185,7 @@ List<BotCommand> modLogCommands(ServerSettings? Function(Guild guild) getSetting
         "**${enabled.length}** ${Word.fromCount(enabled.length, singular: Word("scope"))} enabled: ${enabled.isNotEmpty ? enabled.map((x) => "`$x`").join(", ") : ""}",
         if (group != null) "From group: `${group.name}`",
         if (invalid.isNotEmpty) "-# **${invalid.length}** ${Word.fromCount(invalid.length, singular: Word("scope"))} are invalid: ${invalid.map((x) => "`$x`").join(", ")}",
-        "-# **${Modlog.events?.length}** ${Word.fromCount(Modlog.events!.length, singular: Word("scope"))} available: ${Modlog.events!.map((x) => "`$x`").join(", ")}",
+        "-# **${Modlog.events.length}** ${Word.fromCount(Modlog.events.length, singular: Word("scope"))} available: ${Modlog.events.map((x) => "`$x`").join(", ")}",
       ].join("\n"),
     ));
   }, CommandAttributes(permissionsRequired: BotCommandPermissions.admin, category: "modlog")),

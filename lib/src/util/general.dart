@@ -1,6 +1,16 @@
+import 'dart:async';
+
 import 'package:calebh101_discord/calebh101_discord.dart';
 
-List<T> flatten<T>(List<List<T>> lists) => lists.expand((e) => e).toList();
+extension Flatten<T> on Iterable<Iterable<T>> {
+  Iterable<T> flatten() => expand((e) => e);
+}
+
+extension ToFuture<T> on FutureOr<T> {
+  Future<T> toFuture() async {
+    return this;
+  }
+}
 
 Future<String> Function(MessageCreateEvent) prefixFromServerSettings(ServerSettings? Function(PartialGuild guild) getSettings) => (MessageCreateEvent event) async {
   if (event.guild == null) return defaultPrefix;
@@ -31,7 +41,7 @@ BotCommand enumConverter<T extends Enum>(List<T> values) => BotCommand.converter
 Future<Member?> userToMember(User? user, {required Guild? guild}) async {
   if (user == null || guild == null) return null;
 
-try {
+  try {
     return guild.members.get(user.id);
   } catch (_) {
     return null;

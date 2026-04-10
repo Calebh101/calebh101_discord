@@ -28,6 +28,30 @@ class EmbedPage {
     if (currentPage.isNotEmpty) pages.add(EmbedPage(fields: List.of(currentPage)));
     return pages;
   }
+
+  static List<EmbedPage> generateFromItems(List<String> lines, {int maxLinesPerPage = 15, String separator = "\n"}) {
+    List<(int i, List<String>)> pages = [];
+    List<String> currentPage = [];
+    int currentPageLength = 0;
+
+    for (int i = 0; i < lines.length; i++) {
+      final v = lines[i];
+      currentPage.add(v);
+      currentPageLength++;
+
+      if (currentPageLength >= maxLinesPerPage) {
+        pages.add((pages.length, List.of(currentPage)));
+        currentPage = [];
+        currentPageLength = 0;
+      }
+    }
+
+    if (currentPage.isNotEmpty) pages.add((pages.length, List.of(currentPage)));
+
+    return pages.map((x) => EmbedPage(fields: [
+      EmbedFieldBuilder(name: "Items ${maxLinesPerPage * x.$1 + 1} / ${(maxLinesPerPage * x.$1) + x.$2.length}", value: x.$2.join(separator), isInline: false),
+    ])).toList();
+  }
 }
 
 class ElementBasedEmbedFooterBuilder {
@@ -88,7 +112,7 @@ class PaginatedEmbedBuilder {
       image: image,
       thumbnail: thumbnail,
       author: author,
-      fields: flatten(pages.map((x) => x.fields).toList()),
+      fields: pages.map((x) => x.fields).flatten().toList(),
     );
   }
 }

@@ -313,6 +313,7 @@ class ServerSettings extends EntitySettings {
   SettingsObject<List> get admins => SettingsObject(this, "admins");
   SettingsObject<int> get modlogChannel => SettingsObject(this, "modlogChannel");
   SettingsObject<List<String>> get modlog => SettingsObject(this, "modlogScopes", encodeFunction: (input) => input as List, decodeFunction: (input) => RecursiveCaster.cast<List<String>>(input));
+  SettingsObject<bool> get selfReactAllowed => SettingsObject(this, "selfReactAllowed");
 }
 
 class UserSettings extends EntitySettings {

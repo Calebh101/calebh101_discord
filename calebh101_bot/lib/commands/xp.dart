@@ -22,15 +22,18 @@ List<BotCommand> xpCommands(KVStore store) => [
       }).map((x) => MapEntry(UserPerServerSettings.parseId(x.key).user, x.value)).toList()
       ..sort((a, b) => b.value.compareTo(a.value));
 
+    Logger.print("Leaderboard", "Entries: ${values.length}");
+
     values = (await Future.wait(values.map((x) async {
       try {
-        await context.guild!.members.fetch(x.key);
+        await context.guild!.members.get(x.key);
         return x;
       } catch (e) {
         Logger.warn("Leaderboard", "Unable to get user ${x.key}: $e");
       }
     }))).whereType<MapEntry<Snowflake, double>>().toList();
 
+    Logger.print("Leaderboard", "Entries after: ${values.length}");
     const int maxLinesPerPage = 20;
     List<(int i, List<String>)> pages = [];
     List<String> currentPage = [];

@@ -1,10 +1,30 @@
+import 'dart:async';
+
 import 'package:calebh101_discord/calebh101_discord.dart';
 
-List<BotCommand> adminCommands(ServerSettings? Function(Guild guild) getSettings) => [
+class AdminPlugin extends Plugin {
+  AdminPlugin() : super(id: "admin", name: "Admin Commands");
+
+  @override
+  List<BotCommand> commands(CommandsPlugin plugin, KVStore store) {
+    return _adminCommands(store);
+  }
+
+  @override
+  FutureOr<List<ModlogGroupCollection>> modlogGroups() {
+    return [{
+      ModLogGroup.all: (levelBelow) => {...levelBelow},
+      ModLogGroup.normal: (levelBelow) => {...levelBelow},
+      ModLogGroup.quiet: (levelBelow) => {...levelBelow, "adminuser.add", "adminuser.remove", "adminrole.add", "adminrole.remove", "claim"},
+      ModLogGroup.off: (_) => {},
+    }];
+  }
+}
+
+List<BotCommand> _adminCommands(KVStore store) => [
   BotCommand.command("addadminuser", "Add an admin user.", (ChatContext context, User user) async {
     if (context.guild == null || context.member == null) return context.respondWithError("No guild/member found.");
-    final settings = getSettings.call(context.guild!);
-    if (settings == null) return context.respondWithError("Unable to load settings.");
+    final settings = ServerSettings(store, context.guild!.id);
     if (await context.assurePerms(BotCommandPermissions.admin, settings) == false) return;
     final admins = settings.admins.get() ?? [];
 
@@ -35,8 +55,7 @@ List<BotCommand> adminCommands(ServerSettings? Function(Guild guild) getSettings
   }, CommandAttributes(permissionsRequired: BotCommandPermissions.admin, category: "Server")),
   BotCommand.command("addadminrole", "Add a role as admin.", (ChatContext context, Role role) async {
     if (context.guild == null || context.member == null) return context.respondWithError("No guild/member found.");
-    final settings = getSettings.call(context.guild!);
-    if (settings == null) return context.respondWithError("Unable to load settings.");
+    final settings = ServerSettings(store, context.guild!.id);
     if (await context.assurePerms(BotCommandPermissions.admin, settings) == false) return;
     final admins = settings.admins.get() ?? [];
 
@@ -67,8 +86,7 @@ List<BotCommand> adminCommands(ServerSettings? Function(Guild guild) getSettings
   }, CommandAttributes(permissionsRequired: BotCommandPermissions.admin, category: "Server")),
   BotCommand.command("removeadminuser", "Remove a user from admin.", (ChatContext context, User user) async {
     if (context.guild == null || context.member == null) return context.respondWithError("No guild/member found.");
-    final settings = getSettings.call(context.guild!);
-    if (settings == null) return context.respondWithError("Unable to load settings.");
+    final settings = ServerSettings(store, context.guild!.id);
     if (await context.assurePerms(BotCommandPermissions.admin, settings) == false) return;
 
     final admins = settings.admins.get() ?? [];
@@ -102,8 +120,7 @@ List<BotCommand> adminCommands(ServerSettings? Function(Guild guild) getSettings
   }, CommandAttributes(permissionsRequired: BotCommandPermissions.admin, category: "Server")),
   BotCommand.command("removeadminrole", "Remove a role from admin.", (ChatContext context, Role role) async {
     if (context.guild == null || context.member == null) return context.respondWithError("No guild/member found.");
-    final settings = getSettings.call(context.guild!);
-    if (settings == null) return context.respondWithError("Unable to load settings.");
+    final settings = ServerSettings(store, context.guild!.id);
     if (await context.assurePerms(BotCommandPermissions.admin, settings) == false) return;
 
     final admins = settings.admins.get() ?? [];
@@ -137,8 +154,7 @@ List<BotCommand> adminCommands(ServerSettings? Function(Guild guild) getSettings
   }, CommandAttributes(permissionsRequired: BotCommandPermissions.admin, category: "Server")),
   BotCommand.command("claim", "Claim yourself as king of the bot!", (ChatContext context) async {
     if (context.guild == null || context.member == null) return context.respondWithError("No guild/member found.");
-    final settings = getSettings.call(context.guild!);
-    if (settings == null) return context.respondWithError("Unable to load settings.");
+    final settings = ServerSettings(store, context.guild!.id);
     if (context.member == null) return context.respondWithError("No member found.");
     final mainAdmin = settings.mainAdmin.get();
 
@@ -193,8 +209,7 @@ List<BotCommand> adminCommands(ServerSettings? Function(Guild guild) getSettings
   }, CommandAttributes(category: "Bot")),
   BotCommand.command("unclaim", "Step down as king of the bot. This will not be made known to others.", (ChatContext context) async {
     if (context.guild == null || context.member == null) return context.respondWithError("No guild/member found.");
-    final settings = getSettings.call(context.guild!);
-    if (settings == null) return context.respondWithError("Unable to load settings.");
+    final settings = ServerSettings(store, context.guild!.id);
     if (context.member == null) return context.respondWithError("No member found.");
     final old = settings.mainAdmin.get();
 
@@ -244,7 +259,7 @@ List<BotCommand> adminCommands(ServerSettings? Function(Guild guild) getSettings
     }
   }, CommandAttributes(permissionsRequired: BotCommandPermissions.claimer, category: "Bot")),
   BotCommand.command("owner", "See stats about who owns the bot, who owns the server, and who's claimed the bot.", (ChatContext context) async {
-    final settings = getSettings.call(context.guild!);
+    final settings = context.guild == null ? null : ServerSettings(store, context.guild!.id);
     final mainAdmin = settings?.mainAdmin.get();
     Map<String, String> results = {};
 
@@ -289,9 +304,9 @@ List<BotCommand> adminCommands(ServerSettings? Function(Guild guild) getSettings
 
     if (context.guild != null && context.member != null) {
       attributes.add("In *${context.guild!.name}*");
-      final settings = getSettings.call(context.guild!);
+      final settings = ServerSettings(store, context.guild!.id);
 
-      if (settings != null) {
+      if (true /* Was: settings != null */) {
         final mainAdmin = settings.mainAdmin.get();
         final admins = settings.admins.get();
 
