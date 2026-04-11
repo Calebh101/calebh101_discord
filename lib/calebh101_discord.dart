@@ -13,9 +13,7 @@ export 'src/util/context.dart';
 export 'src/util/modlog.dart';
 export 'src/util/pagination.dart';
 
-export 'src/commands/botmanage.dart';
 export 'src/commands/general.dart';
-export 'src/commands/help.dart';
 export 'src/commands/mymessages.dart';
 export 'src/commands/prefix.dart';
 export 'src/commands/ignore.dart';
@@ -23,6 +21,8 @@ export 'src/commands/stats.dart';
 
 export 'src/plugins/admin.dart';
 export 'src/plugins/selfreact.dart';
+export 'src/plugins/help.dart';
+export 'src/plugins/botmanage.dart';
 
 export 'package:nyxx/nyxx.dart' hide Logger;
 export 'package:nyxx_commands/nyxx_commands.dart';

@@ -3,19 +3,20 @@ import 'dart:async';
 import 'package:calebh101_discord/calebh101_discord.dart';
 
 class PluginStore {
-  List<Plugin> plugins = [];
+  List<BotPlugin> plugins = [];
 
   PluginStore();
 
-  Future<void> register(Plugin plugin) async {
+  Future<void> register(BotPlugin plugin) async {
+    Logger.print("PluginStore", "Registering plugin ${plugin.id} ${plugin.version}...");
     plugins.add(plugin);
+    plugin.pluginStore = this;
     Modlog.extraGroupCollections.addAll(await plugin.modlogGroups());
     await plugin.onRegister();
   }
 
-  Future<void> registerAll(Iterable<Plugin> all) async {
-    plugins.addAll(all);
-    await Future.wait(plugins.map((x) => x.onRegister()));
+  Future<void> registerAll(Iterable<BotPlugin> all) async {
+    await Future.wait(all.map((x) => register(x)));
   }
 
   Future<void> load(BotContext context) async {
@@ -27,14 +28,21 @@ class PluginStore {
   }
 }
 
-abstract class Plugin {
+abstract class BotPlugin {
   final String id;
   final String name;
+  final Version version;
+  late PluginStore pluginStore;
 
-  Plugin({required this.id, required this.name});
+  BotPlugin({required this.id, required this.name, required this.version});
 
   Future<void> onRegister() async {}
   Future<void> onClientLoad(BotContext context) async {}
   FutureOr<List<BotCommand>> commands(CommandsPlugin plugin, KVStore store) => [];
   FutureOr<List<ModlogGroupCollection>> modlogGroups() => [];
+
+  @override
+  String toString() {
+    return "Plugin(id: $id, name: $name, version: $version)";
+  }
 }

@@ -2,8 +2,8 @@ import 'dart:async';
 
 import 'package:calebh101_discord/calebh101_discord.dart';
 
-class SelfReactPlugin extends Plugin {
-  SelfReactPlugin() : super(id: "selfreact", name: "Self React Stop");
+class SelfReactPlugin extends BotPlugin {
+  SelfReactPlugin() : super(id: "selfreact", name: "Self React Stop", version: Version.parse("1.0.0A"));
 
   @override
   Future<void> onClientLoad(BotContext context) async {

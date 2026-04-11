@@ -23,7 +23,9 @@ void main(List<String> arguments) => onStart = () async {
 
   plugins.registerAll([
     AdminPlugin(),
-    //SelfReactPlugin(),
+    SelfReactPlugin(),
+    BotManagePlugin(),
+    HelpPlugin(),
   ]);
 
   final context = await load(
@@ -51,16 +53,12 @@ void main(List<String> arguments) => onStart = () async {
 
       pingCommand(),
       messageMe(),
-      restartCommand(),
       sendMessageAs(),
       aboutCommand(store),
       statusCommand(),
       fart(),
 
-      helpCommand((x) => Calebh101BotServerSettings(store, x.id), plugin),
       listAllServerSettings((x) => Calebh101BotServerSettings(store, x.id)),
-      killCommand((x) => Calebh101BotServerSettings(store, x.id)),
-      echoDebugCommand((x) => Calebh101BotServerSettings(store, x.id)),
       deleteMyMessageCommand((x) => Calebh101BotServerSettings(store, x.id)),
       editMyMessageCommand((x) => Calebh101BotServerSettings(store, x.id)),
 

@@ -10,10 +10,11 @@ class BotCommand {
   late final String description;
   late final Function execute;
   late BotCommandPermissions permissionsRequired;
+  late final bool enforcePermissions;
   String? extendedDescription;
   CommandOptions? options;
 
-  BotCommand(this.name, this.category, this.description, this.execute, {this.permissionsRequired = BotCommandPermissions.any, this.extendedDescription}) {
+  BotCommand(this.name, this.category, this.description, this.execute, {this.permissionsRequired = BotCommandPermissions.any, this.extendedDescription, this.enforcePermissions = true}) {
     commands[name] = this;
     if (dev) name = "dev_$name";
     command = ChatCommand(name, description, id(name, execute), options: options ?? CommandOptions());
@@ -24,7 +25,7 @@ class BotCommand {
 
   @Deprecated("Use the unnamed constructor instead.")
   factory BotCommand.command(String name, String description, Function execute, CommandAttributes attributes, {CommandOptions? options}) {
-    return BotCommand(name, attributes.category, description, execute, extendedDescription: attributes.extendedDescription);
+    return BotCommand(name, attributes.category, description, execute, extendedDescription: attributes.extendedDescription, permissionsRequired: attributes.permissionsRequired, enforcePermissions: false);
   }
 
   static Map<String, BotCommand> commands = {};
@@ -65,16 +66,18 @@ BotCommand defaultCheck(KVStore store) => BotCommand.check((plugin) {
       return false;
     }
 
-    if (command.permissionsRequired == BotCommandPermissions.owner) {
-      if (await context.assureOwner() == false) return false;
-    } else if (command.permissionsRequired == BotCommandPermissions.admin || command.permissionsRequired == BotCommandPermissions.claimer) {
-      if (context.guild == null) {
-        context.respondWithError("No guild found.");
-        return false;
-      }
+    if (command.enforcePermissions) {
+      if (command.permissionsRequired == BotCommandPermissions.owner) {
+        if (await context.assureOwner() == false) return false;
+      } else if (command.permissionsRequired == BotCommandPermissions.admin || command.permissionsRequired == BotCommandPermissions.claimer) {
+        if (context.guild == null) {
+          context.respondWithError("No guild found.");
+          return false;
+        }
 
-      final settings = ServerSettings(store, context.guild!.id);
-      if (await context.assurePerms(command.permissionsRequired, settings) == false) return false;
+        final settings = ServerSettings(store, context.guild!.id);
+        if (await context.assurePerms(command.permissionsRequired, settings) == false) return false;
+      }
     }
 
     return true;
