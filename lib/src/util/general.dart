@@ -2,6 +2,10 @@ import 'dart:async';
 
 import 'package:calebh101_discord/calebh101_discord.dart';
 
+Future<DiscordColor> getColor([Member? member]) async {
+  return await getPrimaryColor(member) ?? primaryBotColor;
+}
+
 extension Flatten<T> on Iterable<Iterable<T>> {
   Iterable<T> flatten() => expand((e) => e);
 }

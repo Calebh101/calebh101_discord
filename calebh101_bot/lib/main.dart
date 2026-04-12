@@ -1,7 +1,7 @@
 import 'dart:math';
 
-import 'package:calebh101_bot/commands/fun.dart';
-import 'package:calebh101_bot/commands/xp.dart';
+import 'package:calebh101_bot/plugins/math.dart';
+import 'package:calebh101_bot/plugins/xp.dart';
 import 'package:calebh101_bot/types.dart';
 import 'package:calebh101_discord/calebh101_discord.dart';
 import 'package:collection/collection.dart';
@@ -15,7 +15,7 @@ final tokens = BotTokenStore("settings.json");
 final plugins = PluginStore();
 
 void main(List<String> arguments) => onStart = () async {
-  Modlog({
+  Modlog.addExtraGroup({
     ModLogGroup.all: (levelBelow) => {...levelBelow, "xp.add"},
     ModLogGroup.normal: (levelBelow) => {...levelBelow, "xp.levelup"},
     ModLogGroup.quiet: (levelBelow) => levelBelow,
@@ -26,6 +26,8 @@ void main(List<String> arguments) => onStart = () async {
     SelfReactPlugin(),
     BotManagePlugin(),
     HelpPlugin(),
+    XPPlugin(),
+    MathPlugin(),
   ]);
 
   final context = await load(
@@ -56,7 +58,6 @@ void main(List<String> arguments) => onStart = () async {
       sendMessageAs(),
       aboutCommand(store),
       statusCommand(),
-      fart(),
 
       listAllServerSettings((x) => Calebh101BotServerSettings(store, x.id)),
       deleteMyMessageCommand((x) => Calebh101BotServerSettings(store, x.id)),
@@ -65,66 +66,46 @@ void main(List<String> arguments) => onStart = () async {
       ...modLogCommands((x) => Calebh101BotServerSettings(store, x.id)),
       ...prefixCommands((x) => Calebh101BotServerSettings(store, x.id)),
       ...ignoreCommands(store),
-      ...xpCommands(store),
 
-      BotCommand.command("stats", "See your stats, or somebody else's.", (ChatContext context, [Member? member]) async {
-        member ??= context.member;
-        if (member == null || context.guild == null) return context.respondWithError("No guild/member found.");
-        final guild = context.guild!;
-        final avatar = member.avatar ?? member.user?.avatar;
+      BotCommand.command("fart", "Fart.", (ChatContext context, [int amount = 1]) async {
+        if (amount != 1 && !isOwner(id: context.user.id)) return context.respondWithError("You cannot control the amount.");
+        if (amount < 1) return context.respondWithError("Invalid amount: $amount");
 
-        final serverSettings = Calebh101BotServerSettings(store, guild.id);
-        final settings = Calebh101BotUserPerServerSettings(store, guild.id, member.id);
-        final String level = getRole(guild, Snowflake(levelFromXp(serverSettings.xpLevels.get() ?? [], getRoundedXp(settings))?.roleId ?? 0))?.toMention() ?? "Member";
+        int rn(int min, int max) {
+          // Inclusive
+          return Random().nextInt(max - min + 1) + min;
+        }
 
-        List<String> properties = [
-          if (guild.ownerId == member.id) "Server Owner",
-          if (isAdmin(settings: serverSettings, id: member.id)) "Bot Admin",
-          if (isClaimer(settings: serverSettings, id: member.id)) "Bot Claimer",
-          if (isOwner(id: member.id)) "Bot Owner",
+        String random(int min, int max, String phrase) {
+          return phrase * rn(min, max);
+        }
+
+        T ro<T>(List<T> options) {
+          return options[Random().nextInt(options.length)];
+        }
+
+        String maybe(String option, [int factor = 1]) {
+          return ro([option, ...List.generate(factor, (_) => "")]);
+        }
+
+        final List<String Function()> farts = [
+          () => "P${random(2, 20, "o")}t",
+          () => "P${random(4, 40, "r")}t",
+          () => "F${random(1, 5, "a")}rt",
+          () => "Th${List.generate(rn(4, 20), (_) => random(1, 4, ro(["h", "t"]))).join("")}",
+          () => "B${maybe("h")}l${random(6, 24, "a")}${maybe("h")}n${maybe("h")}k",
+          () => "Squ${random(1, 2, ro(["i", "e"]))}rk",
         ];
 
         await context.respond(MessageBuilder(
-          embeds: [
-            EmbedBuilder(
-              title: "Stats for ${await memberToString(member, client: context.client)}",
-              color: (await getPrimaryColor(member)) ?? primaryBotColor,
-              timestamp: DateTime.now().toUtc(),
-              fields: [
-                EmbedFieldBuilder(name: "XP", value: getRoundedXp(settings).toString(), isInline: true),
-                EmbedFieldBuilder(name: "Level", value: level, isInline: true),
-                EmbedFieldBuilder(name: "Joined On", value: "${member.joinedAt.toDiscordTimestamp(DiscordTimestamp.longDateTime)} (${member.joinedAt.toDiscordTimestamp(DiscordTimestamp.relative)})", isInline: false),
-                if (properties.isNotEmpty) EmbedFieldBuilder(name: "Properties", value: properties.join(", "), isInline: false),
-              ],
-              footer: isAdmin(settings: serverSettings, id: context.user.id) ? EmbedFooterBuilder(text: "Exact XP: ${settings.xp.get()}") : null,
-              thumbnail: avatar != null ? EmbedThumbnailBuilder(url: avatar.url) : null,
-            ),
-          ],
+          content: List.generate(amount, (_) => ro(farts).call()).join("\n"),
         ));
-      }, CommandAttributes(category: "User")),
+      }, CommandAttributes(category: "Fun"))
     ],
   );
 
   if (context == null) return;
   Logger.print("main", "Bot loaded!");
-
-  context.clients.run((client) => client.onMessageCreate.listen((event) async {
-    if (isIgnored(store, event.message.author.id)) return;
-    final guild = await event.guild?.get();
-    final user = await client.users.get(event.message.author.id);
-
-    if (guild == null || !checkIsValidForXp(user)) return;
-    addXp(event, guild, user, xpPerMessage.call(event.message.content), client: event.gateway.client);
-  }));
-
-  context.clients.run((client) => client.onMessageReactionAdd.listen((event) async {
-    if (isIgnored(store, event.userId)) return;
-    final guild = await event.guild?.get();
-    final user = await event.user.get();
-
-    if (guild == null || !checkIsValidForXp(user)) return;
-    addXp(event, guild, user, xpPerReaction, client: event.gateway.client);
-  }));
 
   context.clients.run((client) => client.updatePresence(PresenceBuilder(
     since: DateTime(1434, 7, 13, 13, 42, 58),
@@ -159,8 +140,8 @@ Future<List<Member>> getAllMembers(Guild guild, {int limitPer = 1000}) async {
   return result;
 }
 
-Role? getRole(Guild guild, Snowflake id) {
-  return guild.roleList.firstWhereOrNull((y) => y.id == id);
+Future<Role?> getRole(Guild guild, Snowflake id) async {
+  return (await guild.roles.list()).firstWhereOrNull((y) => y.id == id);
 }
 
 int getHour() {
@@ -173,6 +154,8 @@ class Calebh101BotServerSettings extends ServerSettings {
   SettingsObject<bool> get pingOnLevelUp => SettingsObject(this, "pingOnLevelUp");
   SettingsObject<List<Snowflake>> get xpBanned => SettingsObject(this, "xpBanned", encodeFunction: (input) => input.map((x) => x.value).toList(), decodeFunction: (input) => (input as List?)?.map((x) => Snowflake(x)).toList());
   SettingsObject<bool> get xpEnabled => SettingsObject(this, "xpEnabled");
+  SettingsObject<Snowflake> get mathChannel => SettingsObject(this, "mathChannel", encodeFunction: (input) => input.value, decodeFunction: (input) => input is int ? Snowflake(input) : null);
+  SettingsObject<Math> get currentMath => SettingsObject(this, "currentMath", encodeFunction: (input) => input.toJson(), decodeFunction: (input) => Math.fromJson(input));
 
   Calebh101BotServerSettings(super.store, super.id);
 }

@@ -21,8 +21,8 @@ enum ModLogGroup {
 
 DiscordColor? modLogSeverityToColor(ModlogSeverity severity) {
   return switch (severity) {
-    ModlogSeverity.verbose => null,
-    ModlogSeverity.log => null,
+    ModlogSeverity.verbose => DiscordColor.parseHexString("#808080"),
+    ModlogSeverity.log => DiscordColor.parseHexString("#808080"),
     ModlogSeverity.warning => DiscordColor.parseHexString("#FFFF00"),
     ModlogSeverity.severe => DiscordColor.parseHexString("#FF0000"),
     ModlogSeverity.error => DiscordColor.parseHexString("#8B0000"),
@@ -33,9 +33,17 @@ class Modlog {
   static Set<String> ignoredEvents = {"pagination"};
   static Set<String> events = {};
 
-  Modlog(ModlogGroupCollection collection) {
-    events.addAll(getGroup(ModLogGroup.all, addExtraGroups: false).union(getGroup(ModLogGroup.all, collection: collection, addExtraGroups: false)));
-    extraGroupCollections.add(collection);
+  Modlog._(ModlogGroupCollection collection) {
+    addExtraGroup(collection);
+  }
+
+  static void addExtraGroup(ModlogGroupCollection group) {
+    addExtraGroups([group]);
+  }
+
+  static void addExtraGroups(List<ModlogGroupCollection> groups) {
+    extraGroupCollections.addAll(groups);
+    events.addAll([...getGroup(ModLogGroup.all, addExtraGroups: false), ...groups.map((x) => getGroup(ModLogGroup.all, addExtraGroups: false, collection: x)).flatten()]);
   }
 
   static ModlogGroupCollection groups = {

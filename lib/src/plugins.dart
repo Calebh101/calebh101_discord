@@ -12,7 +12,7 @@ class PluginStore {
     Logger.print("PluginStore", "Registering plugin ${plugin.id} ${plugin.version}...");
     plugins.add(plugin);
     plugin.pluginStore = this;
-    Modlog.extraGroupCollections.addAll(await plugin.modlogGroups());
+    Modlog.addExtraGroups(await plugin.modlogGroups());
     await plugin.onRegister();
   }
 
