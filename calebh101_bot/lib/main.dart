@@ -21,7 +21,7 @@ void main(List<String> arguments) => onStart = () async {
     ModLogGroup.quiet: (levelBelow) => levelBelow,
   });
 
-  plugins.registerAll([
+  await plugins.registerAll([
     AdminPlugin(),
     SelfReactPlugin(),
     BotManagePlugin(),

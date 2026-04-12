@@ -4,7 +4,7 @@ import 'package:calebh101_discord/calebh101_discord.dart';
 import 'package:collection/collection.dart';
 
 class HelpPlugin extends BotPlugin {
-  HelpPlugin() : super(id: "help", name: "Help Commands", version: Version.parse("1.0.0A"));
+  HelpPlugin() : super(id: "help", version: Version.parse("1.0.0A"));
 
   @override
   FutureOr<List<BotCommand>> commands(CommandsPlugin plugin, KVStore store) {
@@ -15,13 +15,29 @@ class HelpPlugin extends BotPlugin {
 
         await respondWithPagination(
           context, PaginatedEmbedBuilder(
-            pages: EmbedPage.generateFromItems(plugins.map((x) => "- **${x.name}**: `${x.id}` ${x.version}").toList()),
+            pages: EmbedPage.generateFromItems(plugins.map((x) => "- `${x.id}` ${x.version}").toList()),
             title: "All Plugins",
             footer: ElementBasedEmbedFooterBuilder(elements: ["${plugins.length} Plugins"]),
             color: await getPrimaryColor(context.member) ?? primaryBotColor,
           ),
           settings: context.guild != null ? ServerSettings(store, context.guild!.id) : null,
         );
+      }),
+      BotCommand("categories", "Help", "List all categories.", (ChatContext context) async {
+        final categories = BotCommand.getAllCategories();
+
+        await respondWithPagination(context, PaginatedEmbedBuilder(
+          title: "All Categories",
+          footer: ElementBasedEmbedFooterBuilder(elements: ["${categories.length} categories"]),
+          color: await getPrimaryColor(context.member) ?? primaryBotColor,
+          pages: EmbedPage.generate(List.generate(categories.length, (i) {
+            final command = categories.entries.elementAt(i);
+
+            return EmbedFieldBuilder(name: command.key, value: [
+              "${command.value} commands",
+            ].join("\n"), isInline: false);
+          })),
+        ), settings: context.guild != null ? ServerSettings(store, context.guild!.id) : null);
       }),
     ];
   }

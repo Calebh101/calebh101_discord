@@ -3,7 +3,7 @@ import 'dart:async';
 import 'package:calebh101_discord/calebh101_discord.dart';
 
 class BotManagePlugin extends BotPlugin {
-  BotManagePlugin() : super(id: "botmanage", name: "Bot Manage", version: Version.parse("1.0.0A"));
+  BotManagePlugin() : super(id: "botmanage", version: Version.parse("1.0.0A"));
 
   @override
   FutureOr<List<BotCommand>> commands(CommandsPlugin plugin, KVStore store) {

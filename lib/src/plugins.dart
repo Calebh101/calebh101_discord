@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:mirrors';
 
 import 'package:calebh101_discord/calebh101_discord.dart';
 
@@ -30,11 +31,14 @@ class PluginStore {
 
 abstract class BotPlugin {
   final String id;
-  final String name;
+  final String? name;
   final Version version;
+  late String className;
   late PluginStore pluginStore;
 
-  BotPlugin({required this.id, required this.name, required this.version});
+  BotPlugin({required this.id, this.name, required this.version}) {
+    className = MirrorSystem.getName(reflect(this).type.simpleName);
+  }
 
   Future<void> onRegister() async {}
   Future<void> onClientLoad(BotContext context) async {}

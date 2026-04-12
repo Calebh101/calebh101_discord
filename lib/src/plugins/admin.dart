@@ -3,7 +3,7 @@ import 'dart:async';
 import 'package:calebh101_discord/calebh101_discord.dart';
 
 class AdminPlugin extends BotPlugin {
-  AdminPlugin() : super(id: "admin", name: "Admin Commands", version: Version.parse("1.0.0A"));
+  AdminPlugin() : super(id: "admin", version: Version.parse("1.0.0A"));
 
   @override
   List<BotCommand> commands(CommandsPlugin plugin, KVStore store) {

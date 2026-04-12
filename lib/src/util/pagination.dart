@@ -49,7 +49,7 @@ class EmbedPage {
     if (currentPage.isNotEmpty) pages.add((pages.length, List.of(currentPage)));
 
     return pages.map((x) => EmbedPage(fields: [
-      EmbedFieldBuilder(name: "Items ${maxLinesPerPage * x.$1 + 1} / ${(maxLinesPerPage * x.$1) + x.$2.length}", value: x.$2.join(separator), isInline: false),
+      EmbedFieldBuilder(name: "Items ${maxLinesPerPage * x.$1 + 1} - ${(maxLinesPerPage * x.$1) + x.$2.length}", value: x.$2.join(separator), isInline: false),
     ])).toList();
   }
 }
