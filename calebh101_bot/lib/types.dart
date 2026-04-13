@@ -1,3 +1,4 @@
+import 'package:calebh101_discord/calebh101_discord.dart';
 import 'package:json_annotation/json_annotation.dart';
 
 part 'types.g.dart';
@@ -22,6 +23,23 @@ class Math {
   Math({required this.a, required this.b, required this.result, required this.operand});
   factory Math.fromJson(Map input) => _$MathFromJson(input);
   Map toJson() => _$MathToJson(this);
+
+  Future<EmbedBuilder> toEmbed(Member member) async {
+    return EmbedBuilder(
+      title: "$this",
+      color: await getColor(member),
+    );
+  }
+
+  @override
+  String toString() {
+    return "$a ${switch (operand) {
+      Operand.add => "+",
+      Operand.subtract => "-",
+      Operand.multiply => "x",
+      Operand.divide => "/",
+    }} $b";
+  }
 }
 
 enum Operand {

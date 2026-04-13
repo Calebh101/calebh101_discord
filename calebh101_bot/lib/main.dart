@@ -155,7 +155,8 @@ class Calebh101BotServerSettings extends ServerSettings {
   SettingsObject<List<Snowflake>> get xpBanned => SettingsObject(this, "xpBanned", encodeFunction: (input) => input.map((x) => x.value).toList(), decodeFunction: (input) => (input as List?)?.map((x) => Snowflake(x)).toList());
   SettingsObject<bool> get xpEnabled => SettingsObject(this, "xpEnabled");
   SettingsObject<Snowflake> get mathChannel => SettingsObject(this, "mathChannel", encodeFunction: (input) => input.value, decodeFunction: (input) => input is int ? Snowflake(input) : null);
-  SettingsObject<Math> get currentMath => SettingsObject(this, "currentMath", encodeFunction: (input) => input.toJson(), decodeFunction: (input) => Math.fromJson(input));
+  SettingsObject<Math> get currentMath => SettingsObject(this, "currentMath", encodeFunction: (input) => input.toJson(), decodeFunction: (input) => input != null ? Math.fromJson(input) : null);
+  SettingsObject<bool> get mathMultDiv => SettingsObject(this, "mathMultDiv");
 
   Calebh101BotServerSettings(super.store, super.id);
 }
