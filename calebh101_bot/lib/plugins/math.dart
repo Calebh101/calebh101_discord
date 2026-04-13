@@ -15,7 +15,7 @@ class MathPlugin extends BotPlugin {
     // Register each math plugin with their IDs here.
     Math.register("addsubtract", fromJson: AddSubtractMath.fromJson);
     Math.register("multdiv", fromJson: MultDivMath.fromJson);
-    Math.register("square", fromJson: SquareMath.fromJson);
+    Math.register("exponent", fromJson: ExponentMath.fromJson);
     return super.onRegister();
   }
 
@@ -156,10 +156,10 @@ class MathPlugin extends BotPlugin {
         }
 
         return id == "multdiv" ? MultDivMath(a: a, b: b, result: r, operand: operand) : AddSubtractMath(a: a, b: b, result: r, operand: operand);
-      case "square":
+      case "exponent":
         final int a = Random().nextInt(9) + 2;
         final int b = Random().nextInt(1) + 2;
-        return SquareMath(a: a, b: b, result: pow(a, b).toInt());
+        return ExponentMath(a: a, b: b, result: pow(a, b).toInt());
     }
 
     throw UnimplementedError("Invalid math ID: $id");
@@ -244,13 +244,13 @@ class MultDivMath extends Math {
 }
 
 @JsonSerializable(anyMap: true)
-class SquareMath extends Math {
+class ExponentMath extends Math {
   final int a;
   final int b;
 
-  SquareMath({required this.a, required this.b, required super.result}) : super(id: "square");
-  factory SquareMath.fromJson(Map input) => _$SquareMathFromJson(input);
-  @override Map toJson() => _toJson(_$SquareMathToJson);
+  ExponentMath({required this.a, required this.b, required super.result}) : super(id: "exponent");
+  factory ExponentMath.fromJson(Map input) => _$ExponentMathFromJson(input);
+  @override Map toJson() => _toJson(_$ExponentMathToJson);
 
   @override
   String toString() {

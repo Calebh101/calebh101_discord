@@ -43,13 +43,13 @@ Map<String, dynamic> _$MultDivMathToJson(MultDivMath instance) =>
       'operand': _$OperandEnumMap[instance.operand]!,
     };
 
-SquareMath _$SquareMathFromJson(Map json) => SquareMath(
+ExponentMath _$ExponentMathFromJson(Map json) => ExponentMath(
       a: (json['a'] as num).toInt(),
       b: (json['b'] as num).toInt(),
       result: (json['result'] as num).toInt(),
     );
 
-Map<String, dynamic> _$SquareMathToJson(SquareMath instance) =>
+Map<String, dynamic> _$ExponentMathToJson(ExponentMath instance) =>
     <String, dynamic>{
       'result': instance.result,
       'a': instance.a,
