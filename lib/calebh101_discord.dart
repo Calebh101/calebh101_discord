@@ -12,6 +12,7 @@ export 'src/util/stringify.dart';
 export 'src/util/context.dart';
 export 'src/util/modlog.dart';
 export 'src/util/pagination.dart';
+export 'src/util/arguments.dart';
 
 export 'src/commands/general.dart';
 export 'src/commands/mymessages.dart';

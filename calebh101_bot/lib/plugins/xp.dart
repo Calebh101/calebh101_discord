@@ -1,9 +1,11 @@
 import 'dart:math';
 
 import 'package:calebh101_bot/main.dart';
-import 'package:calebh101_bot/types.dart';
 import 'package:calebh101_discord/calebh101_discord.dart';
 import 'package:collection/collection.dart';
+import 'package:json_annotation/json_annotation.dart';
+
+part 'xp.g.dart';
 
 class XPPlugin extends BotPlugin {
   XPPlugin() : super(id: "xp", version: Version.parse("1.0.0A"));
@@ -50,7 +52,7 @@ class XPPlugin extends BotPlugin {
         final v = values[i];
         final Role? level = await getRole(context.guild!, Snowflake(levelFromXp(settings.xpLevels.get() ?? [], getRoundedXp(Calebh101BotUserPerServerSettings(store, context.guild!.id, v.key)))?.roleId ?? 0));
 
-        currentPage.add([(v.key.value.toMention()), "**${roundXp(v.value)}** XP", ?level?.toMention()].join(" "));
+        currentPage.add([(v.key.value.toMention()), "**${roundXp(v.value)}** XP", if (level != null) level.toMention()].join(" "));
         currentPageLength++;
 
         if (currentPageLength >= maxLinesPerPage) {
@@ -578,4 +580,14 @@ class AddXPResult {
   final Role? newRole;
 
   const AddXPResult({required this.added, required this.levelUp, required this.oldLevel, required this.newLevel, required this.oldRole, required this.newRole});
+}
+
+@JsonSerializable(anyMap: true)
+class XPLevel {
+  final int roleId;
+  int requiredXp;
+
+  XPLevel({required this.requiredXp, required this.roleId});
+  factory XPLevel.fromJson(Map input) => _$XPLevelFromJson(input);
+  Map toJson() => _$XPLevelToJson(this);
 }

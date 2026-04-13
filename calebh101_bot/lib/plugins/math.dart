@@ -2,11 +2,22 @@ import 'dart:async';
 import 'dart:math';
 
 import 'package:calebh101_bot/main.dart';
-import 'package:calebh101_bot/types.dart';
 import 'package:calebh101_discord/calebh101_discord.dart';
+import 'package:json_annotation/json_annotation.dart';
+
+part 'math.g.dart';
 
 class MathPlugin extends BotPlugin {
   MathPlugin() : super(id: "math", version: Version.parse("1.0.0A"));
+
+  @override
+  Future<void> onRegister() {
+    // Register each math plugin with their IDs here.
+    Math.register("addsubtract", fromJson: AddSubtractMath.fromJson);
+    Math.register("multdiv", fromJson: MultDivMath.fromJson);
+    Math.register("square", fromJson: SquareMath.fromJson);
+    return super.onRegister();
+  }
 
   @override FutureOr<List<BotCommand>> commands(CommandsPlugin plugin, KVStore store) {
     return [
@@ -28,23 +39,19 @@ class MathPlugin extends BotPlugin {
           content: "Math channel ${id != null ? "is currently set to ${id.value.toChannel()}" : "not set"}."
         ));
       }),
-      BotCommand("mathmultdiv", "Math", "Enable/disable multiplication and division.", (ChatContext context, bool value) async {
-        if (await context.assureGuild() == false) return;
-        final settings = Calebh101BotServerSettings(store, context.guild!.id);
-        settings.mathMultDiv.set(value);
-        await context.respond(MessageBuilder(content: "Set to **${value ? "allow" : "not allow"}** multiplication/division."));
-      }, permissionsRequired: BotCommandPermissions.admin),
       BotCommand("math", "Math", "Print the current math formula, or make a new one.", (ChatContext context) async {
         if (await context.assureGuild() == false) return;
         final settings = Calebh101BotServerSettings(store, context.guild!.id);
-        final math = settings.currentMath.get() ?? newFormula(allowMultiplicationDivision: settings.mathMultDiv.get() ?? false);
+        final allowedTypes = settings.allowedMathTypes.get() ?? Math.defaultTypes;
+        final math = settings.currentMath.get() ?? newFormula(allowedTypes: allowedTypes);
         settings.currentMath.set(math);
         await context.respond(MessageBuilder(embeds: [await math.toEmbed(context.member!)]));
       }),
       BotCommand("newmath", "Math", "Print a new math formula.", (ChatContext context) async {
         if (await context.assureGuild() == false) return;
         final settings = Calebh101BotServerSettings(store, context.guild!.id);
-        final math = newFormula(allowMultiplicationDivision: settings.mathMultDiv.get() ?? false);
+        final allowedTypes = settings.allowedMathTypes.get() ?? Math.defaultTypes;
+        final math = newFormula(allowedTypes: allowedTypes);
         settings.currentMath.set(math);
         await context.respond(MessageBuilder(embeds: [await math.toEmbed(context.member!)]));
       }, permissionsRequired: BotCommandPermissions.admin),
@@ -61,6 +68,24 @@ class MathPlugin extends BotPlugin {
         if (math == null) return context.respondWithError("No math formula found.");
         await context.respond(MessageBuilder(content: "$math = ${math.result}"));
       }, permissionsRequired: BotCommandPermissions.owner),
+      BotCommand("setmathtypes", "Math", "Set the current allowed math types for the server.", (ChatContext context, StringList values) async {
+        if (await context.assureGuild() == false) return;
+        final settings = Calebh101BotServerSettings(store, context.guild!.id);
+        final allowed = Math.registry.keys.toList();
+        final data = values.validate(allowed);
+        settings.allowedMathTypes.set(data);
+        await context.respond(MessageBuilder(content: "Set math types to **${data.length}** values:\n${data.join(", ").toDiscordCodeBlock()}\n-# **${values.invalid(allowed)}** types invalid"));
+      }, permissionsRequired: BotCommandPermissions.admin),
+      BotCommand("mathtypes", "Math", "Set the current allowed math types for the server.", (ChatContext context) async {
+        if (await context.assureGuild() == false) return;
+        final current = context.guild != null ? Calebh101BotServerSettings(store, context.guild!.id).allowedMathTypes.get() : null;
+        final all = Math.registry.keys.toList();
+
+        await context.respond(MessageBuilder(content: [
+          if (current != null) "Enabled types: ${current.join(", ").toDiscordCodeString()}",
+          "All types: ${all.join(", ").toDiscordCodeString()}",
+        ].join("\n")));
+      }),
     ];
   }
 
@@ -79,8 +104,9 @@ class MathPlugin extends BotPlugin {
       final success = math.result == number;
 
       if (success) {
+        final allowedTypes = settings.allowedMathTypes.get() ?? Math.defaultTypes;
         await event.message.react(ReactionBuilder(name: "✅", id: null));
-        final math = newFormula(allowMultiplicationDivision: settings.mathMultDiv.get() ?? false);
+        final math = newFormula(allowedTypes: allowedTypes);
         settings.currentMath.set(math);
         await event.message.channel.sendMessage(MessageBuilder(embeds: [await math.toEmbed(await event.member!.get())]));
       } else {
@@ -89,37 +115,157 @@ class MathPlugin extends BotPlugin {
     }));
   }
 
-  Math newFormula({required bool allowMultiplicationDivision}) {
-    final allowed = [Operand.add, Operand.subtract, if (allowMultiplicationDivision) ...[Operand.multiply, Operand.divide]];
-    final operand = allowed[Random().nextInt(allowed.length)];
+  Math newFormula({required List<String> allowedTypes}) {
+    final id = allowedTypes[Random().nextInt(allowedTypes.length)];
 
-    late final int a;
-    late final int b;
-    late final int r;
+    // Each ID you defined above needs to be added as a case here.
+    // When making cases, make sure to make numbers reasonable.
+    // Things like times 0, divided by 1, times 93, are not reasonable.
 
-    switch (operand) {
-      case Operand.add:
-        a = Random().nextInt(50) + 1;
-        b = Random().nextInt(50) + 1;
-        r = a + b;
-        break;
-      case Operand.subtract:
-        a = Random().nextInt(100) + 1;
-        b = Random().nextInt(a) + 1;
-        r = a - b;
-        break;
-      case Operand.multiply:
-        a = Random().nextInt(30) + 1;
-        b = Random().nextInt(6) + 2;
-        r = a * b;
-        break;
-      case Operand.divide:
-        b = Random().nextInt(5) + 2;
-        r = Random().nextInt(10) + 1;
-        a = r * b;
-        break;
+    switch (id) {
+      case "multdiv":
+      case "addsubtract":
+        final allowed = id == "addsubtract" ? [Operand.add, Operand.subtract] : [Operand.multiply, Operand.divide];
+        final operand = allowed[Random().nextInt(allowed.length)];
+
+        late final int a;
+        late final int b;
+        late final int r;
+
+        switch (operand) {
+          case Operand.add:
+            a = Random().nextInt(50) + 1;
+            b = Random().nextInt(50) + 1;
+            r = a + b;
+            break;
+          case Operand.subtract:
+            a = Random().nextInt(100) + 1;
+            b = Random().nextInt(a) + 1;
+            r = a - b;
+            break;
+          case Operand.multiply:
+            a = Random().nextInt(30) + 1;
+            b = Random().nextInt(6) + 2;
+            r = a * b;
+            break;
+          case Operand.divide:
+            b = Random().nextInt(5) + 2;
+            r = Random().nextInt(10) + 1;
+            a = r * b;
+            break;
+        }
+
+        return id == "multdiv" ? MultDivMath(a: a, b: b, result: r, operand: operand) : AddSubtractMath(a: a, b: b, result: r, operand: operand);
+      case "square":
+        final int a = Random().nextInt(9) + 2;
+        final int b = Random().nextInt(1) + 2;
+        return SquareMath(a: a, b: b, result: pow(a, b).toInt());
     }
 
-    return Math(a: a, b: b, result: r, operand: operand);
+    throw UnimplementedError("Invalid math ID: $id");
   }
+}
+
+/// Extend this class to add a new math plugin.
+/// Make sure to register it in [MathPlugin.onRegister].
+abstract class Math {
+  static const List<String> defaultTypes = ["addsubtract", "multdiv"];
+  final int result;
+  final String id;
+
+  Math({required this.result, required this.id});
+  Map toJson();
+
+  Map _toJson<T extends Math>(Map<String, dynamic> Function(T instance) toJson) {
+    return {
+      ...toJson(this as T),
+      "id": id,
+    };
+  }
+
+  /// Override this if you need a complex embed.
+  FutureOr<EmbedBuilder> toEmbed(Member member) async => EmbedBuilder(
+    title: "$this",
+    color: await getColor(member),
+  );
+
+  factory Math.fromJson(Map input) {
+    String id = input["id"] ?? "simple";
+    return registry[id]?.call(input) ?? (throw UnimplementedError("Invalid math ID: $id"));
+  }
+
+  static void register(String id, {required Math Function(Map input) fromJson}) {
+    registry[id] = fromJson;
+  }
+
+  static Map<String, Math Function(Map input)> registry = {};
+}
+
+@JsonSerializable(anyMap: true)
+class AddSubtractMath extends Math {
+  final int a;
+  final int b;
+  final Operand operand;
+
+  AddSubtractMath({required this.a, required this.b, required super.result, required this.operand}) : super(id: "addsubtract");
+  factory AddSubtractMath.fromJson(Map input) => _$AddSubtractMathFromJson(input);
+  @override Map toJson() => _toJson(_$AddSubtractMathToJson);
+
+  @override
+  String toString() {
+    return "$a ${switch (operand) {
+      Operand.add => "+",
+      Operand.subtract => "-",
+      Operand.multiply => "x",
+      Operand.divide => "/",
+    }} $b";
+  }
+}
+
+@JsonSerializable(anyMap: true)
+class MultDivMath extends Math {
+  final int a;
+  final int b;
+  final Operand operand;
+
+  MultDivMath({required this.a, required this.b, required super.result, required this.operand}) : super(id: "multdiv");
+  factory MultDivMath.fromJson(Map input) => _$MultDivMathFromJson(input);
+  @override Map toJson() => _toJson(_$MultDivMathToJson);
+
+  @override
+  String toString() {
+    return "$a ${switch (operand) {
+      Operand.add => "+",
+      Operand.subtract => "-",
+      Operand.multiply => "x",
+      Operand.divide => "/",
+    }} $b";
+  }
+}
+
+@JsonSerializable(anyMap: true)
+class SquareMath extends Math {
+  final int a;
+  final int b;
+
+  SquareMath({required this.a, required this.b, required super.result}) : super(id: "square");
+  factory SquareMath.fromJson(Map input) => _$SquareMathFromJson(input);
+  @override Map toJson() => _toJson(_$SquareMathToJson);
+
+  @override
+  String toString() {
+    return "$a${toSuperscript(b)}";
+  }
+
+  static String toSuperscript(int n) {
+    const superscripts = ['⁰', '¹', '²', '³', '⁴', '⁵', '⁶', '⁷', '⁸', '⁹'];
+    return n.toString().split('').map((d) => superscripts[int.parse(d)]).join();
+  }
+}
+
+enum Operand {
+  add,
+  subtract,
+  multiply,
+  divide,
 }

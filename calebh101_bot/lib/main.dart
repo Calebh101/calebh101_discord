@@ -2,8 +2,8 @@ import 'dart:math';
 
 import 'package:calebh101_bot/plugins/math.dart';
 import 'package:calebh101_bot/plugins/xp.dart';
-import 'package:calebh101_bot/types.dart';
 import 'package:calebh101_discord/calebh101_discord.dart';
+import 'package:calebh101_discord/recursive_caster.g.dart';
 import 'package:collection/collection.dart';
 
 final double maxXpPerHour = 1;
@@ -51,6 +51,7 @@ void main(List<String> arguments) => onStart = () async {
 
     commands: (plugin) => [
       BotCommand.converter((plugin) => plugin.getConverter(RuntimeType<GuildTextChannel>(), logWarn: false)),
+      StringList.converter(),
       defaultCheck(store),
 
       pingCommand(),
@@ -156,7 +157,7 @@ class Calebh101BotServerSettings extends ServerSettings {
   SettingsObject<bool> get xpEnabled => SettingsObject(this, "xpEnabled");
   SettingsObject<Snowflake> get mathChannel => SettingsObject(this, "mathChannel", encodeFunction: (input) => input.value, decodeFunction: (input) => input is int ? Snowflake(input) : null);
   SettingsObject<Math> get currentMath => SettingsObject(this, "currentMath", encodeFunction: (input) => input.toJson(), decodeFunction: (input) => input != null ? Math.fromJson(input) : null);
-  SettingsObject<bool> get mathMultDiv => SettingsObject(this, "mathMultDiv");
+  SettingsObject<List<String>> get allowedMathTypes => SettingsObject(this, "allowedMathTypes", encodeFunction: (input) => input as List, decodeFunction: (input) => RecursiveCaster.cast<List<String>>(input));
 
   Calebh101BotServerSettings(super.store, super.id);
 }
