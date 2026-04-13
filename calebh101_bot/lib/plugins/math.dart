@@ -21,6 +21,8 @@ class MathPlugin extends BotPlugin {
 
   @override FutureOr<List<BotCommand>> commands(CommandsPlugin plugin, KVStore store) {
     return [
+      enumConverter(Symbol.values),
+
       BotCommand("setmathchannel", "Math", "Set the channel for mathing. Pass without a value to disable.", (ChatContext context, [GuildTextChannel? channel]) async {
         if (await context.assureGuild() == false) return;
         final settings = Calebh101BotServerSettings(store, context.guild!.id);
@@ -86,6 +88,9 @@ class MathPlugin extends BotPlugin {
           "All types: ${all.join(", ").toDiscordCodeString()}",
         ].join("\n")));
       }),
+      BotCommand("mathsymbol", "Math", "Print a math symbol.", (ChatContext context, Symbol symbol) async {
+        await context.respond(MessageBuilder(content: symbol.symbol.toDiscordCodeBlock()));
+      }),
     ];
   }
 
@@ -125,37 +130,37 @@ class MathPlugin extends BotPlugin {
     switch (id) {
       case "multdiv":
       case "addsubtract":
-        final allowed = id == "addsubtract" ? [Operand.add, Operand.subtract] : [Operand.multiply, Operand.divide];
-        final operand = allowed[Random().nextInt(allowed.length)];
+        final allowed = id == "addsubtract" ? [Symbol.add, Symbol.subtract] : [Symbol.multiply, Symbol.divide];
+        final symbol = allowed[Random().nextInt(allowed.length)];
 
         late final int a;
         late final int b;
         late final int r;
 
-        switch (operand) {
-          case Operand.add:
+        switch (symbol) {
+          case Symbol.add:
             a = Random().nextInt(50) + 1;
             b = Random().nextInt(50) + 1;
             r = a + b;
             break;
-          case Operand.subtract:
+          case Symbol.subtract:
             a = Random().nextInt(100) + 1;
             b = Random().nextInt(a) + 1;
             r = a - b;
             break;
-          case Operand.multiply:
+          case Symbol.multiply:
             a = Random().nextInt(30) + 1;
             b = Random().nextInt(6) + 2;
             r = a * b;
             break;
-          case Operand.divide:
+          case Symbol.divide:
             b = Random().nextInt(5) + 2;
             r = Random().nextInt(10) + 1;
             a = r * b;
             break;
         }
 
-        return id == "multdiv" ? MultDivMath(a: a, b: b, result: r, operand: operand) : AddSubtractMath(a: a, b: b, result: r, operand: operand);
+        return id == "multdiv" ? MultDivMath(a: a, b: b, result: r, symbol: symbol) : AddSubtractMath(a: a, b: b, result: r, symbol: symbol);
       case "exponent":
         final int a = Random().nextInt(9) + 2;
         final int b = Random().nextInt(1) + 2;
@@ -205,20 +210,15 @@ abstract class Math {
 class AddSubtractMath extends Math {
   final int a;
   final int b;
-  final Operand operand;
+  final Symbol symbol;
 
-  AddSubtractMath({required this.a, required this.b, required super.result, required this.operand}) : super(id: "addsubtract");
+  AddSubtractMath({required this.a, required this.b, required super.result, required this.symbol}) : super(id: "addsubtract");
   factory AddSubtractMath.fromJson(Map input) => _$AddSubtractMathFromJson(input);
   @override Map toJson() => _toJson(_$AddSubtractMathToJson);
 
   @override
   String toString() {
-    return "$a ${switch (operand) {
-      Operand.add => "+",
-      Operand.subtract => "-",
-      Operand.multiply => "x",
-      Operand.divide => "/",
-    }} $b";
+    return "$a ${symbol.symbol} $b";
   }
 }
 
@@ -226,20 +226,15 @@ class AddSubtractMath extends Math {
 class MultDivMath extends Math {
   final int a;
   final int b;
-  final Operand operand;
+  final Symbol symbol;
 
-  MultDivMath({required this.a, required this.b, required super.result, required this.operand}) : super(id: "multdiv");
+  MultDivMath({required this.a, required this.b, required super.result, required this.symbol}) : super(id: "multdiv");
   factory MultDivMath.fromJson(Map input) => _$MultDivMathFromJson(input);
   @override Map toJson() => _toJson(_$MultDivMathToJson);
 
   @override
   String toString() {
-    return "$a ${switch (operand) {
-      Operand.add => "+",
-      Operand.subtract => "-",
-      Operand.multiply => "x",
-      Operand.divide => "/",
-    }} $b";
+    return "$a ${symbol.symbol} $b";
   }
 }
 
@@ -263,9 +258,18 @@ class ExponentMath extends Math {
   }
 }
 
-enum Operand {
+enum Symbol {
   add,
   subtract,
   multiply,
-  divide,
+  divide;
+
+  String get symbol {
+    return switch (this) {
+      Symbol.add => "+",
+      Symbol.subtract => "-",
+      Symbol.multiply => "x",
+      Symbol.divide => "/",
+    };
+  }
 }

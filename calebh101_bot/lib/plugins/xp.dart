@@ -130,7 +130,7 @@ class XPPlugin extends BotPlugin {
         await addXp(null, guild, member.user!, -amount.toDouble(), client: context.client);
         await context.respond(MessageBuilder(content: "${await memberToString(member, client: context.client)} bet **$amount** and *lost*. That puts them at **${roundXp(current - amount)}** XP."));
       }
-    }, CommandAttributes(category: "XP", extendedDescription: "- Each bet has to be a multiple of 10.\n- The more you bet, the less chance you have to win.\n- ")),
+    }, CommandAttributes(category: "XP", extendedDescription: "- Each bet has to be a multiple of 10.\n- The more you bet, the less chance you have to win.")),
     BotCommand.command("xplevels", "List all set XP levels.", (ChatContext context) async {
       if (context.guild == null) return context.respondWithError("No guild found.");
       final settings = Calebh101BotServerSettings(store, context.guild!.id);

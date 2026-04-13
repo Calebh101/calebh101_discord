@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:calebh101_discord/calebh101_discord.dart';
+import 'package:nyxx_commands/src/mirror_utils/function_data.dart';
 import 'package:collection/collection.dart';
 
 class HelpPlugin extends BotPlugin {
@@ -9,7 +10,7 @@ class HelpPlugin extends BotPlugin {
   @override
   FutureOr<List<BotCommand>> commands(CommandsPlugin plugin, KVStore store) {
     return [
-      helpCommand(store),
+      helpCommand(store, plugin),
       BotCommand("plugins", "Help", "List all plugins.", (ChatContext context) async {
         final plugins = pluginStore.plugins;
 
@@ -39,10 +40,13 @@ class HelpPlugin extends BotPlugin {
           })),
         ), settings: context.guild != null ? ServerSettings(store, context.guild!.id) : null);
       }),
+      BotCommand("dumphelp", "Help", "Dump all help as markdown.", (ChatContext context) {
+        context.respondWithError("This command is not implemented yet.");
+      }),
     ];
   }
 
-  BotCommand helpCommand(KVStore store, {bool useCategories = true}) => BotCommand.command("help", "Show help for all commands, or a specific command${useCategories ? "/category" : ""}.", (ChatContext context, [@Description("Command or category to search.") String? command, bool dump = false]) async {
+  BotCommand helpCommand(KVStore store, CommandsPlugin plugin, {bool useCategories = true}) => BotCommand.command("help", "Show help for all commands, or a specific command${useCategories ? "/category" : ""}.", (ChatContext context, [@Description("Command or category to search.") String? command, bool dump = false]) async {
     Logger.print("Help", "Loading help with input $command (dump=$dump)");
     if (command?.trim() == "all") command = null;
     final settings = context.guild != null ? ServerSettings(store, context.guild!.id) : null;
@@ -106,11 +110,23 @@ class HelpPlugin extends BotPlugin {
         final c = commands.firstWhereOrNull((x) => x.key == command)?.value;
         if (c == null) return context.respondWithError("Invalid command${useCategories ? "/category" : ""}: `$command`");
 
+        String argumentToString(ParameterData arg) {
+          final converter = plugin.getConverter(arg.type);
+
+          if (converter != null && converter.choices != null && converter.choices!.isNotEmpty) {
+            final choices = converter.choices!.map((x) => x.name);
+            return "${arg.name} [${choices.join(", ")}]";
+          } else {
+            return "${arg.name} (${arg.type.internalType})";
+          }
+        }
+
         await context.respond(MessageBuilder(embeds: [
           EmbedBuilder(
             title: "Command `${c.name}`",
             color: await getPrimaryColor(context.member) ?? primaryBotColor,
             description: [
+              "${c.name} ${(c.command as ChatCommand).arguments.map((x) => argumentToString(x)).join(" ")}".toDiscordCodeBlock(),
               "Category: ${c.category}",
               getDescription(c),
               if (getPerms(c) != null) "Requires perms: `${getPerms(c)}`",
