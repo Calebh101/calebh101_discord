@@ -1,6 +1,7 @@
 import 'dart:math';
 
 import 'package:calebh101_bot/plugins/math.dart';
+import 'package:calebh101_bot/plugins/rules.dart';
 import 'package:calebh101_bot/plugins/xp.dart';
 import 'package:calebh101_discord/calebh101_discord.dart';
 import 'package:calebh101_discord/recursive_caster.g.dart';
@@ -34,6 +35,7 @@ void main(List<String> arguments) => onStart = () async {
     ModerationPlugin(),
     MathPlugin(),
     ModlogPlugin(),
+    RulesPlugin(),
   ]);
 
   final context = await load(
@@ -59,7 +61,7 @@ void main(List<String> arguments) => onStart = () async {
       BotCommand.converter((plugin) => plugin.getConverter(RuntimeType<GuildTextChannel>(), logWarn: false)),
       defaultCheck(store),
 
-      StringList.converter(),
+      StringList.converter().toBotCommand(),
       GreedyString.converter(),
 
       BotCommand.command("fart", "Fart.", (ChatContext context, [int amount = 1]) async {
@@ -151,7 +153,8 @@ class Calebh101BotServerSettings extends ServerSettings {
   SettingsObject<bool> get xpEnabled => SettingsObject(this, "xpEnabled");
   SettingsObject<Snowflake> get mathChannel => SettingsObject(this, "mathChannel", encodeFunction: (input) => input.value, decodeFunction: (input) => input is int ? Snowflake(input) : null);
   SettingsObject<Math> get currentMath => SettingsObject(this, "currentMath", encodeFunction: (input) => input.toJson(), decodeFunction: (input) => input != null ? Math.fromJson(input) : null);
-  SettingsObject<List<String>> get allowedMathTypes => SettingsObject(this, "allowedMathTypes", encodeFunction: (input) => input as List, decodeFunction: (input) => RecursiveCaster.cast<List<String>>(input));
+  SettingsObject<List<String>> get allowedMathTypes => SettingsObject(this, "allowedMathTypes", encodeFunction: (input) => input as List?, decodeFunction: (input) => RecursiveCaster.cast<List<String>>(input));
+  SettingsObject<Map<int, String>> get rules => SettingsObject(this, "rules", encodeFunction: (input) => input.map((k, v) => MapEntry(k.toString(), v)), decodeFunction: (input) => input is Map ? input.map((k, v) => MapEntry(int.parse(k), v)) : null);
 
   Calebh101BotServerSettings(super.store, super.id);
 }

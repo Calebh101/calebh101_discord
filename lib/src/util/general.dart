@@ -60,3 +60,19 @@ extension PrettyDuration on Duration {
     return '${inDays}d ${inHours.remainder(24)}h';
   }
 }
+
+T? tryCatch<T>(T? Function() callback, {T? Function(Object e)? onCatch}) {
+  try {
+    return callback.call();
+  } catch (e) {
+    return onCatch?.call(e);
+  }
+}
+
+Future<T?> tryCatchA<T>(FutureOr<T>? Function() callback, {FutureOr<T?> Function(Object e)? onCatch}) async {
+  try {
+    return await callback.call();
+  } catch (e) {
+    return await onCatch?.call(e);
+  }
+}

@@ -163,7 +163,7 @@ class MathPlugin extends BotPlugin {
         return id == "multdiv" ? MultDivMath(a: a, b: b, result: r, symbol: symbol) : AddSubtractMath(a: a, b: b, result: r, symbol: symbol);
       case "exponent":
         final int a = Random().nextInt(9) + 2;
-        final int b = Random().nextInt(1) + 2;
+        final int b = Random().nextInt(2) + 2;
         return ExponentMath(a: a, b: b, result: pow(a, b).toInt());
     }
 

@@ -17,10 +17,23 @@ class StringList {
     return "$data";
   }
 
-  static BotCommand converter() {
-    return BotCommand.converter((_) => Converter<StringList>((value, context) {
+  static BotConverter converter() {
+    return BotConverter("StringList", (_) => Converter<StringList>((value, context) {
       final data = value.getQuotedWord().split(",").map((x) => x.trim()).where((x) => x.isNotEmpty).toList();
       if (data.isNotEmpty) return StringList(data);
+      return null;
+    }));
+  }
+}
+
+class GreedyStringList extends StringList {
+  const GreedyStringList(super.data);
+
+  static BotConverter converter() {
+    return BotConverter("GreedyStringList", (_) => Converter<GreedyStringList>((value, context) {
+      final data = value.remaining.split(",").map((x) => x.trim()).where((x) => x.isNotEmpty).toList();
+      value.index = value.end;
+      if (data.isNotEmpty) return GreedyStringList(data);
       return null;
     }));
   }
