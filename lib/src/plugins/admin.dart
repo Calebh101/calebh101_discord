@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:calebh101_discord/calebh101_discord.dart';
+import 'package:collection/collection.dart';
 
 class AdminPlugin extends BotPlugin {
   AdminPlugin() : super(id: "admin", version: Version.parse("1.0.0A"));
@@ -358,5 +359,21 @@ class AdminPlugin extends BotPlugin {
         content: "All settings for *${context.guild?.name}*:\n${all.map((x) => "- `${x.key}`: `${x.value}`").join("\n")}",
       ), level: ResponseLevel.private);
     }, CommandAttributes(permissionsRequired: BotCommandPermissions.admin, category: "Server")),
+    BotCommand("listadmin", "Admin", "List all admin roles/users.", (ChatContext context) async {
+      if (await context.assureGuild() == false) return;
+      final settings = ServerSettings(store, context.guild!.id);
+      final raw = settings.admins.get() ?? [];
+      final all = raw.map((x) => (type: x["type"] as String, id: x["id"] as String)).sorted((a, b) => a.id.compareTo(b.id));
+      if (all.isEmpty) return context.respondWithError("No admins set.");
+
+      await respondWithPagination(context, PaginatedEmbedBuilder(
+        title: "All Admin Roles",
+        color: await getColor(context.member),
+        pages: EmbedPage.generateFromItems(all.map((x) {
+          final id = Snowflake(int.parse(x.id));
+          return "- ${x.type.toDiscordCodeString()} ${x.type == "role" ? id.value.toRoleMention() : id.value.toMention()}";
+        }).toList()),
+      ), settings: settings);
+    }),
   ];
 }
