@@ -20,6 +20,7 @@ class BotCommand {
     command = ChatCommand(name, description, id(name, execute), options: options ?? CommandOptions());
   }
 
+  @Deprecated("Use BotConverter instead.")
   BotCommand.converter(this.converter);
   BotCommand.check(this.check);
 
@@ -38,6 +39,17 @@ class BotCommand {
     }
 
     return results;
+  }
+}
+
+class BotConverter {
+  final String id;
+  final Converter? Function(CommandsPlugin plugin) callback;
+
+  const BotConverter(this.id, this.callback);
+
+  BotCommand toBotCommand() {
+    return BotCommand.converter(callback);
   }
 }
 

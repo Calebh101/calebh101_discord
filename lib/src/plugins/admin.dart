@@ -348,5 +348,15 @@ class AdminPlugin extends BotPlugin {
       ignoreOwner = !ignoreOwner;
       await context.respond(MessageBuilder(content: "Owner is now **${ignoreOwner ? "temporarily ignored": "unignored"}**."));
     }, CommandAttributes(category: "Debug", permissionsRequired: BotCommandPermissions.owner)),
+    BotCommand.command("allsettings", "List all settings for this server. Admin only.", (ChatContext context) async {
+      if (context.guild == null || context.member == null) return context.respondWithError("No guild/member found.");
+      final settings = ServerSettings(store, context.guild!.id);
+      if (await context.assurePerms(BotCommandPermissions.admin, settings) == false) return;
+      final all = settings.getAll().entries;
+
+      context.respond(MessageBuilder(
+        content: "All settings for *${context.guild?.name}*:\n${all.map((x) => "- `${x.key}`: `${x.value}`").join("\n")}",
+      ), level: ResponseLevel.private);
+    }, CommandAttributes(permissionsRequired: BotCommandPermissions.admin, category: "Server")),
   ];
 }

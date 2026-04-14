@@ -27,6 +27,10 @@ class PluginStore {
   Future<List<BotCommand>> commands(CommandsPlugin plugin, KVStore store) async {
     return (await Future.wait(plugins.map((x) => x.commands(plugin, store).toFuture()))).flatten().toList();
   }
+
+  Future<List<BotConverter>> converters(CommandsPlugin plugin, KVStore store) async {
+    return (await Future.wait(plugins.map((x) => x.converters(plugin, store).toFuture()))).flatten().toList();
+  }
 }
 
 abstract class BotPlugin {
@@ -43,6 +47,7 @@ abstract class BotPlugin {
   Future<void> onRegister() async {}
   Future<void> onClientLoad(BotContext context) async {}
   FutureOr<List<BotCommand>> commands(CommandsPlugin plugin, KVStore store) => [];
+  FutureOr<List<BotConverter>> converters(CommandsPlugin plugin, KVStore store) => [];
   FutureOr<List<ModlogGroupCollection>> modlogGroups() => [];
 
   @override

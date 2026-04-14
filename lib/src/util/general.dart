@@ -51,3 +51,12 @@ Future<Member?> userToMember(User? user, {required Guild? guild}) async {
     return null;
   }
 }
+
+extension PrettyDuration on Duration {
+  String pretty() {
+    if (inSeconds < 60) return '${inSeconds}s';
+    if (inMinutes < 60) return '${inMinutes}m ${inSeconds.remainder(60)}s';
+    if (inHours < 24) return '${inHours}h ${inMinutes.remainder(60)}m';
+    return '${inDays}d ${inHours.remainder(24)}h';
+  }
+}

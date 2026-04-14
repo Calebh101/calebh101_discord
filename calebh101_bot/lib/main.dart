@@ -8,7 +8,7 @@ import 'package:collection/collection.dart';
 
 final double maxXpPerHour = 1;
 final double xpPerReaction = 0.01;
-final double Function(String content) xpPerMessage = (content) => min(content.length / 1000, 0.2); // Message length of 200+ => 0.2, 20 => 0.02, 2 => 0.02
+final double Function(String content) xpPerMessage = (content) => double.parse(min(content.length / 1000, 0.2).toStringAsFixed(3)); // Message length of 200+ => 0.2, 20 => 0.02, 2 => 0.02
 
 final store = KVStore("database.db");
 final tokens = BotTokenStore("settings.json");
@@ -26,8 +26,14 @@ void main(List<String> arguments) => onStart = () async {
     SelfReactPlugin(),
     BotManagePlugin(),
     HelpPlugin(),
+    IgnorePlugin(),
+    MessagesPlugin(),
+    PrefixPlugin(),
+    StatsPlugin(),
     XPPlugin(),
+    ModerationPlugin(),
     MathPlugin(),
+    ModlogPlugin(),
   ]);
 
   final context = await load(
@@ -51,22 +57,10 @@ void main(List<String> arguments) => onStart = () async {
 
     commands: (plugin) => [
       BotCommand.converter((plugin) => plugin.getConverter(RuntimeType<GuildTextChannel>(), logWarn: false)),
-      StringList.converter(),
       defaultCheck(store),
 
-      pingCommand(),
-      messageMe(),
-      sendMessageAs(),
-      aboutCommand(store),
-      statusCommand(),
-
-      listAllServerSettings((x) => Calebh101BotServerSettings(store, x.id)),
-      deleteMyMessageCommand((x) => Calebh101BotServerSettings(store, x.id)),
-      editMyMessageCommand((x) => Calebh101BotServerSettings(store, x.id)),
-
-      ...modLogCommands((x) => Calebh101BotServerSettings(store, x.id)),
-      ...prefixCommands((x) => Calebh101BotServerSettings(store, x.id)),
-      ...ignoreCommands(store),
+      StringList.converter(),
+      GreedyString.converter(),
 
       BotCommand.command("fart", "Fart.", (ChatContext context, [int amount = 1]) async {
         if (amount != 1 && !isOwner(id: context.user.id)) return context.respondWithError("You cannot control the amount.");
