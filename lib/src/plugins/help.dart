@@ -50,7 +50,7 @@ class HelpPlugin extends BotPlugin {
     Logger.print("Help", "Loading help with input $command (dump=$dump)");
     if (command?.trim() == "all") command = null;
     final settings = context.guild != null ? ServerSettings(store, context.guild!.id) : null;
-    final commands = BotCommand.commands.entries.toList()..sort((a, b) => a.value.name.compareTo(b.value.name));
+    final commands = BotCommand.commandRegistry.entries.toList()..sort((a, b) => a.value.name.compareTo(b.value.name));
     final categories = BotCommand.getAllCategories();
     PaginatedEmbedBuilder? embed;
 
@@ -62,6 +62,14 @@ class HelpPlugin extends BotPlugin {
       return command.permissionsRequired == BotCommandPermissions.any ? null : command.permissionsRequired.name;
     }
 
+    String aliases(BotCommand command) {
+      return "(AKA ${command.aliases!.join(", ")})";
+    }
+
+    String getName(BotCommand command) {
+      return [command.name, if (command.aliases != null) aliases(command)].join(" ");
+    }
+
     if (command == null) {
       embed = PaginatedEmbedBuilder(
         title: "All Commands for $globalBotName",
@@ -70,7 +78,7 @@ class HelpPlugin extends BotPlugin {
         color: await getPrimaryColor(context.member) ?? primaryBotColor,
         pages: EmbedPage.generate(List.generate(commands.length, (i) {
           final command = commands.elementAt(i).value;
-          return EmbedFieldBuilder(name: [command.name, command.category].join(" - "), value: [getDescription(command), if (getPerms(command) != null) "Requires perms: `${getPerms(command)}`"].join(" "), isInline: false);
+          return EmbedFieldBuilder(name: [getName(command), command.category].join(" - "), value: [getDescription(command), if (getPerms(command) != null) "Requires perms: `${getPerms(command)}`"].join(" "), isInline: false);
         })),
       );
     } else if (command.trim() == "categories") {
@@ -100,9 +108,9 @@ class HelpPlugin extends BotPlugin {
           pages: EmbedPage.generate(List.generate(commandsInCategory.length, (i) {
             final command = commandsInCategory.elementAt(i).value;
 
-            return EmbedFieldBuilder(name: command.name, value: [
+            return EmbedFieldBuilder(name: getName(command), value: [
               getDescription(command),
-              if (getPerms(command) != null) "Requires perms: `${getPerms(command)}`",
+              if (getPerms(command) != null) "\nRequires perms: `${getPerms(command)}`",
             ].join(" "), isInline: false);
           })),
         );
@@ -126,10 +134,11 @@ class HelpPlugin extends BotPlugin {
             title: "Command `${c.name}`",
             color: await getPrimaryColor(context.member) ?? primaryBotColor,
             description: [
+              if (c.aliases != null) aliases(c),
               "${c.name} ${(c.command as ChatCommand).arguments.map((x) => argumentToString(x)).join(" ")}".toDiscordCodeBlock(),
               "Category: ${c.category}",
-              getDescription(c),
               if (getPerms(c) != null) "Requires perms: `${getPerms(c)}`",
+              getDescription(c),
               if (c.extendedDescription != null) "\n${c.extendedDescription}",
             ].join("\n"),
           ),

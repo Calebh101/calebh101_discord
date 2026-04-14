@@ -1,4 +1,5 @@
 import 'package:calebh101_discord/calebh101_discord.dart';
+import 'package:collection/collection.dart';
 
 class BotCommand {
   Converter? Function(CommandsPlugin plugin)? converter;
@@ -6,6 +7,7 @@ class BotCommand {
   Command? command;
 
   late String name;
+  late final List<String>? aliases;
   late final String category;
   late final String description;
   late final Function execute;
@@ -14,10 +16,14 @@ class BotCommand {
   String? extendedDescription;
   CommandOptions? options;
 
-  BotCommand(this.name, this.category, this.description, this.execute, {this.permissionsRequired = BotCommandPermissions.any, this.extendedDescription, this.enforcePermissions = true}) {
-    commands[name] = this;
+  BotCommand(this.name, this.category, this.description, this.execute, {this.permissionsRequired = BotCommandPermissions.any, this.extendedDescription, this.enforcePermissions = true, this.aliases}) {
+    if (dev && aliases != null) for (int i = 0; i < (aliases?.length ?? 0); i++) {
+      aliases![i] = "dev_${aliases![i]}";
+    }
+
+    commandRegistry[name] = this;
     if (dev) name = "dev_$name";
-    command = ChatCommand(name, description, id(name, execute), options: options ?? CommandOptions());
+    command = ChatCommand(name, description, id(name, execute), options: options ?? CommandOptions(), aliases: aliases ?? []);
   }
 
   @Deprecated("Use BotConverter instead.")
@@ -29,16 +35,20 @@ class BotCommand {
     return BotCommand(name, attributes.category, description, execute, extendedDescription: attributes.extendedDescription, permissionsRequired: attributes.permissionsRequired, enforcePermissions: false);
   }
 
-  static Map<String, BotCommand> commands = {};
+  static Map<String, BotCommand> commandRegistry = {};
 
   static Map<String, int> getAllCategories() {
     Map<String, int> results = {};
 
-    for (final x in commands.entries) {
+    for (final x in commandRegistry.entries) {
       results[x.value.category] = (results[x.value.category] ?? 0) + 1;
     }
 
     return results;
+  }
+
+  static BotCommand? getCommand(String name) {
+    return commandRegistry.entries.firstWhereOrNull((x) => x.key == name || (x.value.aliases ?? []).any((x) => x == name))?.value;
   }
 }
 
@@ -71,7 +81,7 @@ class CommandAttributes {
 BotCommand defaultCheck(KVStore store) => BotCommand.check((plugin) {
   return Check((context) async {
     if (isIgnored(store, context.user.id)) return false;
-    final command = BotCommand.commands[context.command.name.replaceFirst("dev_", "")];
+    final command = BotCommand.getCommand(context.command.name.replaceFirst("dev_", ""));
 
     if (command == null) {
       Logger.error("Check", "Invalid command: ${context.command.name}");

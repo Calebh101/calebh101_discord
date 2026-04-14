@@ -84,7 +84,7 @@ class ModerationPlugin extends BotPlugin {
             color: await getColor(context.member),
           ),
         ]));
-      }, permissionsRequired: BotCommandPermissions.admin),
+      }, permissionsRequired: BotCommandPermissions.admin, aliases: ["untimeout", "remtimeout"]),
     ];
   }
 }
