@@ -48,6 +48,17 @@ abstract class BotPlugin {
   Future<void> onClientLoad(BotContext context) async {}
   FutureOr<List<BotCommand>> commands(CommandsPlugin plugin, KVStore store) => [];
   FutureOr<List<BotConverter>> converters(CommandsPlugin plugin, KVStore store) => [];
+
+  /// Template:
+  ///
+  /// ```dart
+  /// {
+  ///   ModlogGroup.all: (levelBelow) => {...levelBelow},
+  ///   ModlogGroup.normal: (levelBelow) => {...levelBelow},
+  ///   ModlogGroup.quiet: (levelBelow) => {...levelBelow},
+  ///   ModlogGroup.off: (_) => {},
+  /// }
+  /// ```
   FutureOr<List<ModlogGroupCollection>> modlogGroups() => [];
 
   @override

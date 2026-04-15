@@ -14,10 +14,10 @@ class AdminPlugin extends BotPlugin {
   @override
   FutureOr<List<ModlogGroupCollection>> modlogGroups() {
     return [{
-      ModLogGroup.all: (levelBelow) => {...levelBelow},
-      ModLogGroup.normal: (levelBelow) => {...levelBelow},
-      ModLogGroup.quiet: (levelBelow) => {...levelBelow, "adminuser.add", "adminuser.remove", "adminrole.add", "adminrole.remove", "claim"},
-      ModLogGroup.off: (_) => {},
+      ModlogGroup.all: (levelBelow) => {...levelBelow},
+      ModlogGroup.normal: (levelBelow) => {...levelBelow},
+      ModlogGroup.quiet: (levelBelow) => {...levelBelow, "adminuser.add", "adminuser.remove", "adminrole.add", "adminrole.remove", "claim"},
+      ModlogGroup.off: (_) => {},
     }];
   }
 
@@ -297,12 +297,22 @@ class AdminPlugin extends BotPlugin {
         ),
       ]));
     }, CommandAttributes(category: "Bot")),
-    BotCommand.command("attributes", "See your attributes.", (ChatContext context, [@Description('The member to check') Member? member]) async {
-      final m = member ?? context.member;
-      final u = m?.user ?? context.user;
+    BotCommand.command("attributes", "See your attributes.", (ChatContext context, [@Description('The member to check') User? user]) async {
+      final u = user ?? context.user;
+      final m = await userToMember(u, guild: context.guild);
       List<String> attributes = ["Alive"];
 
-      if (context.guild != null && context.member != null) {
+      final inServer = await () async {
+        try {
+          if (context.guild == null || context.member == null) return false;
+          final _ = await context.guild!.members.get(u.id);
+          return true;
+        } catch (_) {
+          return false;
+        }
+      }();
+
+      if (inServer) {
         attributes.add("In *${context.guild!.name}*");
         final settings = ServerSettings(store, context.guild!.id);
 
@@ -334,6 +344,37 @@ class AdminPlugin extends BotPlugin {
 
       if (globalOwner != null && globalOwner!.id == u.id) {
         attributes.add("Owner");
+      }
+
+      final userSettings = UserSettings(store, u.id);
+      final warns = userSettings.warns.get() ?? [];
+      if (warns.isNotEmpty) attributes.add("${warns.length} warns (most recent: ${warns.first.timestamp.toDiscordTimestamp(DiscordTimestamp.shortDateTime)})");
+
+      if (context.guild != null) {
+        Future<bool> isBanned() async {
+          try {
+            await context.guild!.manager.fetchBan(context.guild!.id, u.id);
+            return true;
+          } catch (e) {
+            return false;
+          }
+        }
+
+        Future<DateTime?> getTimeout() async {
+          try {
+            final member = await context.guild!.members.fetch(u.id);
+            bool isTimedOut = member.communicationDisabledUntil != null &&  member.communicationDisabledUntil!.isAfter(DateTime.now());
+            return isTimedOut ? member.communicationDisabledUntil : null;
+          } catch (e) {
+            return null;
+          }
+        }
+
+        final timeout = await getTimeout();
+        if (timeout != null) attributes.add("Timed out until ${timeout.toDiscordTimestamp(DiscordTimestamp.shortDateTime)}");
+
+        final guild = context.guild!;
+        if (await isBanned()) attributes.add("Banned from *${guild.name}*");
       }
 
       try {

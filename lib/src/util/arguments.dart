@@ -50,7 +50,8 @@ class GreedyString {
 
   static BotCommand converter() {
     return BotCommand.converter((_) => Converter<GreedyString>((value, context) {
-      final result = GreedyString(value.remaining);
+      if (value.remaining.trim().isEmpty) return null;
+      final result = GreedyString(value.remaining.trim());
       value.index = value.end;
       return result;
     }));
@@ -60,22 +61,6 @@ class GreedyString {
 BotConverter durationConverter() {
   return BotConverter("duration", (_) => Converter<Duration>((value, context) {
     final text = value.getQuotedWord();
-
-    final regex = RegExp(
-      r'(?:(\d+)y)?(?:(\d+)mo)?(?:(\d+)w)?(?:(\d+)d)?(?:(\d+)h)?(?:(\d+)m)?(?:(\d+)s)?',
-    );
-
-    final match = regex.firstMatch(text);
-    if (match == null) return null;
-
-    return Duration(
-      days: (int.tryParse(match[1] ?? '') ?? 0) * 365  // years
-        + (int.tryParse(match[2] ?? '') ?? 0) * 30     // months ~
-        + (int.tryParse(match[3] ?? '') ?? 0) * 7      // weeks
-        + (int.tryParse(match[4] ?? '') ?? 0),         // days
-      hours: int.tryParse(match[5] ?? '') ?? 0,
-      minutes: int.tryParse(match[6] ?? '') ?? 0,
-      seconds: int.tryParse(match[7] ?? '') ?? 0,
-    );
+    return parseDuration(text);
   }));
 }

@@ -1,6 +1,8 @@
 import 'dart:async';
+import 'dart:math';
 
 import 'package:calebh101_discord/calebh101_discord.dart';
+import 'package:collection/collection.dart';
 
 Future<DiscordColor> getColor([Member? member]) async {
   return await getPrimaryColor(member) ?? primaryBotColor;
@@ -46,7 +48,7 @@ Future<Member?> userToMember(User? user, {required Guild? guild}) async {
   if (user == null || guild == null) return null;
 
   try {
-    return guild.members.get(user.id);
+    return await guild.members.get(user.id);
   } catch (_) {
     return null;
   }
@@ -59,20 +61,78 @@ extension PrettyDuration on Duration {
     if (inHours < 24) return '${inHours}h ${inMinutes.remainder(60)}m';
     return '${inDays}d ${inHours.remainder(24)}h';
   }
+
+  String prettyDetailed() {
+    return "${inDays}d ${inHours.remainder(24)}h ${inMinutes.remainder(60)}m ${inSeconds.remainder(60)}s";
+  }
 }
 
-T? tryCatch<T>(T? Function() callback, {T? Function(Object e)? onCatch}) {
+extension GetMessages on MessageManager {
+  Future<List<Message>> fetchManyUnlimited(int amount) async {
+    assert(amount >= 1);
+    List<Message> results = [];
+    Snowflake? before;
+
+    while (results.length < amount) {
+      final limit = min(100, amount - results.length);
+      final messages = await fetchMany(limit: limit, before: before);
+
+      if (messages.isEmpty) break;
+
+      results.addAll(messages);
+      before = messages.last.id;
+    }
+
+    return results;
+  }
+}
+
+class Catch<T extends Object, R> {
+  final R? Function(T e) callback;
+  const Catch(this.callback);
+
+  bool checkType(dynamic input) {
+    return input is T;
+  }
+
+  factory Catch.rethrower() {
+    return Catch((e) => throw e);
+  }
+}
+
+T? tryCatch<T>(T? Function() callback, {T? Function(Object e)? onCatch, List<Catch<Object, T>> onCatchTyped = const []}) {
   try {
     return callback.call();
   } catch (e) {
-    return onCatch?.call(e);
+    final catchF = onCatchTyped.firstWhereOrNull((x) => x.checkType(e));
+    return catchF?.callback.call(e) ?? onCatch?.call(e);
   }
 }
 
-Future<T?> tryCatchA<T>(FutureOr<T>? Function() callback, {FutureOr<T?> Function(Object e)? onCatch}) async {
+Future<T?> tryCatchA<T>(FutureOr<T>? Function() callback, {FutureOr<T?> Function(Object e)? onCatch, List<Catch<Object, Future<T>>> onCatchTyped = const []}) async {
   try {
     return await callback.call();
   } catch (e) {
-    return await onCatch?.call(e);
+    final catchF = onCatchTyped.firstWhereOrNull((x) => x.checkType(e));
+    return await (catchF?.callback.call(e) ?? onCatch?.call(e));
   }
+}
+
+Duration? parseDuration(String text) {
+  final regex = RegExp(
+    r'(?:(\d+)y)?(?:(\d+)mo)?(?:(\d+)w)?(?:(\d+)d)?(?:(\d+)h)?(?:(\d+)m)?(?:(\d+)s)?',
+  );
+
+  final match = regex.firstMatch(text);
+  if (match == null) return null;
+
+  return Duration(
+    days: (int.tryParse(match[1] ?? '') ?? 0) * 365  // years
+      + (int.tryParse(match[2] ?? '') ?? 0) * 30     // months ~
+      + (int.tryParse(match[3] ?? '') ?? 0) * 7      // weeks
+      + (int.tryParse(match[4] ?? '') ?? 0),         // days
+    hours: int.tryParse(match[5] ?? '') ?? 0,
+    minutes: int.tryParse(match[6] ?? '') ?? 0,
+    seconds: int.tryParse(match[7] ?? '') ?? 0,
+  );
 }

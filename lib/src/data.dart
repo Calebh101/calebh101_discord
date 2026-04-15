@@ -305,6 +305,8 @@ class BotSettings extends EntitySettings {
   }
 }
 
+T? ifGuild<T extends ServerSettings>(KVStore store, Snowflake? id, T Function(Snowflake id) create) => id != null ? create.call(id) : null;
+
 class ServerSettings extends EntitySettings {
   ServerSettings(super.store, Snowflake id) : super(id: id.toString(), scope: Scope.server);
 
@@ -314,10 +316,14 @@ class ServerSettings extends EntitySettings {
   SettingsObject<int> get modlogChannel => SettingsObject(this, "modlogChannel");
   SettingsObject<List<String>> get modlog => SettingsObject(this, "modlogScopes", encodeFunction: (input) => input as List, decodeFunction: (input) => RecursiveCaster.cast<List<String>>(input));
   SettingsObject<bool> get selfReactAllowed => SettingsObject(this, "selfReactAllowed");
+  SettingsObject<int> get banMessageRemovalSeconds => SettingsObject(this, "banMessageRemovalSeconds");
+  SettingsObject<int> get kickMessageRemovalSeconds => SettingsObject(this, "kickMessageRemovalSeconds");
 }
 
 class UserSettings extends EntitySettings {
   UserSettings(super.store, Snowflake id) : super(id: id.toString(), scope: Scope.user);
+
+  SettingsObject<List<Warn>> get warns => SettingsObject(this, "warns", encodeFunction: (input) => input.map((x) => x.toJson()).toList(), decodeFunction: (input) => (input as List?)?.map((x) => Warn.fromJson(x)).toList()?..sort((a, b) => b.timestamp.compareTo(a.timestamp)));
 }
 
 class UserPerServerSettings extends EntitySettings {

@@ -2,7 +2,7 @@ import 'package:calebh101_discord/calebh101_discord.dart';
 import 'package:collection/collection.dart';
 import 'package:localpkg/classes.dart';
 
-typedef ModlogGroupCollection = Map<ModLogGroup, Set<String> Function(Set<String> levelBelow)>;
+typedef ModlogGroupCollection = Map<ModlogGroup, Set<String> Function(Set<String> levelBelow)>;
 
 enum ModlogSeverity {
   verbose,
@@ -12,7 +12,7 @@ enum ModlogSeverity {
   error,
 }
 
-enum ModLogGroup {
+enum ModlogGroup {
   all,
   normal,
   quiet,
@@ -25,7 +25,7 @@ DiscordColor? modLogSeverityToColor(ModlogSeverity severity) {
     ModlogSeverity.log => DiscordColor.parseHexString("#808080"),
     ModlogSeverity.warning => DiscordColor.parseHexString("#FFFF00"),
     ModlogSeverity.severe => DiscordColor.parseHexString("#FF0000"),
-    ModlogSeverity.error => DiscordColor.parseHexString("#8B0000"),
+    ModlogSeverity.error => DiscordColor.parseHexString("#BB3333"),
   };
 }
 
@@ -41,24 +41,28 @@ class Modlog {
     addExtraGroups([group]);
   }
 
+  static void addIgnored(Set<String> events) {
+    ignoredEvents.addAll(events);
+  }
+
   static void addExtraGroups(List<ModlogGroupCollection> groups) {
     extraGroupCollections.addAll(groups);
-    events.addAll([...getGroup(ModLogGroup.all, addExtraGroups: false), ...groups.map((x) => getGroup(ModLogGroup.all, addExtraGroups: false, collection: x)).flatten()]);
+    events.addAll([...getGroup(ModlogGroup.all, addExtraGroups: false), ...groups.map((x) => getGroup(ModlogGroup.all, addExtraGroups: false, collection: x)).flatten()]);
   }
 
   static ModlogGroupCollection groups = {
-    ModLogGroup.all: (levelBelow) => {...levelBelow, "pagination", "prefix.change"},
-    ModLogGroup.normal: (levelBelow) => {...levelBelow},
-    ModLogGroup.quiet: (levelBelow) => {...levelBelow, "test"},
-    ModLogGroup.off: (_) => {},
+    ModlogGroup.all: (levelBelow) => {...levelBelow, "pagination", "prefix.change"},
+    ModlogGroup.normal: (levelBelow) => {...levelBelow},
+    ModlogGroup.quiet: (levelBelow) => {...levelBelow, "test"},
+    ModlogGroup.off: (_) => {},
   };
 
   static List<ModlogGroupCollection> extraGroupCollections = [];
 
-  static Set<String> getGroup(ModLogGroup group, {ModlogGroupCollection? collection, bool addExtraGroups = true}) {
+  static Set<String> getGroup(ModlogGroup group, {ModlogGroupCollection? collection, bool addExtraGroups = true}) {
     Set<String> current = {};
 
-    for (final level in ModLogGroup.values.reversed) {
+    for (final level in ModlogGroup.values.reversed) {
       current = (collection ?? groups)[level]?.call(current) ?? {};
       if (level == group) break;
     }
@@ -175,7 +179,7 @@ List<BotCommand> modLogCommandsX(KVStore store) => [
     final enabled = <String>[];
     final invalid = <String>[];
 
-    final group = ModLogGroup.values.firstWhereOrNull((x) => x.name == input.trim());
+    final group = ModlogGroup.values.firstWhereOrNull((x) => x.name == input.trim());
     final Set<String> items = group != null ? Modlog.getGroup(group) : input.split(',').map((s) => s.trim()).where((x) => x.isNotEmpty).toSet();
 
     for (final x in items) {

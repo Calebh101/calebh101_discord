@@ -1,6 +1,7 @@
 import 'dart:math';
 
 import 'package:calebh101_bot/plugins/math.dart';
+import 'package:calebh101_bot/plugins/remind.dart';
 import 'package:calebh101_bot/plugins/rules.dart';
 import 'package:calebh101_bot/plugins/xp.dart';
 import 'package:calebh101_discord/calebh101_discord.dart';
@@ -17,9 +18,9 @@ final plugins = PluginStore();
 
 void main(List<String> arguments) => onStart = () async {
   Modlog.addExtraGroup({
-    ModLogGroup.all: (levelBelow) => {...levelBelow, "xp.add"},
-    ModLogGroup.normal: (levelBelow) => {...levelBelow, "xp.levelup"},
-    ModLogGroup.quiet: (levelBelow) => levelBelow,
+    ModlogGroup.all: (levelBelow) => {...levelBelow, "xp.add"},
+    ModlogGroup.normal: (levelBelow) => {...levelBelow, "xp.levelup"},
+    ModlogGroup.quiet: (levelBelow) => levelBelow,
   });
 
   await plugins.registerAll([
@@ -36,6 +37,7 @@ void main(List<String> arguments) => onStart = () async {
     MathPlugin(),
     ModlogPlugin(),
     RulesPlugin(),
+    RemindPlugin(),
   ]);
 
   final context = await load(

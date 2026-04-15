@@ -26,11 +26,15 @@ dependencies:
   hotreloader: ^4.3.0
   args: ^2.7.0
   system_info2: ^4.1.0
+  json_annotation: ^4.9.0
+  chrono_dart: ^2.0.2
   # path: ^1.9.0
 
 dev_dependencies:
   lints: ^6.0.0
   test: ^1.25.6
+  build_runner: ^2.4.13
+  json_serializable: ^6.8.0
 
   recursive_caster:
     git:
