@@ -26,7 +26,7 @@ class BotCommand {
     if (dev) group = "dev_$group";
 
     commandRegistry[name] = this;
-    if (dev && noGroup) name = "dev_$name";
+    if (dev && (noGroup || !useGroups)) name = "dev_$name";
     command = ChatCommand(name, description, id(name, execute), options: options ?? CommandOptions(), aliases: aliases ?? []);
   }
 
