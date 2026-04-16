@@ -11,7 +11,7 @@ class HelpPlugin extends BotPlugin {
   FutureOr<List<BotCommand>> commands(CommandsPlugin plugin, KVStore store) {
     return [
       helpCommand(store, plugin),
-      BotCommand("plugins", "Help", "List all plugins.", (ChatContext context) async {
+      BotCommand("plugins", "Commands", "List all plugins.", (ChatContext context) async {
         final plugins = pluginStore.plugins;
 
         await respondWithPagination(
@@ -24,7 +24,7 @@ class HelpPlugin extends BotPlugin {
           settings: context.guild != null ? ServerSettings(store, context.guild!.id) : null,
         );
       }),
-      BotCommand("categories", "Help", "List all categories.", (ChatContext context) async {
+      BotCommand("categories", "Commands", "List all categories.", (ChatContext context) async {
         final categories = BotCommand.getAllCategories();
 
         await respondWithPagination(context, PaginatedEmbedBuilder(
@@ -40,7 +40,7 @@ class HelpPlugin extends BotPlugin {
           })),
         ), settings: context.guild != null ? ServerSettings(store, context.guild!.id) : null);
       }),
-      BotCommand("dumphelp", "Help", "Dump all help as markdown.", (ChatContext context) {
+      BotCommand("dumphelp", "Commands", "Dump all help as markdown.", (ChatContext context) {
         context.respondWithError("This command is not implemented yet.");
       }),
     ];
@@ -67,7 +67,7 @@ class HelpPlugin extends BotPlugin {
     }
 
     String getName(BotCommand command) {
-      return [command.name, if (command.aliases != null) aliases(command)].join(" ");
+      return [if (!command.noGroup) command.group, command.name, if (command.aliases != null) aliases(command)].join(" ");
     }
 
     if (command == null) {
@@ -115,7 +115,7 @@ class HelpPlugin extends BotPlugin {
           })),
         );
       } else {
-        final c = commands.firstWhereOrNull((x) => x.key == command)?.value;
+        final c = commands.firstWhereOrNull((x) => x.key == command?.split(" ").last)?.value;
         if (c == null) return context.respondWithError("Invalid command${useCategories ? "/category" : ""}: `$command`");
 
         String argumentToString(ParameterData arg) {
@@ -131,11 +131,11 @@ class HelpPlugin extends BotPlugin {
 
         await context.respond(MessageBuilder(embeds: [
           EmbedBuilder(
-            title: "Command `${c.name}`",
+            title: "Command ${getName(c)}",
             color: await getPrimaryColor(context.member) ?? primaryBotColor,
             description: [
               if (c.aliases != null) aliases(c),
-              "${c.name} ${(c.command as ChatCommand).arguments.map((x) => argumentToString(x)).join(" ")}".toDiscordCodeBlock(),
+              "${[if (!c.noGroup) c.group, c.name].join(" ")} ${(c.command as ChatCommand).arguments.map((x) => argumentToString(x)).join(" ")}".toDiscordCodeBlock(),
               "Category: ${c.category}",
               if (getPerms(c) != null) "Requires perms: `${getPerms(c)}`",
               getDescription(c),
@@ -158,5 +158,5 @@ class HelpPlugin extends BotPlugin {
     } else {
       Logger.print("Help", "No embed received");
     }
-  }, CommandAttributes(category: "Help", extendedDescription: "Other options:\n- `help all`: Same as just `help`\n- `help categories`: Display all categories"));
+  }, CommandAttributes(category: "Commands", extendedDescription: "Other options:\n- `help all`: Same as just `help`\n- `help categories`: Display all categories"), noGroup: true);
 }

@@ -78,7 +78,6 @@ extension GetMessages on MessageManager {
       final messages = await fetchMany(limit: limit, before: before);
 
       if (messages.isEmpty) break;
-
       results.addAll(messages);
       before = messages.last.id;
     }
@@ -135,4 +134,43 @@ Duration? parseDuration(String text) {
     minutes: int.tryParse(match[6] ?? '') ?? 0,
     seconds: int.tryParse(match[7] ?? '') ?? 0,
   );
+}
+
+int levenshtein(String a, String b) {
+  final m = a.length, n = b.length;
+  final dp = List.generate(m + 1, (i) => List.filled(n + 1, 0));
+
+  for (int i = 0; i <= m; i++) dp[i][0] = i;
+  for (int j = 0; j <= n; j++) dp[0][j] = j;
+
+  for (int i = 1; i <= m; i++) {
+    for (int j = 1; j <= n; j++) {
+      if (a[i - 1] == b[j - 1]) {
+        dp[i][j] = dp[i - 1][j - 1];
+      } else {
+        dp[i][j] = 1 + [dp[i-1][j], dp[i][j-1], dp[i-1][j-1]].reduce(min);
+      }
+    }
+  }
+
+  return dp[m][n];
+}
+
+double fuzzyScore(String query, String result) {
+  final queryWords = query.toLowerCase().split(' ');
+  final resultWords = result.toLowerCase().split(' ');
+  double totalScore = 0;
+
+  for (final qWord in queryWords) {
+    int bestDistance = queryWords.fold(999, (best, _) => best);
+
+    for (final rWord in resultWords) {
+      final dist = levenshtein(qWord, rWord);
+      if (dist < bestDistance) bestDistance = dist;
+    }
+
+    totalScore += 1 - (bestDistance / max(qWord.length, 1));
+  }
+
+  return totalScore / queryWords.length;
 }

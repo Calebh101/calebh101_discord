@@ -4,7 +4,7 @@ import 'package:collection/collection.dart';
 class BotCommand {
   Converter? Function(CommandsPlugin plugin)? converter;
   Check? Function(CommandsPlugin plugin)? check;
-  Command? command;
+  ChatCommand? command;
 
   late String name;
   late final List<String>? aliases;
@@ -13,16 +13,20 @@ class BotCommand {
   late final Function execute;
   late BotCommandPermissions permissionsRequired;
   late final bool enforcePermissions;
+  late final bool noGroup;
+  late String group;
   String? extendedDescription;
-  CommandOptions? options;
 
-  BotCommand(this.name, this.category, this.description, this.execute, {this.permissionsRequired = BotCommandPermissions.any, this.extendedDescription, this.enforcePermissions = true, this.aliases}) {
-    if (dev && aliases != null) for (int i = 0; i < (aliases?.length ?? 0); i++) {
-      aliases![i] = "dev_${aliases![i]}";
-    }
+  BotCommand(this.name, this.category, this.description, this.execute, {this.permissionsRequired = BotCommandPermissions.any, this.extendedDescription, this.enforcePermissions = true, this.noGroup = false, this.aliases, CommandOptions? options, this.group = ""}) {
+    final wrappedExecute = (MessageChatContext context, List<dynamic> args) async {
+      await Function.apply(execute, [context, ...args]);
+    };
+
+    if (group.trim().isEmpty) group = category.toLowerCase();
+    if (dev) group = "dev_$group";
 
     commandRegistry[name] = this;
-    if (dev) name = "dev_$name";
+    if (dev && noGroup) name = "dev_$name";
     command = ChatCommand(name, description, id(name, execute), options: options ?? CommandOptions(), aliases: aliases ?? []);
   }
 
@@ -31,11 +35,46 @@ class BotCommand {
   BotCommand.check(this.check);
 
   @Deprecated("Use the unnamed constructor instead.")
-  factory BotCommand.command(String name, String description, Function execute, CommandAttributes attributes, {CommandOptions? options}) {
-    return BotCommand(name, attributes.category, description, execute, extendedDescription: attributes.extendedDescription, permissionsRequired: attributes.permissionsRequired, enforcePermissions: false);
+  factory BotCommand.command(String name, String description, Function execute, CommandAttributes attributes, {CommandOptions? options, String group = "", bool noGroup = false}) {
+    return BotCommand(name, attributes.category, description, execute, extendedDescription: attributes.extendedDescription, permissionsRequired: attributes.permissionsRequired, enforcePermissions: false, group: group, noGroup: noGroup);
+  }
+
+  ChatCommand getCommandUnsafe(CommandsPlugin plugin) {
+    return command!;
   }
 
   static Map<String, BotCommand> commandRegistry = {};
+  static bool useGroups = true;
+
+  static void disableGroups() {
+    useGroups = false;
+  }
+
+  static List<CommandRegisterable<CommandContext>> getFromRegistry(CommandsPlugin plugin) {
+    if (useGroups == false) return commandRegistry.values.map((x) => x.getCommandUnsafe(plugin)).toList();
+    Map<String, List<BotCommand>> groups = {};
+    List<ChatGroup> results = [];
+    List<ChatCommand> noGroupCommands = [];
+
+    for (final command in commandRegistry.values) {
+      if (command.noGroup) {
+        noGroupCommands.add(command.getCommandUnsafe(plugin));
+        continue;
+      }
+
+      final current = groups[command.group] ?? [];
+      current.add(command);
+      groups[command.group] = current;
+    }
+
+    for (final group in groups.entries) {
+      results.add(ChatGroup(group.key, "${group.value.length} commands", children: group.value.map((x) => x.getCommandUnsafe(plugin))));
+    }
+
+    final value = [...noGroupCommands, ...results];
+    Logger.print("Commands", "Found ${value.length} registerable command items (${results.length} groups, ${noGroupCommands.length} solo commands)");
+    return value;
+  }
 
   static Map<String, int> getAllCategories() {
     Map<String, int> results = {};

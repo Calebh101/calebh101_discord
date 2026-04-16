@@ -226,8 +226,10 @@ Future<bool> respondWithPagination(ChatContext context, PaginatedEmbedBuilder em
           emoji: x is MessageReactionAddEvent ? x.emoji : (x is MessageReactionRemoveEvent ? x.emoji : null),
           userId: x is MessageReactionAddEvent ? x.userId : (x is MessageReactionRemoveEvent ? x.userId : null),
           guild: x is MessageReactionAddEvent ? x.guild : (x is MessageReactionRemoveEvent ? x.guild : null),
+          messageId: x is MessageReactionAddEvent ? x.messageId : (x is MessageReactionRemoveEvent ? x.messageId : null),
         );
 
+        if (context.messageId != m.id) continue;
         if (!hasPerms(context.userId!)) continue;
         final entry = emojis.entries.firstWhereOrNull((y) => y.value == context.emoji?.name)?.key;
         if (entry == null) continue;

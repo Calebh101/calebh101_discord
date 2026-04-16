@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:calebh101_discord/calebh101_discord.dart';
 import 'package:collection/collection.dart';
 import 'package:localpkg/classes.dart';
@@ -9,7 +11,7 @@ enum ModlogSeverity {
   log,
   warning,
   severe,
-  error,
+  good,
 }
 
 enum ModlogGroup {
@@ -23,9 +25,9 @@ DiscordColor? modLogSeverityToColor(ModlogSeverity severity) {
   return switch (severity) {
     ModlogSeverity.verbose => DiscordColor.parseHexString("#808080"),
     ModlogSeverity.log => DiscordColor.parseHexString("#808080"),
+    ModlogSeverity.good => DiscordColor.parseHexString("#90EE90"),
     ModlogSeverity.warning => DiscordColor.parseHexString("#FFFF00"),
-    ModlogSeverity.severe => DiscordColor.parseHexString("#FF0000"),
-    ModlogSeverity.error => DiscordColor.parseHexString("#BB3333"),
+    ModlogSeverity.severe => DiscordColor.parseHexString("#BB3333"),
   };
 }
 
@@ -85,20 +87,26 @@ class Modlog {
       final channel = await event.client.channels.get(Snowflake(event.settings!.modlogChannel.get()!));
       if (channel is! GuildTextChannel) return "Specified channel is not a text channel.";
 
-      await channel.sendMessage(MessageBuilder(embeds: [
-        EmbedBuilder(
-          title: event.title,
-          description: event.description,
-          fields: List.generate(event.fields.length, (i) {
-            final field = event.fields.entries.elementAt(i);
-            return EmbedFieldBuilder(name: field.key, value: field.value, isInline: false);
-          }),
-          timestamp: event.timestamp,
-          footer: EmbedFooterBuilder(text: event.eventId),
-          color: modLogSeverityToColor(event.severity),
-        ),
-      ]));
+      final message = MessageBuilder(
+        embeds: [
+          EmbedBuilder(
+            title: event.title,
+            description: event.description,
+            fields: List.generate(event.fields.length, (i) {
+              final field = event.fields.entries.elementAt(i);
+              return EmbedFieldBuilder(name: field.key, value: field.value, isInline: false);
+            }),
+            timestamp: event.timestamp?.toUtc(),
+            footer: EmbedFooterBuilder(text: event.eventId),
+            color: modLogSeverityToColor(event.severity),
+          ),
+        ],
+        attachments: event.attachments.entries.map((x) {
+          return AttachmentBuilder(data: utf8.encode(x.value), fileName: x.key);
+        }).toList(),
+      );
 
+      await channel.sendMessage(message);
       return null;
     } catch (e) {
       Logger.warn("Modlog", "Unable to log event ${event.eventId}: $e");
@@ -122,8 +130,9 @@ class ModlogEvent {
   DateTime? timestamp;
   List<String>? alsoTriggerOn;
   late List<String> triggers;
+  final Map<String, String> attachments;
 
-  ModlogEvent(this.eventId, {this.severity = ModlogSeverity.log, required this.guild, required this.settings, required this.title, this.description, this.fields = const {}, this.timestamp, this.url, this.image, this.thumbail, this.alsoTriggerOn, required this.client}) {
+  ModlogEvent(this.eventId, {this.severity = .log, required this.guild, required this.settings, required this.title, this.description, this.fields = const {}, this.timestamp, this.url, this.image, this.thumbail, this.alsoTriggerOn, required this.client, this.attachments = const {}}) {
     timestamp ??= DateTime.now();
     triggers = [eventId, ...?alsoTriggerOn];
   }
@@ -154,7 +163,7 @@ List<BotCommand> modLogCommandsX(KVStore store) => [
       settings.modlogChannel.set(channel.id.value);
       await context.respond(MessageBuilder(content: "Modlog channel set to <#${channel.id}>!"));
     },
-    CommandAttributes(permissionsRequired: BotCommandPermissions.admin, category: "modlog"),
+    CommandAttributes(permissionsRequired: BotCommandPermissions.admin, category: "Modlog"),
   ),
   BotCommand.command("modlogscopes", "Select scopes to log.", (ChatContext context, [String? input]) async {
     if (Modlog.events.isEmpty) return context.respondWithError("Modlog is not enabled.\n-# No events allowed. Did you forget to call `Modlog()`?");
@@ -200,7 +209,7 @@ List<BotCommand> modLogCommandsX(KVStore store) => [
         "-# **${Modlog.events.length}** ${Word.fromCount(Modlog.events.length, singular: Word("scope"))} available: ${Modlog.events.map((x) => "`$x`").join(", ")}",
       ].join("\n"),
     ));
-  }, CommandAttributes(permissionsRequired: BotCommandPermissions.admin, category: "modlog")),
+  }, CommandAttributes(permissionsRequired: BotCommandPermissions.admin, category: "Modlog")),
   BotCommand.command("modlogtest", "Send a modlog message.", (ChatContext context, String title, String message) async {
     final settings = context.guild != null ? ServerSettings(store, context.guild!.id) : null;
     if (settings == null) return context.respondWithError("No settings found.");
@@ -215,6 +224,7 @@ List<BotCommand> modLogCommandsX(KVStore store) => [
       fields: {
         "Author": "<@${context.user.id}>",
       },
+      severity: .good,
     ));
 
     if (result != null) {
@@ -226,5 +236,5 @@ List<BotCommand> modLogCommandsX(KVStore store) => [
         content: "Modlog message sent.",
       ));
     }
-  }, CommandAttributes(permissionsRequired: BotCommandPermissions.admin, category: "modlog")),
+  }, CommandAttributes(permissionsRequired: BotCommandPermissions.admin, category: "Modlog")),
 ];

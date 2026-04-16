@@ -100,7 +100,8 @@ extension ChannelToMention on Channel {
 
 extension ToDiscordCodeBlock on Object? {
   String toDiscordCodeBlock({String? language}) {
-    return "```${language ?? ""}\n$this\n```";
+    final x = toString().trim();
+    return "```${language != null && x.isNotEmpty ? language : ""}\n$x\n```";
   }
 
   String toDiscordCodeString() {

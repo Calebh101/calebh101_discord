@@ -50,7 +50,7 @@ class ModerationPlugin extends BotPlugin {
           guild: context.guild,
           settings: ifGuild(store, context.guild?.id, (id) => ServerSettings(store, id)),
           client: context.client,
-          severity: ModlogSeverity.error,
+          severity: ModlogSeverity.severe,
         ));
 
         await context.respond(MessageBuilder(embeds: [
@@ -96,7 +96,7 @@ class ModerationPlugin extends BotPlugin {
           guild: context.guild,
           settings: ifGuild(store, context.guild?.id, (id) => ServerSettings(store, id)),
           client: context.client,
-          severity: ModlogSeverity.error,
+          severity: ModlogSeverity.severe,
         ));
 
         await context.respond(MessageBuilder(embeds: [
@@ -141,7 +141,7 @@ class ModerationPlugin extends BotPlugin {
           guild: context.guild,
           settings: ifGuild(store, context.guild?.id, (id) => ServerSettings(store, id)),
           client: context.client,
-          severity: ModlogSeverity.warning,
+          severity: ModlogSeverity.good,
         ));
 
         await context.respond(MessageBuilder(embeds: [
@@ -224,7 +224,7 @@ class ModerationPlugin extends BotPlugin {
           guild: context.guild,
           settings: ifGuild(store, context.guild?.id, (id) => ServerSettings(store, id)),
           client: context.client,
-          severity: ModlogSeverity.warning,
+          severity: ModlogSeverity.good,
         ));
 
         await context.respond(MessageBuilder(embeds: [
@@ -293,7 +293,7 @@ class ModerationPlugin extends BotPlugin {
           guild: context.guild,
           settings: ifGuild(store, context.guild?.id, (id) => ServerSettings(store, id)),
           client: context.client,
-          severity: ModlogSeverity.warning,
+          severity: ModlogSeverity.good,
         ));
 
         await context.respond(MessageBuilder(content: "Removed warn **#$index** for ${await memberToString(member, client: context.client)}."));
@@ -309,40 +309,41 @@ class ModerationPlugin extends BotPlugin {
           ),
         ]));
       }, permissionsRequired: BotCommandPermissions.admin),
-      BotCommand("purge", "Moderation", "Purge messages from a channel.", (ChatContext context, int amount, [GreedyString? args]) async {
+      BotCommand("purge", "Moderation", "Purge messages from a channel. Messages must be under 14 days old.", (ChatContext context, int amount, [GreedyString? args]) async {
         if (await context.assureGuild() == false) return;
         if (amount <= 2) return context.respondWithError("Too little messages. Must be greater than 2.");
         final m = await context.respond(MessageBuilder(content: "Purging $amount messages..."));
         final channel = context.channel as GuildTextChannel;
 
-        var messages = (await channel.messages.fetchManyUnlimited(amount)).where((x) => x.timestamp.isBefore(m.timestamp)).toList();
+        var messages = (await channel.messages.fetchManyUnlimited(amount)).where((x) => x.timestamp.isBefore(m.timestamp)).where((x) => DateTime.now().difference(x.timestamp) < Duration(days: 14)).toList();
         Logger.print("Purge", "Found ${messages.length} messages from $amount requested");
+        if (messages.length < 2) return context.respondWithError("Only found **${messages.length}** valid messages.");
         final Map<String, Object?> arguments = args != null ? parseArgs(args.data) : {};
 
         if (arguments["userIds"] is List<Snowflake>) {
           final ids = arguments["userIds"] as List<Snowflake>;
-          messages = messages.where((x) => ids.contains(x.author.id)).toList();
+          messages.removeWhere((x) => ids.contains(x.author.id));
         }
 
         if (arguments["notUserIds"] is List<Snowflake>) {
           final ids = arguments["notUserIds"] as List<Snowflake>;
-          messages = messages.where((x) => !ids.contains(x.author.id)).toList();
+          messages.removeWhere((x) => !ids.contains(x.author.id));
         }
 
         if (arguments["inTheLast"] is Duration) {
           final duration = arguments["inTheLast"] as Duration;
           final after = DateTime.now().subtract(duration);
-          messages = messages.where((x) => x.timestamp.toUtc().isAfter(after)).toList();
+          messages.removeWhere((x) => x.timestamp.toUtc().isAfter(after));
         }
 
         if (arguments["after"] is DateTime) {
           final date = arguments["after"] as DateTime;
-          messages = messages.where((x) => x.timestamp.toUtc().isAfter(date)).toList();
+          messages.removeWhere((x) => x.timestamp.toUtc().isAfter(date));
         }
 
         if (arguments["before"] is DateTime) {
           final date = arguments["before"] as DateTime;
-          messages = messages.where((x) => x.timestamp.toUtc().isBefore(date)).toList();
+          messages.removeWhere((x) => x.timestamp.toUtc().isBefore(date));
         }
 
         if (arguments["limit"] is int) {
@@ -351,27 +352,27 @@ class ModerationPlugin extends BotPlugin {
 
         if (arguments["types"] is List<int>) {
           final types = arguments["types"] as List<int>;
-          messages = messages.where((x) => types.contains(x.type.value)).toList();
+          messages.removeWhere((x) => types.contains(x.type.value));
         }
 
         if (arguments["notTypes"] is List<int>) {
           final types = arguments["notTypes"] as List<int>;
-          messages = messages.where((x) => !types.contains(x.type.value)).toList();
+          messages.removeWhere((x) => !types.contains(x.type.value));
         }
 
         if (arguments["pinned"] is bool) {
           final y = arguments["pinned"] as bool;
-          messages = messages.where((x) => y ? x.isPinned : !x.isPinned).toList();
+          messages.removeWhere((x) => y ? x.isPinned : !x.isPinned);
         }
 
         if (arguments["embed"] is bool) {
           final y = arguments["embed"] as bool;
-          messages = messages.where((x) => y ? x.embeds.isNotEmpty : x.embeds.isEmpty).toList();
+          messages.removeWhere((x) => y ? x.embeds.isNotEmpty : x.embeds.isEmpty);
         }
 
         if (arguments["attachment"] is bool) {
           final y = arguments["attachment"] as bool;
-          messages = messages.where((x) => y ? x.attachments.isNotEmpty : x.attachments.isEmpty).toList();
+          messages.removeWhere((x) => y ? x.attachments.isNotEmpty : x.attachments.isEmpty);
         }
 
         if (arguments["bot"] is bool) {
@@ -390,17 +391,17 @@ class ModerationPlugin extends BotPlugin {
 
         if (arguments["contains"] is String) {
           final text = arguments["contains"] as String;
-          messages = messages.where((x) => x.content.trim().contains(text)).toList();
+          messages.removeWhere((x) => x.content.trim().contains(text));
         }
 
         if (arguments["startsWith"] is String) {
           final text = arguments["startsWith"] as String;
-          messages = messages.where((x) => x.content.trim().startsWith(text)).toList();
+          messages.removeWhere((x) => x.content.trim().startsWith(text));
         }
 
         if (arguments["endsWith"] is String) {
           final text = arguments["endsWith"] as String;
-          messages = messages.where((x) => x.content.trim().endsWith(text)).toList();
+          messages.removeWhere((x) => x.content.trim().endsWith(text));
         }
 
         final preview = arguments.containsKey("preview");
@@ -429,7 +430,7 @@ class ModerationPlugin extends BotPlugin {
           guild: context.guild,
           settings: ifGuild(store, context.guild?.id, (id) => ServerSettings(store, id)),
           client: context.client,
-          severity: ModlogSeverity.error,
+          severity: ModlogSeverity.severe,
         ));
       }, permissionsRequired: BotCommandPermissions.admin, extendedDescription: "Usage: `purge <amount> <args>`\nArgs (`key=\"value\"`):\n\n${{
         "limit": "Message limit. This is different from the amount fetched.",
@@ -494,16 +495,17 @@ class ModerationPlugin extends BotPlugin {
     //"voice": ["deaf", "mute"],
     "membership": ["pendingMembership"],
     "name": ["username", "globalName", "nickname", "discriminator"],
+    "timeout": ["communicationDisabledUntil"],
   };
 
   @override
   FutureOr<List<ModlogGroupCollection>> modlogGroups() {
-    //Modlog.addIgnored({"message.send", "audit"});
+    Modlog.addIgnored({"message.send", "audit"});
 
     return [
       {
-        ModlogGroup.all: (levelBelow) => {...levelBelow, "mod.timein", "mod.unwarn", "message.send", "audit", ...memberUpdateProperties.keys.map((x) => "members.update.$x")},
-        ModlogGroup.normal: (levelBelow) => {...levelBelow, "mod.ban", "mod.unban", "mod.timeout", "mod.kick", "mod.warn", "mod.purge", "message.delete", "message.edit", "members.add", "members.remove", "members.ban", "members.unban"},
+        ModlogGroup.all: (levelBelow) => {...levelBelow, "mod.timein", "mod.unwarn", "message.send", "audit", ...memberUpdateProperties.keys.where((x) => x != "timeout").map((x) => "members.update.$x")},
+        ModlogGroup.normal: (levelBelow) => {...levelBelow, "mod.ban", "mod.unban", "mod.timeout", "mod.kick", "mod.warn", "mod.purge", "message.delete", "message.edit", "members.add", "members.remove", "members.ban", "members.unban", "message.bulkdelete", "invite.create", "invite.delete", "members.update.timeout"},
         ModlogGroup.quiet: (levelBelow) => {...levelBelow},
         ModlogGroup.off: (_) => {},
       },
@@ -522,8 +524,10 @@ class ModerationPlugin extends BotPlugin {
           fields: {
             "Author": event.message.author.id.value.toMention(),
             "ID": event.message.id.toDiscordCodeString(),
+            "Link": "https://discord.com/channels/${[event.guildId ?? "@me", event.message.channelId, event.message.id].join("/")}",
+            "Attachments": "${event.message.embeds.length} embeds, ${event.message.attachments.length} attachments",
             "Timestamp": event.message.timestamp.toDiscordTimestamp(DiscordTimestamp.longDateTime),
-            "Content": event.message.content.toDiscordCodeBlock(language: "md"),
+            "Content": event.message.content.toDiscordCodeBlock(language: null),
           },
           guild: await event.guild?.get(),
           settings: ifGuild(context.store, event.guildId, (id) => ServerSettings(context.store, id)),
@@ -533,7 +537,8 @@ class ModerationPlugin extends BotPlugin {
 
       client.onMessageUpdate.listen((event) async {
         if (event.message.author.id == client.user.id) return;
-        final old = event.oldMessage ?? event.message.channel.messages.cache[event.message.id];
+        final old = event.oldMessage;
+        if (old != null && old.content == event.message.content) return;
 
         Modlog.add(ModlogEvent(
           "message.edit",
@@ -541,6 +546,9 @@ class ModerationPlugin extends BotPlugin {
           fields: {
             "Author": event.message.author.id.value.toMention(),
             "ID": event.message.id.toDiscordCodeString(),
+            "Link": "https://discord.com/channels/${[event.guildId ?? "@me", event.message.channelId, event.message.id].join("/")}",
+            "Embeds": "${old?.embeds.length} -> ${event.message.embeds.length}".toDiscordCodeString(),
+            "Attachments": "${old?.attachments.length} -> ${event.message.attachments.length}".toDiscordCodeString(),
             "Timestamp": event.message.editedTimestamp?.toDiscordTimestamp(DiscordTimestamp.longDateTime) ?? "No timestamp",
             "Was": old?.content.toDiscordCodeBlock(language: "md") ?? "Not found",
             "Content": event.message.content.toDiscordCodeBlock(language: "md"),
@@ -565,6 +573,39 @@ class ModerationPlugin extends BotPlugin {
           guild: await event.guild?.get(),
           settings: ifGuild(context.store, event.guildId, (id) => ServerSettings(context.store, id)),
           client: client,
+        ));
+      });
+
+      client.onMessageBulkDelete.listen((event) async {
+        final old = Map.fromEntries(event.ids.map((x) => MapEntry(x, event.deletedMessages.firstWhereOrNull((y) => y.id == x))));
+
+        Modlog.add(ModlogEvent(
+          "message.bulkdelete",
+          title: "Messages Bulk Deleted",
+          fields: {
+            "Amount": "${event.ids.length} IDs, ${event.deletedMessages.length} messages found in cache",
+            "Channel": event.channelId.value.toChannel(),
+          },
+          guild: await event.guild?.get(),
+          settings: ifGuild(context.store, event.guildId, (id) => ServerSettings(context.store, id)),
+          client: client,
+          attachments: {
+            "messages.md": [
+              (await Future.wait(old.entries.map((x) async => "- ${x.key}: ${x.value == null ? "Message not found in cache" : await (() async {
+                final message = x.value!;
+                final author = message.author;
+
+                return [
+                  "By ${author is User ? await userToString(author) : (author is WebhookAuthor ? "${author.username} (`${author.id}`)" : "Invalid user")} (`${author.runtimeType}`)",
+                  "Sent at `${message.timestamp.toUtc().toIso8601String()}`, edited at `${message.editedTimestamp?.toUtc().toIso8601String() ?? 'never'}`",
+                  "Mentions: ${[...await Future.wait(message.mentions.map((x) => userToString(x).toFuture())), if (message.mentionsEveryone) "@everyone"].join(", ")}",
+                  "${message.embeds.length} embeds, ${message.attachments.length} attachments",
+                ].join(" - ");
+              }())}"))).join("\n"),
+              (await Future.wait(old.entries.where((x) => x.value != null).map((x) async => "## Message ${x.key} by ${await userToString(await tryCatchA(() => client.users.get(x.key)))}\n${x.value?.content}"))).join("\n\n---\n\n"),
+            ].join("\n\n\n"),
+          },
+          severity: .severe,
         ));
       });
 
@@ -598,6 +639,7 @@ class ModerationPlugin extends BotPlugin {
           guild: await event.guild.get(),
           settings: ifGuild(context.store, event.guildId, (id) => ServerSettings(context.store, id)),
           client: client,
+          severity: .good,
         ));
       });
 
@@ -626,6 +668,7 @@ class ModerationPlugin extends BotPlugin {
           guild: await event.guild.get(),
           settings: ifGuild(context.store, event.guildId, (id) => ServerSettings(context.store, id)),
           client: client,
+          severity: .severe,
         ));
       });
 
@@ -640,6 +683,7 @@ class ModerationPlugin extends BotPlugin {
           guild: await event.guild.get(),
           settings: ifGuild(context.store, event.guildId, (id) => ServerSettings(context.store, id)),
           client: client,
+          severity: .good,
         ));
       });
 
@@ -654,6 +698,7 @@ class ModerationPlugin extends BotPlugin {
           (x) => ("deaf", x.isDeaf.toString()),
           (x) => ("mute", x.isMute.toString()),
           (x) => ("pendingMembership", x.isPending.toString()),
+          (x) => ("communicationDisabledUntil", x.communicationDisabledUntil?.toIso8601String()),
         ];
 
         final List<(String name, String? value) Function(User user)> userProperties = [
@@ -665,6 +710,12 @@ class ModerationPlugin extends BotPlugin {
         ];
 
         List<(int type, String name, dynamic a, dynamic b)> changedProperties = [];
+
+        String typeToString(int type) => switch (type) {
+          0 => "Member",
+          1 => "User",
+          int() => throw UnimplementedError(),
+        };
 
         if (user != null && event.member.user != null) for (final x in userProperties) {
           final a = x.call(user);
@@ -687,13 +738,56 @@ class ModerationPlugin extends BotPlugin {
             "members.update.${property.key}",
             title: "Member Updated (${property.key})",
             fields: Map.fromEntries(changed.map((x) {
-              return MapEntry("${x.$1}.${x.$2}", "${x.$3} -> ${x.$4}");
+              return MapEntry("`${typeToString(x.$1)}` `${x.$2}`", "${x.$3} -> ${x.$4}".toDiscordCodeBlock());
             })),
             guild: await event.guild.get(),
             settings: ifGuild(context.store, event.guildId, (id) => ServerSettings(context.store, id)),
             client: client,
           ));
         }
+      });
+
+      client.onInviteCreate.listen((event) async {
+        if (event.invite.guild == null) return;
+        final guild = await event.invite.guild!.get();
+
+        Modlog.add(ModlogEvent(
+          "invite.create",
+          title: "Invite Created",
+          fields: {
+            "ID": "[${event.invite.code.toDiscordCodeString()}](https://discord.gg/${event.invite.code})",
+            "Channel": event.invite.channel.id.value.toChannel(),
+            "Timestamp": event.invite.createdAt.toDiscordTimestamp(DiscordTimestamp.shortDateTime),
+            "Uses": event.invite.uses.toString(),
+            "Max Uses": event.invite.maxUses.toString(),
+            "Max Age": "${event.invite.maxAge.toDiscordCodeString()} (at ${(event.invite.expiresAt ?? DateTime.now().add(event.invite.maxAge)).toDiscordTimestamp(DiscordTimestamp.shortDateTime)})",
+            "Temporary": event.invite.isTemporary.toDiscordCodeString(),
+            "Author": await userToString(event.invite.inviter) ?? null.toDiscordCodeString(),
+            "Type": event.invite.type.value.toDiscordCodeString(),
+            "Guest Invite for Voice Channel": (event.invite.flags?.hasGuestInvite).toDiscordCodeString(),
+          },
+          guild: guild,
+          settings: ServerSettings(context.store, guild.id),
+          client: client,
+          severity: .good,
+        ));
+      });
+
+      client.onInviteDelete.listen((event) async {
+        if (event.guild == null) return;
+        final guild = await event.guild!.get();
+
+        Modlog.add(ModlogEvent(
+          "invite.delete",
+          title: "Invite Deleted",
+          fields: {
+            "ID": event.code.toDiscordCodeString(),
+            "Channel": event.channel.id.value.toChannel(),
+          },
+          guild: guild,
+          settings: ServerSettings(context.store, guild.id),
+          client: client,
+        ));
       });
     });
   }

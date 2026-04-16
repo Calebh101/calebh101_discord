@@ -1,8 +1,11 @@
 import 'dart:math';
 
+import 'package:calebh101_bot/plugins/crosspost.dart';
 import 'package:calebh101_bot/plugins/math.dart';
 import 'package:calebh101_bot/plugins/remind.dart';
 import 'package:calebh101_bot/plugins/rules.dart';
+import 'package:calebh101_bot/plugins/selfreact.dart';
+import 'package:calebh101_bot/plugins/tags.dart';
 import 'package:calebh101_bot/plugins/xp.dart';
 import 'package:calebh101_discord/calebh101_discord.dart';
 import 'package:calebh101_discord/recursive_caster.g.dart';
@@ -38,6 +41,8 @@ void main(List<String> arguments) => onStart = () async {
     ModlogPlugin(),
     RulesPlugin(),
     RemindPlugin(),
+    CrosspostPlugin(),
+    TagsPlugin(),
   ]);
 
   final context = await load(
@@ -140,7 +145,12 @@ Future<List<Member>> getAllMembers(Guild guild, {int limitPer = 1000}) async {
 }
 
 Future<Role?> getRole(Guild guild, Snowflake id) async {
-  return (await guild.roles.list()).firstWhereOrNull((y) => y.id == id);
+  try {
+    return (await guild.roles.list()).firstWhereOrNull((y) => y.id == id);
+  } catch (e) {
+    Logger.warn("getRole", "${guild.id},$id: $e");
+    return null;
+  }
 }
 
 int getHour() {

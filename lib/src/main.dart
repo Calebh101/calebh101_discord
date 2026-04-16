@@ -144,8 +144,6 @@ Future<BotContext?> load({required BotSettings settings, required FutureOr<Patte
   }
 
   for (final c in cmds) {
-    if (c.command != null) cmd.addCommand(c.command!);
-
     if (c.converter != null) {
       final x = c.converter!.call(cmd);
 
@@ -162,6 +160,15 @@ Future<BotContext?> load({required BotSettings settings, required FutureOr<Patte
         cmd.check(x);
         Logger.print("Commands", "Added check ${x.runtimeType}");
       }
+    }
+  }
+
+  for (final x in BotCommand.getFromRegistry(cmd)) {
+    try {
+      cmd.addCommand(x);
+    } catch (_) {
+      Logger.warn("load", "Command: ${x.name} (${x.runtimeType})");
+      rethrow;
     }
   }
 

@@ -318,6 +318,7 @@ class ServerSettings extends EntitySettings {
   SettingsObject<bool> get selfReactAllowed => SettingsObject(this, "selfReactAllowed");
   SettingsObject<int> get banMessageRemovalSeconds => SettingsObject(this, "banMessageRemovalSeconds");
   SettingsObject<int> get kickMessageRemovalSeconds => SettingsObject(this, "kickMessageRemovalSeconds");
+  SettingsObject<int> get warningChannel => SettingsObject(this, "warningChannel");
 }
 
 class UserSettings extends EntitySettings {

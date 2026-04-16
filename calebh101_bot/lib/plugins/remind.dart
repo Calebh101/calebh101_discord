@@ -129,10 +129,22 @@ class RemindPlugin extends BotPlugin {
         final current = settings.reminders.get() ?? [];
         current.remove(r.reminder);
         settings.reminders.set(current);
+        Member? member;
+
+        if (r.reminder.sentGuildId != null) {
+          try {
+            final user = await client.users.get(r.userId);
+            final guild = await client.guilds.get(Snowflake(r.reminder.sentGuildId!));
+            member = await userToMember(user, guild: guild);
+          } catch (e) {
+            Logger.warn("Reminders", "Error getting member from user ID ${r.userId}: $e");
+          }
+        }
 
         final embed = EmbedBuilder(
           title: "You asked me to remind you...",
           description: r.reminder.name,
+          color: await getColor(member),
           url: Uri.parse("https://discord.com/channels/${[r.reminder.sentGuildId ?? "@me", r.reminder.sentChannelId, r.reminder.sentMessageId].join("/")}"),
         );
 

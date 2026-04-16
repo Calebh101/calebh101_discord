@@ -416,5 +416,26 @@ class AdminPlugin extends BotPlugin {
         }).toList()),
       ), settings: settings);
     }),
+    BotCommand("warningchannel", "Admin", "Get the text channel used for automatic warnings.", (ChatContext context) async {
+      if (await context.assureGuild() == false) return;
+      final settings = ServerSettings(store, context.guild!.id);
+      final id = settings.warningChannel.get();
+      if (id == null) return context.respondWithError("No warning channel set.");
+      await context.respond(MessageBuilder(content: "Warning channel currently set to ${id.toChannel()}."));
+    }),
+    BotCommand("setwarningchannel", "Admin", "Get the text channel used for automatic warnings.", (ChatContext context, GuildTextChannel channel) async {
+      if (await context.assureGuild() == false) return;
+      final settings = ServerSettings(store, context.guild!.id);
+
+      try {
+        await channel.sendMessage(MessageBuilder(content: "Warning channel set to **this channel**."));
+      } catch (e) {
+        Logger.warn("WarningChannel", "Unable to send message in channel ${channel.id}: $e");
+        return context.respondWithError("Unable to send message in target channel.");
+      }
+
+      settings.warningChannel.set(channel.id.value);
+      await context.respond(MessageBuilder(content: "Warning channel set to ${channel.toMention()}."));
+    }, permissionsRequired: BotCommandPermissions.admin),
   ];
 }
