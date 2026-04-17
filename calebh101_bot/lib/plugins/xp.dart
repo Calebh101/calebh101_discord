@@ -10,12 +10,13 @@ part 'xp.g.dart';
 class XPPlugin extends BotPlugin {
   XPPlugin() : super(id: "xp", version: Version.parse("1.0.0A"));
 
-  @override commands(CommandsPlugin plugin, KVStore store) {
-    return xpCommands(store);
+  @override
+  commands<T extends ChatContext>(CommandsPlugin plugin, KVStore store) {
+    return xpCommands<T>(store);
   }
 
-  List<BotCommand> xpCommands(KVStore store) => [
-    BotCommand.command("leaderboard", "Get the current XP leaderboard.", (ChatContext context) async {
+  List<BotCommand> xpCommands<T extends ChatContext>(KVStore store) => [
+    BotCommand.command("leaderboard", "Get the current XP leaderboard.", (T context) async {
       if (context.guild == null) return context.respondWithError("No guild found.");
       final settings = Calebh101BotServerSettings(store, context.guild!.id);
       if (settings.xpEnabled.get() != true) return context.respondWithError("XP is not enabled.");
@@ -84,7 +85,7 @@ class XPPlugin extends BotPlugin {
       );
     }, CommandAttributes(category: "XP")),
 
-    BotCommand.command("gamble", "Gamble your XP away.", (ChatContext context, double amountToBet) async {
+    BotCommand.command("gamble", "Gamble your XP away.", (T context, double amountToBet) async {
       final member = context.member;
       final guild = context.guild;
 
@@ -131,7 +132,7 @@ class XPPlugin extends BotPlugin {
         await context.respond(MessageBuilder(content: "${await memberToString(member, client: context.client)} bet **$amount** and *lost*. That puts them at **${roundXp(current - amount)}** XP."));
       }
     }, CommandAttributes(category: "XP", extendedDescription: "- Each bet has to be a multiple of 10.\n- The more you bet, the less chance you have to win.")),
-    BotCommand.command("xplevels", "List all set XP levels.", (ChatContext context) async {
+    BotCommand.command("xplevels", "List all set XP levels.", (T context) async {
       if (context.guild == null) return context.respondWithError("No guild found.");
       final settings = Calebh101BotServerSettings(store, context.guild!.id);
       final roles = settings.xpLevels.get() ?? [];
@@ -141,13 +142,13 @@ class XPPlugin extends BotPlugin {
       }
 
       await context.respond(MessageBuilder(
-        content: "## All XP Levels for *${context.guild!.name}*\n\n${roles.map((x) async {
+        content: "## All XP Levels for *${context.guild!.name}*\n\n${(await Future.wait(roles.map((x) async {
           return "- ${roleToString(await getRole(context.guild!, Snowflake(x.roleId)))}: **${x.requiredXp}** XP required";
-        }).join("\n")}",
+        }))).join("\n")}",
       ));
     }, CommandAttributes(category: "XP")),
 
-    BotCommand.command("addxplevel", "Add an XP level.", (ChatContext context, Role role, int requiredXp) async {
+    BotCommand.command("addxplevel", "Add an XP level.", (T context, Role role, int requiredXp) async {
       if (context.guild == null) return context.respondWithError("No guild found.");
       final settings = Calebh101BotServerSettings(store, context.guild!.id);
       if (await context.assurePerms(BotCommandPermissions.admin, settings) == false) return;
@@ -162,7 +163,7 @@ class XPPlugin extends BotPlugin {
       ));
     }, CommandAttributes(category: "XP", permissionsRequired: BotCommandPermissions.admin)),
 
-    BotCommand.command("editxplevel", "Add an XP level's required XP.", (ChatContext context, Role role, int requiredXp) async {
+    BotCommand.command("editxplevel", "Add an XP level's required XP.", (T context, Role role, int requiredXp) async {
       if (context.guild == null) return context.respondWithError("No guild found.");
       final settings = Calebh101BotServerSettings(store, context.guild!.id);
       if (await context.assurePerms(BotCommandPermissions.admin, settings) == false) return;
@@ -182,7 +183,7 @@ class XPPlugin extends BotPlugin {
       ));
     }, CommandAttributes(category: "XP", permissionsRequired: BotCommandPermissions.admin)),
 
-    BotCommand.command("removexplevel", "Remove an XP level by name.", (ChatContext context, Role role) async {
+    BotCommand.command("removexplevel", "Remove an XP level by name.", (T context, Role role) async {
       if (context.guild == null) return context.respondWithError("No guild found.");
       final settings = Calebh101BotServerSettings(store, context.guild!.id);
       if (await context.assurePerms(BotCommandPermissions.admin, settings) == false) return;
@@ -196,7 +197,7 @@ class XPPlugin extends BotPlugin {
       ));
     }, CommandAttributes(category: "XP", permissionsRequired: BotCommandPermissions.admin)),
 
-    BotCommand.command("setxpupdateschannel", "Set a channel for the bot to announce updates like level-ups.", (ChatContext context, [GuildTextChannel? channel]) async {
+    BotCommand.command("setxpupdateschannel", "Set a channel for the bot to announce updates like level-ups.", (T context, [GuildTextChannel? channel]) async {
       if (context.guild == null) return context.respondWithError("No guild found.");
       final settings = Calebh101BotServerSettings(store, context.guild!.id);
       if (await context.assurePerms(BotCommandPermissions.admin, settings) == false) return;
@@ -205,7 +206,7 @@ class XPPlugin extends BotPlugin {
       await context.respond(MessageBuilder(content: "XP updates channel ${channel != null ? "to ${channel.toMention()}" : "removed"}!"));
     }, CommandAttributes(category: "XP", permissionsRequired: BotCommandPermissions.admin)),
 
-    BotCommand.command("xpupdateschannel", "Get the channel for the bot to announce updates like level-ups.", (ChatContext context) async {
+    BotCommand.command("xpupdateschannel", "Get the channel for the bot to announce updates like level-ups.", (T context) async {
       if (context.guild == null) return context.respondWithError("No guild found.");
       final settings = Calebh101BotServerSettings(store, context.guild!.id);
 
@@ -213,7 +214,7 @@ class XPPlugin extends BotPlugin {
       await context.respond(MessageBuilder(content: "XP updates channel ${id != null ? "is set to ${id.toChannel()}" : "not set"}."));
     }, CommandAttributes(category: "XP", permissionsRequired: BotCommandPermissions.admin)),
 
-    BotCommand.command("reassignxp", "Reassign everyone's XP levels.", (ChatContext context) async {
+    BotCommand.command("reassignxp", "Reassign everyone's XP levels.", (T context) async {
       if (context.guild == null) return context.respondWithError("No guild found.");
       final settings = Calebh101BotServerSettings(store, context.guild!.id);
       if (await context.assurePerms(BotCommandPermissions.admin, settings) == false) return;
@@ -253,7 +254,7 @@ class XPPlugin extends BotPlugin {
       await context.updateMessage(m, MessageUpdateBuilder(content: "Process complete!"));
     }, CommandAttributes(category: "XP", permissionsRequired: BotCommandPermissions.admin)),
 
-    BotCommand.command("resetxp", "Reset someone's or everyone's XP to 0.", (ChatContext context, [User? user]) async {
+    BotCommand.command("resetxp", "Reset someone's or everyone's XP to 0.", (T context, [User? user]) async {
       if (context.guild == null) return context.respondWithError("No guild found.");
       final settings = Calebh101BotServerSettings(store, context.guild!.id);
       if (await context.assurePerms(BotCommandPermissions.admin, settings) == false) return;
@@ -284,7 +285,7 @@ class XPPlugin extends BotPlugin {
       await context.updateMessage(m, MessageUpdateBuilder(content: "Process complete! Run `reassignxp` to reassign levels.\n-# Target: ${(user != null ? (await memberFromUserToString(user, client: context.client, guild: context.guild)) : null) ?? "everyone"}"));
     }, CommandAttributes(category: "XP", permissionsRequired: BotCommandPermissions.admin)),
 
-    BotCommand.command("setxp", "Set someone's XP level.", (ChatContext context, User user, double amount) async {
+    BotCommand.command("setxp", "Set someone's XP level.", (T context, User user, double amount) async {
       if (context.guild == null) return context.respondWithError("No guild found.");
       final settings = Calebh101BotServerSettings(store, context.guild!.id);
       if (await context.assurePerms(BotCommandPermissions.admin, settings) == false) return;
@@ -310,7 +311,7 @@ class XPPlugin extends BotPlugin {
       await context.respond(MessageBuilder(content: "Set ${await memberToString(member, client: context.client)}'s XP to **$amount**.\nNew role: **${newRole?.name ?? null.toDiscordCodeString()}**"));
     }, CommandAttributes(category: "XP", permissionsRequired: BotCommandPermissions.admin)),
 
-    BotCommand.command("addxp", "Add to someone's XP.", (ChatContext context, User user, double amount, [bool overrideXpPerHour = true]) async {
+    BotCommand.command("addxp", "Add to someone's XP.", (T context, User user, double amount, [bool overrideXpPerHour = true]) async {
       if (context.guild == null) return context.respondWithError("No guild found.");
       final settings = Calebh101BotServerSettings(store, context.guild!.id);
       if (await context.assurePerms(BotCommandPermissions.admin, settings) == false) return;
@@ -320,7 +321,7 @@ class XPPlugin extends BotPlugin {
       await context.respond(MessageBuilder(content: ["Added ${added?.added ?? 0} XP to ${await memberFromUserToString(user, guild: context.guild, client: context.client)}'s XP.", if (added?.newRole != null) "New role: **${added!.newRole!.name}**"].join("\n")));
     }, CommandAttributes(category: "XP", permissionsRequired: BotCommandPermissions.admin)),
 
-    BotCommand.command("pingonlevelup", "Set if the bot should ping on XP level up.", (ChatContext context, bool value) async {
+    BotCommand.command("pingonlevelup", "Set if the bot should ping on XP level up.", (T context, bool value) async {
       if (context.guild == null) return context.respondWithError("No guild found.");
       final settings = Calebh101BotServerSettings(store, context.guild!.id);
       if (await context.assurePerms(BotCommandPermissions.admin, settings) == false) return;
@@ -329,7 +330,7 @@ class XPPlugin extends BotPlugin {
       await context.respond(MessageBuilder(content: "The bot ${value ? "**will**" : "will **not**"} ping on level up."));
     }, CommandAttributes(category: "XP", permissionsRequired: BotCommandPermissions.admin)),
 
-    BotCommand.command("xpban", "Ban a user from the XP system.", (ChatContext context, User user) async {
+    BotCommand.command("xpban", "Ban a user from the XP system.", (T context, User user) async {
       if (context.guild == null) return context.respondWithError("No guild found.");
       final settings = Calebh101BotServerSettings(store, context.guild!.id);
       if (await context.assurePerms(BotCommandPermissions.admin, settings) == false) return;
@@ -343,7 +344,7 @@ class XPPlugin extends BotPlugin {
       ));
     }, CommandAttributes(category: "XP", permissionsRequired: BotCommandPermissions.admin)),
 
-    BotCommand.command("xpunban", "Unban a user from the XP system.", (ChatContext context, User user) async {
+    BotCommand.command("xpunban", "Unban a user from the XP system.", (T context, User user) async {
       if (context.guild == null) return context.respondWithError("No guild found.");
       final settings = Calebh101BotServerSettings(store, context.guild!.id);
       if (await context.assurePerms(BotCommandPermissions.admin, settings) == false) return;
@@ -357,7 +358,7 @@ class XPPlugin extends BotPlugin {
       ));
     }, CommandAttributes(category: "XP", permissionsRequired: BotCommandPermissions.admin)),
 
-    BotCommand.command("isxpbanned", "Get if a user is banned from the XP system.", (ChatContext context, [User? user]) async {
+    BotCommand.command("isxpbanned", "Get if a user is banned from the XP system.", (T context, [User? user]) async {
       user ??= context.member?.user ?? (context.member != null ? await context.client.users.get(context.member!.id) : null);
       if (context.guild == null || user == null) return context.respondWithError("No guild/member found.");
       final settings = Calebh101BotServerSettings(store, context.guild!.id);
@@ -370,7 +371,7 @@ class XPPlugin extends BotPlugin {
       ));
     }, CommandAttributes(category: "XP")),
 
-    BotCommand.command("xpenable", "Enable/disable the XP system.", (ChatContext context, [bool enabled = true]) async {
+    BotCommand.command("xpenable", "Enable/disable the XP system.", (T context, [bool enabled = true]) async {
       if (context.guild == null) return context.respondWithError("No guild found.");
       final settings = Calebh101BotServerSettings(store, context.guild!.id);
       if (await context.assurePerms(BotCommandPermissions.admin, settings) == false) return;
@@ -381,7 +382,7 @@ class XPPlugin extends BotPlugin {
       ));
     }, CommandAttributes(category: "XP", permissionsRequired: BotCommandPermissions.admin)),
 
-    BotCommand.command("xpenabled", "See if the XP system is enabled.", (ChatContext context) async {
+    BotCommand.command("xpenabled", "See if the XP system is enabled.", (T context) async {
       if (context.guild == null) return context.respondWithError("No guild found.");
       final settings = Calebh101BotServerSettings(store, context.guild!.id);
       if (await context.assurePerms(BotCommandPermissions.admin, settings) == false) return;
@@ -392,7 +393,7 @@ class XPPlugin extends BotPlugin {
       ));
     }, CommandAttributes(category: "XP", permissionsRequired: BotCommandPermissions.admin)),
 
-    BotCommand.command("stats", "See your stats, or somebody else's.", (ChatContext context, [Member? member]) async {
+    BotCommand.command("stats", "See your stats, or somebody else's.", (T context, [Member? member]) async {
       member ??= context.member;
       if (member == null || context.guild == null) return context.respondWithError("No guild/member found.");
       final guild = context.guild!;

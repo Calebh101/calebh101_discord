@@ -17,7 +17,6 @@ dependencies:
   intl: ^0.20.2
   meta: ^1.18.2
   nyxx: ^6.8.1
-  nyxx_commands: ^6.1.0
   path: ^1.9.1
   sqlite3: ^3.2.0
   async: ^2.13.0
@@ -28,12 +27,15 @@ dependencies:
   system_info2: ^4.1.0
   json_annotation: ^4.9.0
   chrono_dart: ^2.0.2
+  build_runner: ^2.13.1
   # path: ^1.9.0
+
+  nyxx_commands:
+    path: nyxx_commands
 
 dev_dependencies:
   lints: ^6.0.0
   test: ^1.25.6
-  build_runner: ^2.4.13
   json_serializable: ^6.8.0
 
   recursive_caster:

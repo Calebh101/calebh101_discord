@@ -8,10 +8,10 @@ class HelpPlugin extends BotPlugin {
   HelpPlugin() : super(id: "help", version: Version.parse("1.0.0A"));
 
   @override
-  FutureOr<List<BotCommand>> commands(CommandsPlugin plugin, KVStore store) {
+  FutureOr<List<BotCommand>> commands<T extends ChatContext>(CommandsPlugin plugin, KVStore store) {
     return [
-      helpCommand(store, plugin),
-      BotCommand("plugins", "Commands", "List all plugins.", (ChatContext context) async {
+      helpCommand<T>(store, plugin),
+      BotCommand("plugins", "Commands", "List all plugins.", (T context) async {
         final plugins = pluginStore.plugins;
 
         await respondWithPagination(
@@ -24,7 +24,7 @@ class HelpPlugin extends BotPlugin {
           settings: context.guild != null ? ServerSettings(store, context.guild!.id) : null,
         );
       }),
-      BotCommand("categories", "Commands", "List all categories.", (ChatContext context) async {
+      BotCommand("categories", "Commands", "List all categories.", (T context) async {
         final categories = BotCommand.getAllCategories();
 
         await respondWithPagination(context, PaginatedEmbedBuilder(
@@ -40,13 +40,13 @@ class HelpPlugin extends BotPlugin {
           })),
         ), settings: context.guild != null ? ServerSettings(store, context.guild!.id) : null);
       }),
-      BotCommand("dumphelp", "Commands", "Dump all help as markdown.", (ChatContext context) {
+      BotCommand("dumphelp", "Commands", "Dump all help as markdown.", (T context) {
         context.respondWithError("This command is not implemented yet.");
       }),
     ];
   }
 
-  BotCommand helpCommand(KVStore store, CommandsPlugin plugin, {bool useCategories = true}) => BotCommand.command("help", "Show help for all commands, or a specific command${useCategories ? "/category" : ""}.", (ChatContext context, [@Description("Command or category to search.") String? command, bool dump = false]) async {
+  BotCommand helpCommand<T extends ChatContext>(KVStore store, CommandsPlugin plugin, {bool useCategories = true}) => BotCommand.command("help", "Show help for all commands, or a specific command${useCategories ? "/category" : ""}.", (T context, [@Description("Command or category to search.") String? command, bool dump = false]) async {
     Logger.print("Help", "Loading help with input $command (dump=$dump)");
     if (command?.trim() == "all") command = null;
     final settings = context.guild != null ? ServerSettings(store, context.guild!.id) : null;

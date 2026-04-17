@@ -29,9 +29,9 @@
 	"New BotCommand": {
 		"prefix": "command",
 		"body": [
-		"BotCommand.command(ChatCommand(\"$1\", \"$2\", (ChatContext context$3) async {",
-		"  $4",
-		"}), CommandAttributes(category: \"$5\", permissionsRequired: BotCommandPermissions.$6))"
+			"BotCommand(\"$1\", \"$2\", \"$3\", (T context$4) async {",
+			"  $5",
+			"})",
 		],
 		"description": "New BotCommand"
 	}

@@ -24,12 +24,14 @@ class PluginStore {
     await Future.wait(plugins.map((x) => x.onClientLoad(context)));
   }
 
-  Future<List<BotCommand>> commands(CommandsPlugin plugin, KVStore store) async {
-    return (await Future.wait(plugins.map((x) => x.commands(plugin, store).toFuture()))).flatten().toList();
+  Future<List<BotCommand>> commands<T extends ChatContext>(CommandsPlugin plugin, KVStore store) async {
+    return (await Future.wait(plugins.map((x) => x.commands<T>(plugin, store).toFuture()))).flatten().toList();
   }
 
   Future<List<BotConverter>> converters(CommandsPlugin plugin, KVStore store) async {
-    return (await Future.wait(plugins.map((x) => x.converters(plugin, store).toFuture()))).flatten().toList();
+    final results = (await Future.wait(plugins.map((x) => x.converters(plugin, store).toFuture()))).flatten().toList();
+    Logger.print("PluginStore", "Found ${results.length} converters: ${results.join(", ")}");
+    return results;
   }
 }
 
@@ -46,7 +48,7 @@ abstract class BotPlugin {
 
   Future<void> onRegister() async {}
   Future<void> onClientLoad(BotContext context) async {}
-  FutureOr<List<BotCommand>> commands(CommandsPlugin plugin, KVStore store) => [];
+  FutureOr<List<BotCommand>> commands<T extends ChatContext>(CommandsPlugin plugin, KVStore store) => [];
   FutureOr<List<BotConverter>> converters(CommandsPlugin plugin, KVStore store) => [];
 
   /// Template:

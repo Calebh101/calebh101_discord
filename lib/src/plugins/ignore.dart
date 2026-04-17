@@ -6,12 +6,12 @@ class IgnorePlugin extends BotPlugin {
   IgnorePlugin() : super(id: "ignore", version: Version.parse("1.0.0A"));
 
   @override
-  FutureOr<List<BotCommand>> commands(CommandsPlugin plugin, KVStore store) {
-    return ignoreCommands(store);
+  FutureOr<List<BotCommand>> commands<T extends ChatContext>(CommandsPlugin plugin, KVStore store) {
+    return ignoreCommands<T>(store);
   }
 
-  List<BotCommand> ignoreCommands(KVStore store) => [
-    BotCommand("ignore", "Admin", "Ignore a user", (ChatContext context, User user) async {
+  List<BotCommand> ignoreCommands<T extends ChatContext>(KVStore store) => [
+    BotCommand("ignore", "Admin", "Ignore a user", (T context, User user) async {
       if (isOwner(id: user.id)) return context.respondWithError("The owner of the bot cannot be ignored.");
       final settings = BotSettings(store);
       final current = settings.ignored.get() ?? [];
@@ -21,7 +21,7 @@ class IgnorePlugin extends BotPlugin {
       settings.ignored.set(current);
       await context.respond(MessageBuilder(content: "${await userToString(user)} has been **ignored**."));
     }, permissionsRequired: BotCommandPermissions.owner),
-    BotCommand("unignore", "Admin", "Ignore a user", (ChatContext context, User user) async {
+    BotCommand("unignore", "Admin", "Ignore a user", (T context, User user) async {
       final settings = BotSettings(store);
       final current = settings.ignored.get() ?? [];
 
@@ -30,7 +30,7 @@ class IgnorePlugin extends BotPlugin {
       settings.ignored.set(current);
       await context.respond(MessageBuilder(content: "${await userToString(user)} has been **unignored**."));
     }, permissionsRequired: BotCommandPermissions.owner),
-    BotCommand("ignored", "Admin", "Ignore a user", (ChatContext context, User user) async {
+    BotCommand("ignored", "Admin", "Ignore a user", (T context, User user) async {
       final settings = BotSettings(store);
       final current = settings.ignored.get() ?? [];
       await context.respond(MessageBuilder(content: "${await userToString(user)} is currently ${isIgnored(store, user.id) ? "**ignored**" : "**not** ignored"}."));

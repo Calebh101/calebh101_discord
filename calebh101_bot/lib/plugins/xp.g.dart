@@ -7,11 +7,11 @@ part of 'xp.dart';
 // **************************************************************************
 
 XPLevel _$XPLevelFromJson(Map json) => XPLevel(
-      requiredXp: (json['requiredXp'] as num).toInt(),
-      roleId: (json['roleId'] as num).toInt(),
-    );
+  requiredXp: (json['requiredXp'] as num).toInt(),
+  roleId: (json['roleId'] as num).toInt(),
+);
 
 Map<String, dynamic> _$XPLevelToJson(XPLevel instance) => <String, dynamic>{
-      'roleId': instance.roleId,
-      'requiredXp': instance.requiredXp,
-    };
+  'roleId': instance.roleId,
+  'requiredXp': instance.requiredXp,
+};

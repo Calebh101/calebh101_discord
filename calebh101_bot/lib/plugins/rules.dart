@@ -33,9 +33,9 @@ class RulesPlugin extends BotPlugin {
   }
 
   @override
-  FutureOr<List<BotCommand>> commands(CommandsPlugin plugin, KVStore store) {
+  FutureOr<List<BotCommand>> commands<T extends ChatContext>(CommandsPlugin plugin, KVStore store) {
     return [
-      BotCommand("rules", "Rules", "Get all the rules.", (ChatContext context) async {
+      BotCommand("rules", "Rules", "Get all the rules.", (T context) async {
         if (await context.assureGuild() == false) return;
         final settings = Calebh101BotServerSettings(store, context.guild!.id);
         final rules = settings.rules.get() ?? {};
@@ -43,7 +43,7 @@ class RulesPlugin extends BotPlugin {
         if (rules.isEmpty) return context.respondWithError("No rules set. Add some with either `setrules` or `parserules`!");
         await context.respond(MessageBuilder(content: rules.entries.map((x) => "${x.key}. ${x.value}").join("\n")));
       }),
-      BotCommand("rule", "Rules", "Get a specific rule.", (ChatContext context, int index) async {
+      BotCommand("rule", "Rules", "Get a specific rule.", (T context, int index) async {
         if (await context.assureGuild() == false) return;
         final settings = Calebh101BotServerSettings(store, context.guild!.id);
         final rules = settings.rules.get() ?? {};
@@ -52,7 +52,7 @@ class RulesPlugin extends BotPlugin {
         if (!rules.containsKey(index)) return context.respondWithError("Rule $index not found.");
         await context.respond(MessageBuilder(content: "## Rule #$index\n${rules[index]}"));
       }),
-      BotCommand("setrules", "Rules", "Set the rules.", (ChatContext context, GreedyString input) async {
+      BotCommand("setrules", "Rules", "Set the rules.", (T context, GreedyString input) async {
         if (await context.assureGuild() == false) return;
         final settings = Calebh101BotServerSettings(store, context.guild!.id);
         final rules = parseRules(input.data);
@@ -60,7 +60,7 @@ class RulesPlugin extends BotPlugin {
         settings.rules.set(rules);
         await context.respond(MessageBuilder(content: "Rules set. Run `rules` to view."));
       }),
-      BotCommand("setrulesfrommessage", "Rules", "Set a rule from a message ID.", (ChatContext context, Snowflake messageId, [Snowflake? channelId]) async {
+      BotCommand("setrulesfrommessage", "Rules", "Set a rule from a message ID.", (T context, Snowflake messageId, [Snowflake? channelId]) async {
         if (await context.assureGuild() == false) return;
         final settings = Calebh101BotServerSettings(store, context.guild!.id);
 

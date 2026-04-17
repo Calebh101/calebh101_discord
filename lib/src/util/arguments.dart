@@ -1,8 +1,32 @@
 import 'package:calebh101_discord/calebh101_discord.dart';
 
-class StringList {
+abstract class ConverterType {
+  const ConverterType();
+
+  String get name;
+  String get info;
+
+  static ConverterType? lookup<T>(T input) {
+    if (input is ConverterType) return input;
+    return null;
+  }
+}
+
+extension GetConverterType on Object? {
+  ConverterType? lookupConverterType() {
+    return ConverterType.lookup(this);
+  }
+}
+
+class StringList extends ConverterType {
   final List<String> data;
   const StringList(this.data);
+
+  @override
+  String get name => "Item List";
+
+  @override
+  String get info => "A comma-separated value list.";
 
   List<String> validate(List<String> allowed) {
     return data.where((x) => allowed.contains(x)).toList();
@@ -39,9 +63,15 @@ class GreedyStringList extends StringList {
   }
 }
 
-class GreedyString {
+class GreedyString extends ConverterType {
   final String data;
   const GreedyString(this.data);
+
+  @override
+  String get name => "Greedy String";
+
+  @override
+  String get info => "Takes up the remaining input in the command as one string. Does not need quotes.";
 
   @override
   String toString() {
@@ -51,10 +81,20 @@ class GreedyString {
   static BotCommand converter() {
     return BotCommand.converter((_) => Converter<GreedyString>((value, context) {
       if (value.remaining.trim().isEmpty) return null;
-      final result = GreedyString(value.remaining.trim());
+      final result = GreedyString(trimMatchingQuotes(value.remaining.trim()));
       value.index = value.end;
       return result;
     }));
+  }
+
+  static String trimMatchingQuotes(String input) {
+    if (input.length >= 2) {
+      if ((input.startsWith('"') && input.endsWith('"')) || (input.startsWith("'") && input.endsWith("'"))) {
+        return input.substring(1, input.length - 1);
+      }
+    }
+
+    return input;
   }
 }
 

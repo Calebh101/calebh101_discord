@@ -7,8 +7,8 @@ class AdminPlugin extends BotPlugin {
   AdminPlugin() : super(id: "admin", version: Version.parse("1.0.0A"));
 
   @override
-  List<BotCommand> commands(CommandsPlugin plugin, KVStore store) {
-    return adminCommands(store);
+  List<BotCommand> commands<T extends ChatContext>(CommandsPlugin plugin, KVStore store) {
+    return adminCommands<T>(store);
   }
 
   @override
@@ -21,8 +21,8 @@ class AdminPlugin extends BotPlugin {
     }];
   }
 
-  List<BotCommand> adminCommands(KVStore store) => [
-    BotCommand.command("addadminuser", "Add an admin user.", (ChatContext context, User user) async {
+  List<BotCommand> adminCommands<T extends ChatContext>(KVStore store) => [
+    BotCommand.command("addadminuser", "Add an admin user.", (T context, User user) async {
       if (context.guild == null || context.member == null) return context.respondWithError("No guild/member found.");
       final settings = ServerSettings(store, context.guild!.id);
       if (await context.assurePerms(BotCommandPermissions.admin, settings) == false) return;
@@ -53,7 +53,7 @@ class AdminPlugin extends BotPlugin {
         content: "Added ${await userToString(user)} as an admin!",
       ));
     }, CommandAttributes(permissionsRequired: BotCommandPermissions.admin, category: "Server")),
-    BotCommand.command("addadminrole", "Add a role as admin.", (ChatContext context, Role role) async {
+    BotCommand.command("addadminrole", "Add a role as admin.", (T context, Role role) async {
       if (context.guild == null || context.member == null) return context.respondWithError("No guild/member found.");
       final settings = ServerSettings(store, context.guild!.id);
       if (await context.assurePerms(BotCommandPermissions.admin, settings) == false) return;
@@ -84,7 +84,7 @@ class AdminPlugin extends BotPlugin {
         content: "Added role *${role.name}* as admin!",
       ));
     }, CommandAttributes(permissionsRequired: BotCommandPermissions.admin, category: "Server")),
-    BotCommand.command("removeadminuser", "Remove a user from admin.", (ChatContext context, User user) async {
+    BotCommand.command("removeadminuser", "Remove a user from admin.", (T context, User user) async {
       if (context.guild == null || context.member == null) return context.respondWithError("No guild/member found.");
       final settings = ServerSettings(store, context.guild!.id);
       if (await context.assurePerms(BotCommandPermissions.admin, settings) == false) return;
@@ -118,7 +118,7 @@ class AdminPlugin extends BotPlugin {
         content: found ? "Removed ${await userToString(user)} from admin." : "${await userToString(user)} is not currently an admin.",
       ));
     }, CommandAttributes(permissionsRequired: BotCommandPermissions.admin, category: "Server")),
-    BotCommand.command("removeadminrole", "Remove a role from admin.", (ChatContext context, Role role) async {
+    BotCommand.command("removeadminrole", "Remove a role from admin.", (T context, Role role) async {
       if (context.guild == null || context.member == null) return context.respondWithError("No guild/member found.");
       final settings = ServerSettings(store, context.guild!.id);
       if (await context.assurePerms(BotCommandPermissions.admin, settings) == false) return;
@@ -152,7 +152,7 @@ class AdminPlugin extends BotPlugin {
         content: found ? "Removed role *${role.name}* from admin." : "Role *${role.name}* is not currently admin.",
       ));
     }, CommandAttributes(permissionsRequired: BotCommandPermissions.admin, category: "Server")),
-    BotCommand.command("claim", "Claim yourself as king of the bot!", (ChatContext context) async {
+    BotCommand.command("claim", "Claim yourself as king of the bot!", (T context) async {
       if (context.guild == null || context.member == null) return context.respondWithError("No guild/member found.");
       final settings = ServerSettings(store, context.guild!.id);
       if (context.member == null) return context.respondWithError("No member found.");
@@ -207,7 +207,7 @@ class AdminPlugin extends BotPlugin {
         }
       }
     }, CommandAttributes(category: "Bot")),
-    BotCommand.command("unclaim", "Step down as king of the bot. This will not be made known to others.", (ChatContext context) async {
+    BotCommand.command("unclaim", "Step down as king of the bot. This will not be made known to others.", (T context) async {
       if (context.guild == null || context.member == null) return context.respondWithError("No guild/member found.");
       final settings = ServerSettings(store, context.guild!.id);
       if (context.member == null) return context.respondWithError("No member found.");
@@ -258,7 +258,7 @@ class AdminPlugin extends BotPlugin {
         }
       }
     }, CommandAttributes(permissionsRequired: BotCommandPermissions.claimer, category: "Bot")),
-    BotCommand.command("owner", "See stats about who owns the bot, who owns the server, and who's claimed the bot.", (ChatContext context) async {
+    BotCommand.command("owner", "See stats about who owns the bot, who owns the server, and who's claimed the bot.", (T context) async {
       final settings = context.guild == null ? null : ServerSettings(store, context.guild!.id);
       final mainAdmin = settings?.mainAdmin.get();
       Map<String, String> results = {};
@@ -297,7 +297,7 @@ class AdminPlugin extends BotPlugin {
         ),
       ]));
     }, CommandAttributes(category: "Bot")),
-    BotCommand.command("attributes", "See your attributes.", (ChatContext context, [@Description('The member to check') User? user]) async {
+    BotCommand.command("attributes", "See your attributes.", (T context, [@Description('The member to check') User? user]) async {
       final u = user ?? context.user;
       final m = await userToMember(u, guild: context.guild);
       List<String> attributes = ["Alive"];
@@ -342,8 +342,8 @@ class AdminPlugin extends BotPlugin {
         }
       }
 
-      if (globalOwner != null && globalOwner!.id == u.id) {
-        attributes.add("Owner");
+      if (isOwner(id: u.id, overrideIgnoreOwner: true)) {
+        attributes.add(["Owner", if (ignoreOwner) "(ignored)"].join(" "));
       }
 
       final userSettings = UserSettings(store, u.id);
@@ -385,12 +385,12 @@ class AdminPlugin extends BotPlugin {
         Logger.warn("Commands.Status", e);
       }
     }, CommandAttributes(category: "User")),
-    BotCommand.command("ignoreowner", "Ignore the bot owner's status temporarily.", (ChatContext context) async {
+    BotCommand.command("ignoreowner", "Ignore the bot owner's status temporarily.", (T context) async {
       if (!isOwner(id: context.user.id, overrideIgnoreOwner: true)) return context.respondWithError("You are not the owner of me.");
       ignoreOwner = !ignoreOwner;
       await context.respond(MessageBuilder(content: "Owner is now **${ignoreOwner ? "temporarily ignored": "unignored"}**."));
     }, CommandAttributes(category: "Debug", permissionsRequired: BotCommandPermissions.owner)),
-    BotCommand.command("allsettings", "List all settings for this server. Admin only.", (ChatContext context) async {
+    BotCommand.command("allsettings", "List all settings for this server. Admin only.", (T context) async {
       if (context.guild == null || context.member == null) return context.respondWithError("No guild/member found.");
       final settings = ServerSettings(store, context.guild!.id);
       if (await context.assurePerms(BotCommandPermissions.admin, settings) == false) return;
@@ -400,7 +400,7 @@ class AdminPlugin extends BotPlugin {
         content: "All settings for *${context.guild?.name}*:\n${all.map((x) => "- `${x.key}`: `${x.value}`").join("\n")}",
       ), level: ResponseLevel.private);
     }, CommandAttributes(permissionsRequired: BotCommandPermissions.admin, category: "Server")),
-    BotCommand("listadmin", "Admin", "List all admin roles/users.", (ChatContext context) async {
+    BotCommand("listadmin", "Admin", "List all admin roles/users.", (T context) async {
       if (await context.assureGuild() == false) return;
       final settings = ServerSettings(store, context.guild!.id);
       final raw = settings.admins.get() ?? [];
@@ -416,14 +416,14 @@ class AdminPlugin extends BotPlugin {
         }).toList()),
       ), settings: settings);
     }),
-    BotCommand("warningchannel", "Admin", "Get the text channel used for automatic warnings.", (ChatContext context) async {
+    BotCommand("warningchannel", "Admin", "Get the text channel used for automatic warnings.", (T context) async {
       if (await context.assureGuild() == false) return;
       final settings = ServerSettings(store, context.guild!.id);
       final id = settings.warningChannel.get();
       if (id == null) return context.respondWithError("No warning channel set.");
       await context.respond(MessageBuilder(content: "Warning channel currently set to ${id.toChannel()}."));
     }),
-    BotCommand("setwarningchannel", "Admin", "Get the text channel used for automatic warnings.", (ChatContext context, GuildTextChannel channel) async {
+    BotCommand("setwarningchannel", "Admin", "Get the text channel used for automatic warnings.", (T context, GuildTextChannel channel) async {
       if (await context.assureGuild() == false) return;
       final settings = ServerSettings(store, context.guild!.id);
 

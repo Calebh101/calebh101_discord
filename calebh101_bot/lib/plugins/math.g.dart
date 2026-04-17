@@ -7,11 +7,11 @@ part of 'math.dart';
 // **************************************************************************
 
 AddSubtractMath _$AddSubtractMathFromJson(Map json) => AddSubtractMath(
-      a: (json['a'] as num).toInt(),
-      b: (json['b'] as num).toInt(),
-      result: (json['result'] as num).toInt(),
-      symbol: $enumDecode(_$SymbolEnumMap, json['symbol']),
-    );
+  a: (json['a'] as num).toInt(),
+  b: (json['b'] as num).toInt(),
+  result: (json['result'] as num).toInt(),
+  symbol: $enumDecode(_$SymbolEnumMap, json['symbol']),
+);
 
 Map<String, dynamic> _$AddSubtractMathToJson(AddSubtractMath instance) =>
     <String, dynamic>{
@@ -29,11 +29,11 @@ const _$SymbolEnumMap = {
 };
 
 MultDivMath _$MultDivMathFromJson(Map json) => MultDivMath(
-      a: (json['a'] as num).toInt(),
-      b: (json['b'] as num).toInt(),
-      result: (json['result'] as num).toInt(),
-      symbol: $enumDecode(_$SymbolEnumMap, json['symbol']),
-    );
+  a: (json['a'] as num).toInt(),
+  b: (json['b'] as num).toInt(),
+  result: (json['result'] as num).toInt(),
+  symbol: $enumDecode(_$SymbolEnumMap, json['symbol']),
+);
 
 Map<String, dynamic> _$MultDivMathToJson(MultDivMath instance) =>
     <String, dynamic>{
@@ -44,10 +44,10 @@ Map<String, dynamic> _$MultDivMathToJson(MultDivMath instance) =>
     };
 
 ExponentMath _$ExponentMathFromJson(Map json) => ExponentMath(
-      a: (json['a'] as num).toInt(),
-      b: (json['b'] as num).toInt(),
-      result: (json['result'] as num).toInt(),
-    );
+  a: (json['a'] as num).toInt(),
+  b: (json['b'] as num).toInt(),
+  result: (json['result'] as num).toInt(),
+);
 
 Map<String, dynamic> _$ExponentMathToJson(ExponentMath instance) =>
     <String, dynamic>{

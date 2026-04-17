@@ -8,7 +8,7 @@ class StatsPlugin extends BotPlugin {
   StatsPlugin() : super(id: "stats", version: Version.parse("1.0.0A"));
 
   @override
-  FutureOr<List<BotCommand>> commands(CommandsPlugin plugin, KVStore store) {
+  FutureOr<List<BotCommand>> commands<T extends ChatContext>(CommandsPlugin plugin, KVStore store) {
     return [
       aboutCommand(store),
       statusCommand(),

@@ -20,6 +20,9 @@ final tokens = BotTokenStore("settings.json");
 final plugins = PluginStore();
 
 void main(List<String> arguments) => onStart = () async {
+  BotCommand.disableGroups();
+  BotCommand.commandType = CommandType.textOnly;
+
   Modlog.addExtraGroup({
     ModlogGroup.all: (levelBelow) => {...levelBelow, "xp.add"},
     ModlogGroup.normal: (levelBelow) => {...levelBelow, "xp.levelup"},
@@ -43,6 +46,7 @@ void main(List<String> arguments) => onStart = () async {
     RemindPlugin(),
     CrosspostPlugin(),
     TagsPlugin(),
+    RestrictCommandsPlugin(),
   ]);
 
   final context = await load(
@@ -64,14 +68,14 @@ void main(List<String> arguments) => onStart = () async {
     store: store,
     settings: BotSettings(store),
 
-    commands: (plugin) => [
+    commands: <T extends ChatContext>(plugin) {Logger.print("main",T);return[
       BotCommand.converter((plugin) => plugin.getConverter(RuntimeType<GuildTextChannel>(), logWarn: false)),
       defaultCheck(store),
 
       StringList.converter().toBotCommand(),
       GreedyString.converter(),
 
-      BotCommand.command("fart", "Fart.", (ChatContext context, [int amount = 1]) async {
+      BotCommand.command("fart", "Fart.", (T context, [int amount = 1]) async {
         if (amount != 1 && !isOwner(id: context.user.id)) return context.respondWithError("You cannot control the amount.");
         if (amount < 1) return context.respondWithError("Invalid amount: $amount");
 
@@ -105,7 +109,7 @@ void main(List<String> arguments) => onStart = () async {
           content: List.generate(amount, (_) => ro(farts).call()).join("\n"),
         ));
       }, CommandAttributes(category: "Fun"))
-    ],
+    ];},
   );
 
   if (context == null) return;

@@ -11,15 +11,15 @@ class CrosspostPlugin extends BotPlugin {
   CrosspostPlugin() : super(id: "crosspost", version: Version.parse("1.0.0A"));
 
   @override
-  FutureOr<List<BotCommand>> commands(CommandsPlugin plugin, KVStore store) {
+  FutureOr<List<BotCommand>> commands<T extends ChatContext>(CommandsPlugin plugin, KVStore store) {
     return [
-      BotCommand("crosspost", "Admin", "Set if the bot should delete crossposted messages.", (ChatContext context, bool value) async {
+      BotCommand("crosspost", "Admin", "Set if the bot should delete crossposted messages.", (T context, bool value) async {
         if (await context.assureGuild() == false) return;
         final settings = CrosspostServerSettings(store, context.guild!.id);
         settings.enabled.set(value);
         await context.respond(MessageBuilder(content: "Anti-crossposting rules will now ${value ? "be **enforced**" : "**not** be enforced"}."));
       }),
-      BotCommand("crosspostchannels", "Admin", "Set how many channels someone has to crosspost in to trigger the warning. Defaults to $defaultMinChannels.", (ChatContext context, [int? value]) async {
+      BotCommand("crosspostchannels", "Admin", "Set how many channels someone has to crosspost in to trigger the warning. Defaults to $defaultMinChannels.", (T context, [int? value]) async {
         if (await context.assureGuild() == false) return;
         value ??= defaultMinChannels;
         if (value < 2) return context.respondWithError("Value must be 2 or greater.");

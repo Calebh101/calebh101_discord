@@ -19,15 +19,17 @@ extension ToFuture<T> on FutureOr<T> {
 }
 
 Future<String> Function(MessageCreateEvent) prefixFromServerSettings(ServerSettings? Function(PartialGuild guild) getSettings) => (MessageCreateEvent event) async {
-  if (event.guild == null) return defaultPrefix;
-  final settings = getSettings.call(event.guild!);
-  if (settings == null) return defaultPrefix;
+  return [() {
+    if (event.guild == null) return defaultPrefix;
+    final settings = getSettings.call(event.guild!);
+    if (settings == null) return defaultPrefix;
 
-  final prefix = settings.prefix.get() ?? defaultPrefix;
-  return prefix;
+    final prefix = settings.prefix.get() ?? defaultPrefix;
+    return prefix;
+  }(), if (dev) "d"].join("");
 };
 
-BotCommand enumConverter<T extends Enum>(List<T> values) => BotCommand.converter((plugin) => Converter<T>(
+BotConverter<T> enumConverter<T extends Enum>(List<T> values) => BotConverter("enum.$T", (plugin) => Converter<T>(
   (value, context) {
     final input = value.getQuotedWord();
 

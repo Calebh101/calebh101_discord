@@ -10,9 +10,9 @@ class RemindPlugin extends BotPlugin {
   RemindPlugin() : super(id: "remind", version: Version.parse("1.0.0A"));
 
   @override
-  FutureOr<List<BotCommand>> commands(CommandsPlugin plugin, KVStore store) {
+  FutureOr<List<BotCommand>> commands<T extends ChatContext>(CommandsPlugin plugin, KVStore store) {
     return [
-      BotCommand("remind", "Remind", "Remind you later, in DMs.", (ChatContext context, Duration wait, GreedyString name) async {
+      BotCommand("remind", "Reminders", "Remind you later, in DMs.", (ChatContext context, Duration wait, GreedyString name) async {
         final settings = RemindSettings(store, context.user.id);
         final reminders = settings.reminders.get() ?? [];
         final time =  DateTime.now().add(wait);
@@ -32,8 +32,8 @@ class RemindPlugin extends BotPlugin {
         reminders.add(Reminder(name: name.data, time: time, id: settings.getNextReminderId(), clientId: context.client.user.id.value, sentChannelId: context.channel.id.value, sentGuildId: context.guild?.id.value, sentMessageId: message.value));
         settings.reminders.set(reminders);
         await context.respond(MessageBuilder(content: "Reminder set for ${time.toDiscordTimestamp(DiscordTimestamp.longDateTime)}! I'll remind you in DMs."));
-      }),
-      BotCommand("remindhere", "Remind", "Remind you later, in this channel.", (ChatContext context, Duration wait, GreedyString name) async {
+      }, noGroup: true),
+      BotCommand("remindhere", "Reminders", "Remind you later, in this channel.", (ChatContext context, Duration wait, GreedyString name) async {
         if (await context.assureGuild() == false) return;
         final serverSettings = RemindServerSettings(store, context.guild!.id);
         if (serverSettings.allowRemindHere.get() == false) return context.respondWithError("You can't schedule me to send a reminder in this server.");
@@ -58,7 +58,7 @@ class RemindPlugin extends BotPlugin {
         settings.reminders.set(reminders);
         await context.respond(MessageBuilder(content: "Reminder set for ${time.toDiscordTimestamp(DiscordTimestamp.longDateTime)}! I'll remind you in ${context.channel.toMention()}."));
       }),
-      BotCommand("reminders", "Remind", "View all reminders.", (ChatContext context, [User? user]) async {
+      BotCommand("reminders", "Reminders", "View all reminders.", (ChatContext context, [User? user]) async {
         if (user != null && await context.assureOwner() == false) return;
         user ??= context.user;
 
@@ -71,7 +71,7 @@ class RemindPlugin extends BotPlugin {
           pages: EmbedPage.generate(reminders.mapIndexed((i, x) => EmbedFieldBuilder(name: "${i + 1}. ${x.name}", value: "${x.time.toDiscordTimestamp(DiscordTimestamp.longDateTime)} in ${x.channelId?.toChannel() ?? "DMs"}", isInline: false)).toList()),
         ), settings: ifGuild(store, context.guild?.id, (id) => RemindServerSettings(store, id)));
       }),
-      BotCommand("remreminder", "Remind", "Delete a reminder.", (ChatContext context, int index) async {
+      BotCommand("remreminder", "Reminders", "Delete a reminder.", (ChatContext context, int index) async {
         final settings = RemindSettings(store, context.user.id);
         final reminders = settings.reminders.get() ?? [];
         if (reminders.isEmpty || reminders.length < index || index < 1) return context.respondWithError("No reminders for index $index.");
@@ -81,14 +81,14 @@ class RemindPlugin extends BotPlugin {
         if (reminders.isEmpty) settings.reminders.delete();
         await context.respond(MessageBuilder(content: "Removed reminder $index."));
       }),
-      BotCommand("clearreminders", "Remind", "Delete all reminders.", (ChatContext context) async {
+      BotCommand("clearreminders", "Reminders", "Delete all reminders.", (ChatContext context) async {
         final settings = RemindSettings(store, context.user.id);
         final reminders = settings.reminders.get() ?? [];
         if (reminders.isEmpty) return context.respondWithError("You don't have any reminders set!");
         settings.reminders.delete();
         await context.respond(MessageBuilder(content: "Deleted ${reminders.length} reminders."));
       }),
-      BotCommand("allowremindhere", "Remind", "Set if the server should allow `remindhere`.", (ChatContext context, bool value) async {
+      BotCommand("allowremindhere", "Reminders", "Set if the server should allow `remindhere`.", (ChatContext context, bool value) async {
         if (await context.assureGuild() == false) return;
         final settings = RemindServerSettings(store, context.guild!.id);
         settings.allowRemindHere.set(value);

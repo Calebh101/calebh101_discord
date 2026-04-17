@@ -17,9 +17,9 @@ class ModerationPlugin extends BotPlugin {
   }
 
   @override
-  FutureOr<List<BotCommand>> commands(CommandsPlugin plugin, KVStore store) {
+  FutureOr<List<BotCommand>> commands<T extends ChatContext>(CommandsPlugin plugin, KVStore store) {
     return [
-      BotCommand("ban", "Moderation", "Ban a user.", (ChatContext context, Member member, [GreedyString? reason]) async {
+      BotCommand("ban", "Moderation", "Ban a user.", (T context, Member member, [GreedyString? reason]) async {
         try {
           final settings = ifGuild(store, context.guild?.id, (id) => ServerSettings(store, id));
           var deleteMessagesSeconds = settings?.banMessageRemovalSeconds.get();
@@ -64,7 +64,7 @@ class ModerationPlugin extends BotPlugin {
           ),
         ]));
       }, permissionsRequired: BotCommandPermissions.admin),
-      BotCommand("kick", "Moderation", "Ban then unban a user.", (ChatContext context, Member member, [GreedyString? reason]) async {
+      BotCommand("kick", "Moderation", "Ban then unban a user.", (T context, Member member, [GreedyString? reason]) async {
         try {
           final settings = ifGuild(store, context.guild?.id, (id) => ServerSettings(store, id));
           var deleteMessagesSeconds = settings?.kickMessageRemovalSeconds.get();
@@ -110,7 +110,7 @@ class ModerationPlugin extends BotPlugin {
           ),
         ]));
       }, permissionsRequired: BotCommandPermissions.admin),
-      BotCommand("unban", "Moderation", "Unban a user.", (ChatContext context, String userId) async {
+      BotCommand("unban", "Moderation", "Unban a user.", (T context, String userId) async {
         final userIdInt = int.tryParse(userId);
         final user = userIdInt != null ? Snowflake(userIdInt) : null;
         if (user == null) return context.respondWithError("Invalid user ID: $userId");
@@ -154,7 +154,7 @@ class ModerationPlugin extends BotPlugin {
           ),
         ]));
       }, permissionsRequired: BotCommandPermissions.admin),
-      BotCommand("timeout", "Moderation", "Time out a user.", (ChatContext context, Member member, Duration duration, [GreedyString? reason]) async {
+      BotCommand("timeout", "Moderation", "Time out a user.", (T context, Member member, Duration duration, [GreedyString? reason]) async {
         try {
           await member.update(MemberUpdateBuilder(communicationDisabledUntil: DateTime.now().add(duration).toUtc()), auditLogReason: "${context.user.username}: ${reason?.data ?? "No reason provided"}");
         } on HttpResponseError catch (e) {
@@ -197,7 +197,7 @@ class ModerationPlugin extends BotPlugin {
           ),
         ]));
       }, permissionsRequired: BotCommandPermissions.admin),
-      BotCommand("timein", "Moderation", "Remove timeout of a user.", (ChatContext context, Member member) async {
+      BotCommand("timein", "Moderation", "Remove timeout of a user.", (T context, Member member) async {
         try {
           await member.update(MemberUpdateBuilder(communicationDisabledUntil: null), auditLogReason: context.user.username);
         } on HttpResponseError catch (e) {
@@ -237,7 +237,7 @@ class ModerationPlugin extends BotPlugin {
           ),
         ]));
       }, permissionsRequired: BotCommandPermissions.admin, aliases: ["untimeout", "remtimeout"]),
-      BotCommand("warns", "Moderation", "See someone's warns.", (ChatContext context, Member member) async {
+      BotCommand("warns", "Moderation", "See someone's warns.", (T context, Member member) async {
         final settings = UserSettings(store, member.id);
         final warns = settings.warns.get() ?? [];
         if (warns.isEmpty) return context.respondWithError("No warns for ${await memberToString(member, client: context.client)}!");
@@ -249,7 +249,7 @@ class ModerationPlugin extends BotPlugin {
           color: await getColor(context.member),
         ), settings: ifGuild(store, context.guild?.id, (id) => ServerSettings(store, id)));
       }, permissionsRequired: BotCommandPermissions.admin),
-      BotCommand("warn", "Moderation", "Warn someone.", (ChatContext context, Member member, [GreedyString? reason]) async {
+      BotCommand("warn", "Moderation", "Warn someone.", (T context, Member member, [GreedyString? reason]) async {
         final settings = UserSettings(store, member.id);
         final warns = settings.warns.get() ?? [];
         final warn = Warn(timestamp: DateTime.now().toUtc(), reason: reason?.data);
@@ -274,7 +274,7 @@ class ModerationPlugin extends BotPlugin {
 
         await context.respond(MessageBuilder(content: "Warned ${await memberToString(member, client: context.client)}. This is warn **#${warns.length}**.\n${reason ?? "No reason provided."}"));
       }, permissionsRequired: BotCommandPermissions.admin),
-      BotCommand("unwarn", "Moderation", "Remove a warn from someone", (ChatContext context, Member member, [int? index]) async {
+      BotCommand("unwarn", "Moderation", "Remove a warn from someone", (T context, Member member, [int? index]) async {
         final settings = UserSettings(store, member.id);
         final warns = settings.warns.get() ?? [];
         index ??= warns.length;
@@ -298,7 +298,7 @@ class ModerationPlugin extends BotPlugin {
 
         await context.respond(MessageBuilder(content: "Removed warn **#$index** for ${await memberToString(member, client: context.client)}."));
       }, permissionsRequired: BotCommandPermissions.admin, aliases: ["remwarn"]),
-      BotCommand("summary", "Moderation", "Get a moderation summary of a user.", (ChatContext context, Member member) async {
+      BotCommand("summary", "Moderation", "Get a moderation summary of a user.", (T context, Member member) async {
         await context.respond(MessageBuilder(embeds: [
           EmbedBuilder(
             description: await memberToString(member, client: context.client, detailed: true),
@@ -309,7 +309,7 @@ class ModerationPlugin extends BotPlugin {
           ),
         ]));
       }, permissionsRequired: BotCommandPermissions.admin),
-      BotCommand("purge", "Moderation", "Purge messages from a channel. Messages must be under 14 days old.", (ChatContext context, int amount, [GreedyString? args]) async {
+      BotCommand("purge", "Moderation", "Purge messages from a channel. Messages must be under 14 days old.", (T context, int amount, [GreedyString? args]) async {
         if (await context.assureGuild() == false) return;
         if (amount <= 2) return context.respondWithError("Too little messages. Must be greater than 2.");
         final m = await context.respond(MessageBuilder(content: "Purging $amount messages..."));
@@ -451,20 +451,20 @@ class ModerationPlugin extends BotPlugin {
         "quiet": "Delete the bot's results messages too.",
         if (dev) "preview": "Include this argument to not actually purge messages, but just dry-run the command.",
       }.entries.map((x) => "- `${x.key}`: ${x.value}").join("\n")}"),
-      BotCommand("messagetypes", "Moderation", "See all message types and their values.", (ChatContext context) async {
+      BotCommand("messagetypes", "Moderation", "See all message types and their values.", (T context) async {
         await respondWithPagination(context, settings: ifGuild(store, context.guild?.id, (id) => ServerSettings(store, id)), PaginatedEmbedBuilder(
           pages: EmbedPage.generateFromItems(
             messageTypes.map((x) => "- `${x.value.toString().padRight(2)} ${x.name.padRight(30)} (deletable: ${"${x.deletable})".padRight(6)}`").toList(),
           ),
         ));
       }),
-      BotCommand("setbanmessageremoval", "Moderation", "Set the ban message removal period.", (ChatContext context, Duration duration) async {
+      BotCommand("setbanmessageremoval", "Moderation", "Set the ban message removal period.", (T context, Duration duration) async {
         if (await context.assureGuild() == false) return;
         final settings = ServerSettings(store, context.guild!.id);
         settings.banMessageRemovalSeconds.set(duration.inSeconds);
         await context.respond(MessageBuilder(content: "Set ban message removal period to **${duration.prettyDetailed()}**."));
       }, permissionsRequired: BotCommandPermissions.admin),
-      BotCommand("banmessageremoval", "Moderation", "Get the ban message removal period.", (ChatContext context) async {
+      BotCommand("banmessageremoval", "Moderation", "Get the ban message removal period.", (T context) async {
         if (await context.assureGuild() == false) return;
         final settings = ServerSettings(store, context.guild!.id);
         var seconds = settings.banMessageRemovalSeconds.get();
@@ -472,13 +472,13 @@ class ModerationPlugin extends BotPlugin {
         final duration = seconds != null ? Duration(seconds: seconds) : null;
         await context.respond(MessageBuilder(content: duration != null ? "Ban message removal period is currently set to **${duration.prettyDetailed()}**." : "No ban message removal period set."));
       }),
-      BotCommand("setkickmessageremoval", "Moderation", "Set the kick message removal period.", (ChatContext context, Duration duration) async {
+      BotCommand("setkickmessageremoval", "Moderation", "Set the kick message removal period.", (T context, Duration duration) async {
         if (await context.assureGuild() == false) return;
         final settings = ServerSettings(store, context.guild!.id);
         settings.kickMessageRemovalSeconds.set(duration.inSeconds);
         await context.respond(MessageBuilder(content: "Set kick message removal period to **${duration.prettyDetailed()}**."));
       }, permissionsRequired: BotCommandPermissions.admin),
-      BotCommand("kickmessageremoval", "Moderation", "Get the kick message removal period.", (ChatContext context) async {
+      BotCommand("kickmessageremoval", "Moderation", "Get the kick message removal period.", (T context) async {
         if (await context.assureGuild() == false) return;
         final settings = ServerSettings(store, context.guild!.id);
         var seconds = settings.kickMessageRemovalSeconds.get();
@@ -605,7 +605,7 @@ class ModerationPlugin extends BotPlugin {
               (await Future.wait(old.entries.where((x) => x.value != null).map((x) async => "## Message ${x.key} by ${await userToString(await tryCatchA(() => client.users.get(x.key)))}\n${x.value?.content}"))).join("\n\n---\n\n"),
             ].join("\n\n\n"),
           },
-          severity: .severe,
+          severity: ModlogSeverity.severe,
         ));
       });
 
@@ -639,7 +639,7 @@ class ModerationPlugin extends BotPlugin {
           guild: await event.guild.get(),
           settings: ifGuild(context.store, event.guildId, (id) => ServerSettings(context.store, id)),
           client: client,
-          severity: .good,
+          severity: ModlogSeverity.good,
         ));
       });
 
@@ -668,7 +668,7 @@ class ModerationPlugin extends BotPlugin {
           guild: await event.guild.get(),
           settings: ifGuild(context.store, event.guildId, (id) => ServerSettings(context.store, id)),
           client: client,
-          severity: .severe,
+          severity: ModlogSeverity.severe,
         ));
       });
 
@@ -683,7 +683,7 @@ class ModerationPlugin extends BotPlugin {
           guild: await event.guild.get(),
           settings: ifGuild(context.store, event.guildId, (id) => ServerSettings(context.store, id)),
           client: client,
-          severity: .good,
+          severity: ModlogSeverity.good,
         ));
       });
 
@@ -769,7 +769,7 @@ class ModerationPlugin extends BotPlugin {
           guild: guild,
           settings: ServerSettings(context.store, guild.id),
           client: client,
-          severity: .good,
+          severity: ModlogSeverity.good,
         ));
       });
 

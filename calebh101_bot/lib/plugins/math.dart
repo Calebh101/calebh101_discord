@@ -19,11 +19,16 @@ class MathPlugin extends BotPlugin {
     return super.onRegister();
   }
 
-  @override FutureOr<List<BotCommand>> commands(CommandsPlugin plugin, KVStore store) {
+  @override
+  FutureOr<List<BotConverter<dynamic>>> converters(CommandsPlugin plugin, KVStore store) {
     return [
-      enumConverter(Symbol.values),
+      enumConverter<Symbol>(Symbol.values),
+    ];
+  }
 
-      BotCommand("setmathchannel", "Math", "Set the channel for mathing. Pass without a value to disable.", (ChatContext context, [GuildTextChannel? channel]) async {
+  @override FutureOr<List<BotCommand>> commands<T extends ChatContext>(CommandsPlugin plugin, KVStore store) {
+    return [
+      BotCommand("setmathchannel", "Math", "Set the channel for mathing. Pass without a value to disable.", (T context, [GuildTextChannel? channel]) async {
         if (await context.assureGuild() == false) return;
         final settings = Calebh101BotServerSettings(store, context.guild!.id);
         settings.mathChannel.set(channel?.id);
@@ -32,7 +37,7 @@ class MathPlugin extends BotPlugin {
           content: "Math channel ${channel != null ? "set to ${channel.toMention()}" : "**reset**"}!",
         ));
       }, permissionsRequired: BotCommandPermissions.admin),
-      BotCommand("mathchannel", "Math", "Get the current math channel.", (ChatContext context) async {
+      BotCommand("mathchannel", "Math", "Get the current math channel.", (T context) async {
         if (await context.assureGuild() == false) return;
         final settings = Calebh101BotServerSettings(store, context.guild!.id);
         final id = settings.mathChannel.get();
@@ -41,7 +46,7 @@ class MathPlugin extends BotPlugin {
           content: "Math channel ${id != null ? "is currently set to ${id.value.toChannel()}" : "not set"}."
         ));
       }),
-      BotCommand("math", "Math", "Print the current math formula, or make a new one.", (ChatContext context) async {
+      BotCommand("math", "Math", "Print the current math formula, or make a new one.", (T context) async {
         if (await context.assureGuild() == false) return;
         final settings = Calebh101BotServerSettings(store, context.guild!.id);
         final allowedTypes = settings.allowedMathTypes.get() ?? Math.defaultTypes;
@@ -49,7 +54,7 @@ class MathPlugin extends BotPlugin {
         settings.currentMath.set(math);
         await context.respond(MessageBuilder(embeds: [await math.toEmbed(context.member!)]));
       }),
-      BotCommand("newmath", "Math", "Print a new math formula.", (ChatContext context) async {
+      BotCommand("newmath", "Math", "Print a new math formula.", (T context) async {
         if (await context.assureGuild() == false) return;
         final settings = Calebh101BotServerSettings(store, context.guild!.id);
         final allowedTypes = settings.allowedMathTypes.get() ?? Math.defaultTypes;
@@ -57,20 +62,20 @@ class MathPlugin extends BotPlugin {
         settings.currentMath.set(math);
         await context.respond(MessageBuilder(embeds: [await math.toEmbed(context.member!)]));
       }, permissionsRequired: BotCommandPermissions.admin),
-      BotCommand("resetmath", "Math", "Reset the current math formula.", (ChatContext context) async {
+      BotCommand("resetmath", "Math", "Reset the current math formula.", (T context) async {
         if (await context.assureGuild() == false) return;
         final settings = Calebh101BotServerSettings(store, context.guild!.id);
         settings.currentMath.delete();
         await context.respond(MessageBuilder(content: "Math formula cleared."));
       }, permissionsRequired: BotCommandPermissions.admin),
-      BotCommand("mathanswer", "Math", "Reset the current math formula.", (ChatContext context) async {
+      BotCommand("mathanswer", "Math", "Reset the current math formula.", (T context) async {
         if (await context.assureGuild() == false) return;
         final settings = Calebh101BotServerSettings(store, context.guild!.id);
         final math = settings.currentMath.get();
         if (math == null) return context.respondWithError("No math formula found.");
         await context.respond(MessageBuilder(content: "$math = ${math.result}"));
       }, permissionsRequired: BotCommandPermissions.owner),
-      BotCommand("setmathtypes", "Math", "Set the current allowed math types for the server.", (ChatContext context, StringList values) async {
+      BotCommand("setmathtypes", "Math", "Set the current allowed math types for the server.", (T context, StringList values) async {
         if (await context.assureGuild() == false) return;
         final settings = Calebh101BotServerSettings(store, context.guild!.id);
         final allowed = Math.registry.keys.toList();
@@ -78,7 +83,7 @@ class MathPlugin extends BotPlugin {
         settings.allowedMathTypes.set(data);
         await context.respond(MessageBuilder(content: "Set math types to **${data.length}** values:\n${data.join(", ").toDiscordCodeBlock()}\n-# **${values.invalid(allowed)}** types invalid"));
       }, permissionsRequired: BotCommandPermissions.admin),
-      BotCommand("mathtypes", "Math", "Set the current allowed math types for the server.", (ChatContext context) async {
+      BotCommand("mathtypes", "Math", "Set the current allowed math types for the server.", (T context) async {
         if (await context.assureGuild() == false) return;
         final current = context.guild != null ? Calebh101BotServerSettings(store, context.guild!.id).allowedMathTypes.get() : null;
         final all = Math.registry.keys.toList();
@@ -88,7 +93,7 @@ class MathPlugin extends BotPlugin {
           "All types: ${all.join(", ").toDiscordCodeString()}",
         ].join("\n")));
       }),
-      BotCommand("mathsymbol", "Math", "Print a math symbol.", (ChatContext context, Symbol symbol) async {
+      BotCommand("mathsymbol", "Math", "Print a math symbol.", (T context, Symbol symbol) async {
         await context.respond(MessageBuilder(content: symbol.symbol.toDiscordCodeBlock()));
       }),
     ];

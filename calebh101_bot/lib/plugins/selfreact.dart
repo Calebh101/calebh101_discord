@@ -24,8 +24,8 @@ class SelfReactPlugin extends BotPlugin {
   }
 
   @override
-  FutureOr<List<BotCommand>> commands(CommandsPlugin plugin, KVStore store) {
-    return [BotCommand("selfreact", "Server", "Enable/disable self-reacting. Defaults to allowed.", (ChatContext context, bool enabled) async {
+  FutureOr<List<BotCommand>> commands<T extends ChatContext>(CommandsPlugin plugin, KVStore store) {
+    return [BotCommand("selfreact", "Server", "Enable/disable self-reacting. Defaults to allowed.", (T context, bool enabled) async {
       if (await context.assureGuild() == false) return;
       final settings = ServerSettings(store, context.guild!.id);
       settings.selfReactAllowed.set(enabled);

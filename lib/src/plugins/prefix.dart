@@ -6,12 +6,12 @@ class PrefixPlugin extends BotPlugin {
   PrefixPlugin() : super(id: "prefix", version: Version.parse("1.0.0A"));
 
   @override
-  FutureOr<List<BotCommand>> commands(CommandsPlugin plugin, KVStore store) {
-    return prefixCommands((guild) => ServerSettings(store, guild.id));
+  FutureOr<List<BotCommand>> commands<T extends ChatContext>(CommandsPlugin plugin, KVStore store) {
+    return prefixCommands<T>((guild) => ServerSettings(store, guild.id));
   }
 
-  List<BotCommand> prefixCommands(ServerSettings? Function(Guild guild) getSettings) => [
-    BotCommand.command("prefix", "Get the bot's prefix.", (ChatContext context) async {
+  List<BotCommand> prefixCommands<T extends ChatContext>(ServerSettings? Function(Guild guild) getSettings) => [
+    BotCommand.command("prefix", "Get the bot's prefix.", (T context) async {
       if (context.guild == null || context.member == null) return context.respondWithError("No guild/member found.");
       final settings = getSettings.call(context.guild!);
       if (settings == null) return context.respondWithError("Unable to load settings.");
@@ -20,7 +20,7 @@ class PrefixPlugin extends BotPlugin {
         content: "Prefix is currently set to `${settings.prefix.get() ?? defaultPrefix}`.",
       ));
     }, CommandAttributes(category: "Bot")),
-    BotCommand.command("setprefix", "Set the bot's prefix.", (ChatContext context, String prefix) async {
+    BotCommand.command("setprefix", "Set the bot's prefix.", (T context, String prefix) async {
       if (context.guild == null || context.member == null) return context.respondWithError("No guild/member found.");
       final settings = getSettings.call(context.guild!);
       if (settings == null) return context.respondWithError("Unable to load settings.");
@@ -46,7 +46,7 @@ class PrefixPlugin extends BotPlugin {
         content: "Prefix set to `$prefix`!",
       ));
     }, CommandAttributes(category: "Bot", permissionsRequired: BotCommandPermissions.admin)),
-    BotCommand.command("resetprefix", "Reset the bot's prefix for this server.", (ChatContext context) async {
+    BotCommand.command("resetprefix", "Reset the bot's prefix for this server.", (T context) async {
       if (context.guild == null || context.member == null) return context.respondWithError("No guild/member found.");
       final settings = getSettings.call(context.guild!);
       if (settings == null) return context.respondWithError("Unable to load settings.");

@@ -15,14 +15,16 @@ class RecursiveCaster {
   /// - [List<String>] (`List<String>`)
   /// - [Map<String, String>] (`Map<String, String>`)
   /// - [Map<int, String>] (`Map<int, String>`)
+  /// - [Map<String, bool>] (`Map<String, bool>`)
   static T cast<T>(Object? input) {
     if (T == List<String>) return ((dynamic value) => (value as List).map((e) => e as String).toList())(input) as T;
     if (T == Map<String, String>) return ((dynamic value) => Map<String, String>.from(value.map((e, a) => MapEntry(e as String, a as String))))(input) as T;
     if (T == Map<int, String>) return ((dynamic value) => Map<int, String>.from(value.map((e, a) => MapEntry(e as int, a as String))))(input) as T;
+    if (T == Map<String, bool>) return ((dynamic value) => Map<String, bool>.from(value.map((e, a) => MapEntry(e as String, a as bool))))(input) as T;
     throw RecursiveCasterTypeError(T);
   }
   /// This function returns an [Iterable<Type>] of all types supported by your configuration.
-  static Iterable<Type> getAll() => [List<String>, Map<String, String>, Map<int, String>];
+  static Iterable<Type> getAll() => [List<String>, Map<String, String>, Map<int, String>, Map<String, bool>];
 }
 /// This error is called if a casting object is not defined for the specified type.
 class RecursiveCasterTypeError extends Error {

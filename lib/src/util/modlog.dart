@@ -138,10 +138,10 @@ class ModlogEvent {
   }
 }
 
-List<BotCommand> modLogCommandsX(KVStore store) => [
+List<BotCommand> modLogCommandsX<T extends ChatContext>(KVStore store) => [
   BotCommand.command(
     "modlogchannel", "Set the preferred channel for mod logs. The bot must be able to send a message there.",
-    (ChatContext context, [GuildTextChannel? channel]) async {
+    (T context, [GuildTextChannel? channel]) async {
       if (context.guild == null || context.member == null) return context.respondWithError("No guild/member found.");
       final settings = context.guild != null ? ServerSettings(store, context.guild!.id) : null;
       if (settings == null) return context.respondWithError("No settings found.");
@@ -165,7 +165,7 @@ List<BotCommand> modLogCommandsX(KVStore store) => [
     },
     CommandAttributes(permissionsRequired: BotCommandPermissions.admin, category: "Modlog"),
   ),
-  BotCommand.command("modlogscopes", "Select scopes to log.", (ChatContext context, [String? input]) async {
+  BotCommand.command("modlogscopes", "Select scopes to log.", (T context, [String? input]) async {
     if (Modlog.events.isEmpty) return context.respondWithError("Modlog is not enabled.\n-# No events allowed. Did you forget to call `Modlog()`?");
     if (context.guild == null || context.member == null) return context.respondWithError("No guild/member found.");
     final settings = context.guild != null ? ServerSettings(store, context.guild!.id) : null;
@@ -210,7 +210,7 @@ List<BotCommand> modLogCommandsX(KVStore store) => [
       ].join("\n"),
     ));
   }, CommandAttributes(permissionsRequired: BotCommandPermissions.admin, category: "Modlog")),
-  BotCommand.command("modlogtest", "Send a modlog message.", (ChatContext context, String title, String message) async {
+  BotCommand.command("modlogtest", "Send a modlog message.", (T context, String title, String message) async {
     final settings = context.guild != null ? ServerSettings(store, context.guild!.id) : null;
     if (settings == null) return context.respondWithError("No settings found.");
     if (await context.assurePerms(BotCommandPermissions.admin, settings) == false) return;

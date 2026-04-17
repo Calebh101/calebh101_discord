@@ -21,9 +21,9 @@ class TagsPlugin extends BotPlugin {
   }
 
   @override
-  FutureOr<List<BotCommand>> commands(CommandsPlugin plugin, KVStore store) {
+  FutureOr<List<BotCommand>> commands<T extends ChatContext>(CommandsPlugin plugin, KVStore store) {
     return [
-      BotCommand("settag", "Tags", "Add/edit a server-wide tag.", (ChatContext context, String name, GreedyString content) async {
+      BotCommand("settag", "Tags", "Add/edit a server-wide tag.", (T context, String name, GreedyString content) async {
         if (await context.assureGuild() == false) return;
         final settings = TagsServerSettings(store, context.guild!.id);
         final tags = settings.tags.get() ?? {};
@@ -33,7 +33,7 @@ class TagsPlugin extends BotPlugin {
         settings.tags.set(tags);
         await context.respond(MessageBuilder(content: "${exists ? "Edited" : "Added"} server tag `$name`."));
       }, permissionsRequired: BotCommandPermissions.admin),
-      BotCommand("setptag", "Tags", "Add/edit a personal tag.", (ChatContext context, String name, GreedyString content) async {
+      BotCommand("setptag", "Tags", "Add/edit a personal tag.", (T context, String name, GreedyString content) async {
         final settings = TagsServerPersonalSettings(store, context.guild!.id);
         final tags = settings.tags.get() ?? {};
         final exists = tags.containsKey(name);
@@ -42,7 +42,7 @@ class TagsPlugin extends BotPlugin {
         settings.tags.set(tags);
         await context.respond(MessageBuilder(content: "${exists ? "Edited" : "Added"} personal tag `$name` for ${await userOrMemberToString(context.member, context.user, client: context.client)}."));
       }),
-      BotCommand("remtag", "Tags", "Delete a server-wide tag.", (ChatContext context, String name) async {
+      BotCommand("remtag", "Tags", "Delete a server-wide tag.", (T context, String name) async {
         if (await context.assureGuild() == false) return;
         final settings = TagsServerSettings(store, context.guild!.id);
         final tags = settings.tags.get() ?? {};
@@ -52,7 +52,7 @@ class TagsPlugin extends BotPlugin {
         settings.tags.set(tags);
         await context.respond(MessageBuilder(content: "${exists ? "Deleted" : "Couldn't find"} server tag `$name`."));
       }, permissionsRequired: BotCommandPermissions.admin),
-      BotCommand("remptag", "Tags", "Delete a oersibak tag.", (ChatContext context, String name) async {
+      BotCommand("remptag", "Tags", "Delete a oersibak tag.", (T context, String name) async {
         final settings = TagsServerPersonalSettings(store, context.guild!.id);
         final tags = settings.tags.get() ?? {};
         final exists = tags.containsKey(name);
@@ -61,7 +61,7 @@ class TagsPlugin extends BotPlugin {
         settings.tags.set(tags);
         await context.respond(MessageBuilder(content: "${exists ? "Deleted" : "Couldn't find"} personal tag `$name` for ${await userOrMemberToString(context.member, context.user, client: context.client)}."));
       }),
-      BotCommand("tag", "Tags", "Print a tag, from either the server's tags or your personal tags.", (ChatContext context, GreedyString name) async {
+      BotCommand("tag", "Tags", "Print a tag, from either the server's tags or your personal tags.", (T context, GreedyString name) async {
         final serverSettings = ifGuild(store, context.guild?.id, (id) => TagsServerSettings(store, id));
         final userSettings = TagsServerPersonalSettings(store, context.user.id);
 
@@ -83,7 +83,7 @@ class TagsPlugin extends BotPlugin {
           tag.value,
         ].join("\n\n")));
       }),
-      BotCommand("stag", "Tags", "Print a tag, from the server's tags.", (ChatContext context, GreedyString name) async {
+      BotCommand("stag", "Tags", "Print a tag, from the server's tags.", (T context, GreedyString name) async {
         final serverSettings = ifGuild(store, context.guild?.id, (id) => TagsServerSettings(store, id));
         final server = serverSettings?.tags.get();
         final tag = server?.entries.firstWhereOrNull((x) => x.key.trim() == name.data.trim());
@@ -97,7 +97,7 @@ class TagsPlugin extends BotPlugin {
           tag.value,
         ].join("\n\n")));
       }),
-      BotCommand("ptag", "Tags", "Print a tag, from your personal tags.", (ChatContext context, GreedyString name) async {
+      BotCommand("ptag", "Tags", "Print a tag, from your personal tags.", (T context, GreedyString name) async {
         final userSettings = TagsServerPersonalSettings(store, context.user.id);
         final user = userSettings.tags.get() ?? {};
         final tag = user.entries.firstWhereOrNull((x) => x.key.trim() == name.data.trim());
@@ -111,7 +111,7 @@ class TagsPlugin extends BotPlugin {
           tag.value,
         ].join("\n\n")));
       }),
-      BotCommand("tagsearch", "Tags", "Search for a tag.", (ChatContext context, String query) async {
+      BotCommand("tagsearch", "Tags", "Search for a tag.", (T context, String query) async {
         final serverSettings = ifGuild(store, context.guild?.id, (id) => TagsServerSettings(store, id));
         final userSettings = TagsServerPersonalSettings(store, context.user.id);
 

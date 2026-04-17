@@ -6,16 +6,16 @@ class MessagesPlugin extends BotPlugin {
   MessagesPlugin() : super(id: "messages", version: Version.parse("1.0.0A"));
 
   @override
-  FutureOr<List<BotCommand>> commands(CommandsPlugin plugin, KVStore store) {
+  FutureOr<List<BotCommand>> commands<T extends ChatContext>(CommandsPlugin plugin, KVStore store) {
     return [
-      sendMessageAs(),
-      deleteMyMessageCommand(store),
-      editMyMessageCommand(store),
-      messageMe(),
+      sendMessageAs<T>(),
+      deleteMyMessageCommand<T>(store),
+      editMyMessageCommand<T>(store),
+      messageMe<T>(),
     ];
   }
 
-  BotCommand sendMessageAs() => BotCommand.command("sendmessage", "Send a message on my behalf.", (ChatContext context, String content, [GuildTextChannel? channel, Snowflake? reply]) async {
+  BotCommand sendMessageAs<T extends ChatContext>() => BotCommand.command("sendmessage", "Send a message on my behalf.", (T context, String content, [GuildTextChannel? channel, Snowflake? reply]) async {
     if (await context.assureOwner() == false) return;
     final c = channel ?? context.channel;
     if (c is! GuildTextChannel) return context.respondWithError("The selected channel is not a valid channel.\nExpected: `GuildTextChannel`, got: `${c.runtimeType}`");
@@ -30,9 +30,9 @@ class MessagesPlugin extends BotPlugin {
     }
   }, CommandAttributes(category: "Bot"));
 
-  BotCommand deleteMyMessageCommand(KVStore store) => BotCommand.command(
+  BotCommand deleteMyMessageCommand<T extends ChatContext>(KVStore store) => BotCommand.command(
     "deletemessage", "Delete my message.",
-    (ChatContext context, Snowflake id, [GuildTextChannel? targetChannel]) async {
+    (T context, Snowflake id, [GuildTextChannel? targetChannel]) async {
       final owner = isOwner(id: context.user.id);
 
       if (context.guild != null && !owner) {
@@ -57,9 +57,9 @@ class MessagesPlugin extends BotPlugin {
     CommandAttributes(category: "Bot"),
   );
 
-  BotCommand editMyMessageCommand(KVStore store) => BotCommand.command(
+  BotCommand editMyMessageCommand<T extends ChatContext>(KVStore store) => BotCommand.command(
     "editmessage", "Edit a message of mine.",
-    (ChatContext context, Snowflake id, String content, [GuildTextChannel? targetChannel]) async {
+    (T context, Snowflake id, String content, [GuildTextChannel? targetChannel]) async {
       final owner = isOwner(id: context.user.id);
 
       if (context.guild != null && !owner) {
@@ -84,7 +84,7 @@ class MessagesPlugin extends BotPlugin {
     CommandAttributes(category: "Bot"),
   );
 
-  BotCommand messageMe() => BotCommand.command("messageme", "Make me DM you.", (ChatContext context) async {
+  BotCommand messageMe<T extends ChatContext>() => BotCommand.command("messageme", "Make me DM you.", (T context) async {
     bool dmSuccessful = false;
 
     try {

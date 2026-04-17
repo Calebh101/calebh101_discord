@@ -6,7 +6,7 @@ class ModlogPlugin extends BotPlugin {
   ModlogPlugin() : super(id: "modlog", version: Version.parse("1.0.0A"));
 
   @override
-  FutureOr<List<BotCommand>> commands(CommandsPlugin plugin, KVStore store) {
+  FutureOr<List<BotCommand>> commands<T extends ChatContext>(CommandsPlugin plugin, KVStore store) {
     return modLogCommandsX(store);
   }
 }

@@ -6,18 +6,18 @@ class BotManagePlugin extends BotPlugin {
   BotManagePlugin() : super(id: "botmanage", version: Version.parse("1.0.0A"));
 
   @override
-  FutureOr<List<BotCommand>> commands(CommandsPlugin plugin, KVStore store) {
-    return [restartCommand(), killCommand(), echoDebugCommand(store)];
+  FutureOr<List<BotCommand>> commands<T extends ChatContext>(CommandsPlugin plugin, KVStore store) {
+    return [restartCommand<T>(), killCommand<T>(), echoDebugCommand<T>(store)];
   }
 
-  BotCommand restartCommand() => BotCommand.command("restart", "Restart the bot.", (ChatContext context) async {
+  BotCommand restartCommand<T extends ChatContext>() => BotCommand.command("restart", "Restart the bot.", (T context) async {
     if (await context.assureOwner() == false) return;
     await context.respond(MessageBuilder(content: "Restarting..."));
     Logger.print("Commands.Kill", "User ${context.user.id} requested my restart.");
     await close.call(ExitCode.restart);
   }, CommandAttributes(category: "Bot", permissionsRequired: BotCommandPermissions.owner));
 
-  BotCommand killCommand() => BotCommand.command("kill", "Kill the bot. He will be sad.", (ChatContext context) async {
+  BotCommand killCommand<T extends ChatContext>() => BotCommand.command("kill", "Kill the bot. He will be sad.", (T context) async {
     if (!isOwner(id: context.user.id)) {
       context.respondWithError("You are not the owner of me!");
       return;
@@ -28,7 +28,7 @@ class BotManagePlugin extends BotPlugin {
     close.call();
   }, CommandAttributes(permissionsRequired: BotCommandPermissions.owner, category: "Bot"));
 
-  BotCommand echoDebugCommand(KVStore store) => BotCommand.command("echo", "Echo the input text from the bot.", (ChatContext context, String text, [int count = 1]) async {
+  BotCommand echoDebugCommand<T extends ChatContext>(KVStore store) => BotCommand.command("echo", "Echo the input text from the bot.", (T context, String text, [int count = 1]) async {
     if (context.guild == null || context.member == null) return context.respondWithError("No guild/member found.");
     final settings = ServerSettings(store, context.guild!.id);
     if (await context.assurePerms(BotCommandPermissions.owner, settings) == false) return;
