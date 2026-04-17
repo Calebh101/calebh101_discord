@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:nyxx/nyxx.dart';
+import 'package:nyxx_commands/src/checks/prechecks.dart';
 
 import 'checks/checks.dart';
 import 'checks/guild.dart';
@@ -168,8 +169,11 @@ class CommandsPlugin extends NyxxPlugin<NyxxGateway> implements CommandGroup<Com
   Future<void> afterConnect(NyxxGateway client) async {
     _attachedClients.add(client);
 
-    client.onMessageComponentInteraction.map((event) => event.interaction).where((interaction) => interaction.data.type == MessageComponentType.button).listen(
-      (interaction) async {
+    client.onMessageComponentInteraction.where((event) => event.interaction.data.type == MessageComponentType.button).listen(
+      (event) async {
+        final interaction = event.interaction;
+        if (await fire(event) == false) return;
+
         try {
           await eventManager.processButtonInteraction(interaction);
         } on CommandsException catch (e) {
@@ -179,10 +183,12 @@ class CommandsPlugin extends NyxxPlugin<NyxxGateway> implements CommandGroup<Com
     );
 
     client.onMessageComponentInteraction
-        .map((event) => event.interaction)
-        .where((interaction) => interaction.data.type == MessageComponentType.stringSelect)
+        .where((event) => event.interaction.data.type == MessageComponentType.stringSelect)
         .listen(
-      (interaction) async {
+      (event) async {
+        final interaction = event.interaction;
+        if (await fire(event) == false) return;
+
         try {
           await eventManager.processSelectMenuInteraction(interaction);
         } on CommandsException catch (e) {
@@ -193,15 +199,19 @@ class CommandsPlugin extends NyxxPlugin<NyxxGateway> implements CommandGroup<Com
 
     client.onMessageCreate.listen((event) async {
       try {
+        if (await fire(event) == false) return;
         await eventManager.processMessageCreateEvent(event);
       } on CommandsException catch (e) {
         _onCommandErrorController.add(e);
       }
     });
 
-    client.onApplicationCommandInteraction.map((event) => event.interaction).listen(
-      (interaction) async {
+    client.onApplicationCommandInteraction.listen(
+      (event) async {
+        final interaction = event.interaction;
         try {
+          if (await fire(event) == false) return;
+
           final applicationCommand = registeredCommands.singleWhere(
             (command) => command.id == interaction.data.id,
           );
@@ -231,8 +241,11 @@ class CommandsPlugin extends NyxxPlugin<NyxxGateway> implements CommandGroup<Com
       },
     );
 
-    client.onApplicationCommandAutocompleteInteraction.map((event) => event.interaction).listen((interaction) async {
+    client.onApplicationCommandAutocompleteInteraction.listen((event) async {
+      final interaction = event.interaction;
       try {
+        if (await fire(event) == false) return;
+
         final applicationCommand = registeredCommands.singleWhere(
           (command) => command.id == interaction.data.id,
         );

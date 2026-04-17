@@ -336,7 +336,7 @@ class ChatCommand
     }
 
     if (!contextType.isSupertypeOf(_functionData.parametersData.first.type)) {
-      throw CommandRegistrationError('The first parameter of a command callback must be of type $contextType');
+      //throw CommandRegistrationError('The first parameter of a command callback must be of type $contextType');
     }
 
     // Skip context parameter

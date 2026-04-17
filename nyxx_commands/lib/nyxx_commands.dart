@@ -62,3 +62,4 @@ export 'src/options.dart' show CommandsOptions;
 export 'src/util/util.dart'
     show Autocomplete, Choices, ComponentId, ComponentIdStatus, Description, Name, UseConverter, commandNameRegexp, convertToKebabCase, dmOr, id, mentionOr;
 export 'src/util/view.dart' show StringView;
+export 'src/checks/prechecks.dart';
