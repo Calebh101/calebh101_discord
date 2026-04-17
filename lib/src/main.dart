@@ -237,6 +237,10 @@ Future<BotContext?> load({required BotSettings settings, required FutureOr<Patte
       return handleError(e, "Invalid command input.", codeblock: "Could not parse input to type ${e.failed}.", showHelp: true);
     } else if (e is NotEnoughArgumentsException) {
       return handleError(e, "Not enough arguments.", showHelp: true);
+    } else if (e is UncaughtException) {
+      if (e.message.contains("BASE_TYPE_MAX_LENGTH")) {
+        return handleError(e, "The response generated was too long.");
+      }
     }
 
     if (e is ContextualException && e.context is MessageChatContext) {
