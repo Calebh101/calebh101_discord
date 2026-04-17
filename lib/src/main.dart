@@ -126,6 +126,14 @@ Future<BotContext?> load({required BotSettings settings, required FutureOr<Patte
   List<String> existingConverters = [];
   final cmd = CommandsPlugin(prefix: prefix);
 
+  Precheck.addPrecheck(Precheck((event) {
+    final settings = BotSettings(store);
+    final userId = event.getData((x) => x.user?.id ?? x.member?.id, (x) => x.message.author.id, (x) => x.user?.id ?? x.member?.id, (x) => x.user?.id ?? x.member?.id);
+
+    if (userId == null) Logger.warn("Precheck", "User ID was null for event ${event.runtimeType}");
+    return userId == null || !isIgnored(store, userId);
+  }));
+
   R cr<R>(R Function<T extends ChatContext>() callback) => switch (commandType.internalType) {
     == MessageChatContext => callback.call<MessageChatContext>(),
     == InteractionChatContext => callback.call<InteractionChatContext>(),
@@ -239,6 +247,7 @@ Future<BotContext?> load({required BotSettings settings, required FutureOr<Patte
   });
 
   clients.run((client) => client.onMessageCreate.listen((event) async {
+    if (isIgnored(store, event.message.author.id)) return;
     final u = await user(event.gateway.client);
 
     if (u != null && event.message.content.trim() == "<@${u.id}>") {
@@ -253,7 +262,7 @@ Future<BotContext?> load({required BotSettings settings, required FutureOr<Patte
   late List<StreamSubscription<ProcessSignal>> subscriptions;
 
   void onClose(ProcessSignal? signal) {
-    Logger.print("onClose", "Received ${signal?.name ?? "generic signal"}, closing...");
+    Logger.print("Close", "Received ${signal?.name ?? "generic signal"}, closing...");
     stdin.echoMode = true;
     stdin.lineMode = true;
 

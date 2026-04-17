@@ -23,6 +23,20 @@ class RestrictCommandsPlugin extends BotPlugin {
     ];
   }
 
+  // Non-null if false
+  static String? getOverrideDefaultPermissions({required KVStore store, required String command, required Snowflake? guildId}) {
+    final entry = BotCommand.getCommand(command);
+    if (entry == null) return "No command found";
+    if (entry.permissionsRequired == BotCommandPermissions.owner) return "Command requires owner";
+
+    if (guildId == null) return "No guild";
+    final settings = RestrictServerSettings(store, guildId);
+    final map = settings.overrideDefaultPermissions.get() ?? {};
+    if (map[command] ?? false) return null;
+    return "Not specified (included: ${map.containsKey(command)})";
+  }
+
+  // Non-null if succeed
   static Future<String?> check({required NyxxGateway client, required String command, required KVStore store, required Guild? guild, required Snowflake userId, required Snowflake channelId}) async {
     if (!enabled) return "Plugin not enabled";
     if (isOwner(id: userId)) return "Bot owner";
@@ -104,10 +118,24 @@ class RestrictCommandsPlugin extends BotPlugin {
 
         await context.respond(MessageBuilder(content: "Command `$command` has been **${enabled ? "enabled" : "disabled"}**."));
       }, permissionsRequired: BotCommandPermissions.admin),
-      BotCommand("checkcommand", "Restrictions", "Check if a command is usable by you.", (T context, String command) async {
+      BotCommand("setcommandoverridedefault", "Restrictions", "Set if a command's default permissions should be overridden.", (T context, String command, bool override) async {
+        if (await context.assureGuild() == false) return;
+        final settings = RestrictServerSettings(store, context.guild!.id);
+        if (await assureCanEditRestrictions(context, settings) == false) return;
+
         if (BotCommand.getCommand(command) == null) {
           return context.respondWithError("Command not found: `$command`");
         }
+
+        final current = settings.overrideDefaultPermissions.get() ?? {};
+        current[command] = override;
+        settings.overrideDefaultPermissions.set(current);
+
+        await context.respond(MessageBuilder(content: "Command `$command` permissions will be **${override ? "overridden" : "used"}**."));
+      }, permissionsRequired: BotCommandPermissions.admin),
+      BotCommand("checkcommand", "Restrictions", "Check if a command is usable by you.", (T context, String command) async {
+        final entry = BotCommand.getCommand(command);
+        if (entry == null) return context.respondWithError("Command not found: `$command`");
 
         final results = await check(client: context.client, command: command, store: store, guild: context.guild, userId: context.user.id, channelId: context.channel.id);
         final pass = results != null;
@@ -119,11 +147,14 @@ class RestrictCommandsPlugin extends BotPlugin {
           return restrictions;
         }();
 
+        final override = getOverrideDefaultPermissions(store: store, command: command, guildId: context.guild?.id);
+
         await context.respond(MessageBuilder(
           content: [
             "Pass: **${pass ? "Yes" : "No"}**",
             if (results != null) "Reason: $results",
             ?restrictions?.toDiscordCodeBlock(),
+            if (override == null) "Default permissions overridden" else "Requires permissions: `${entry.permissionsRequired.name}`\n-# Not overriding: $override",
           ].join("\n"),
         ));
       }),
@@ -156,6 +187,7 @@ class RestrictServerSettings extends ServerSettings {
 
   SettingsObject<bool> get allowAdminToUseRestrictedCommands => SettingsObject(this, "allowAdminToUseRestrictedCommands");
   SettingsObject<Map<String, bool>> get disabled => SettingsObject(this, "disabled", decodeFunction: (input) => input == null ? null : RecursiveCaster.cast<Map<String, bool>>(input));
+  SettingsObject<Map<String, bool>> get overrideDefaultPermissions => SettingsObject(this, "overrideDefaultPermissions", decodeFunction: (input) => input == null ? null : RecursiveCaster.cast<Map<String, bool>>(input));
   SettingsObject<List<CommandRestrictions>> get restrictions => SettingsObject(this, "restrictions", encodeFunction: (input) => input.map((x) => x.toJson()).toList(), decodeFunction: (input) => (input as List?)?.map((x) => CommandRestrictions.fromJson(x)).toList());
 }
 

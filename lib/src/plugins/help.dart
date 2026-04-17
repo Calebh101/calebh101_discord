@@ -67,7 +67,7 @@ class HelpPlugin extends BotPlugin {
     }
 
     String getName(BotCommand command) {
-      return [if (!command.noGroup) command.group, command.name, if (command.aliases != null) aliases(command)].join(" ");
+      return [if (!command.noGroup && BotCommand.useGroups) command.group, command.name, if (command.aliases != null) aliases(command)].join(" ");
     }
 
     if (command == null) {

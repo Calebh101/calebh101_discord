@@ -7,16 +7,19 @@ extension CommandContextHelper on CommandContext {
     try {
       await respond(MessageBuilder(content: message), level: level);
     } catch (e) {
-      Logger.warn("ChatContext.respondWithError", "Unable to respond with error '$message': $e");
+      Logger.warn("respondWithError", "Unable to respond with error '$message': $e");
     }
   }
 
   bool verifyPerms(BotCommandPermissions perms, ServerSettings? settings) {
+    final override = settings != null ? RestrictCommandsPlugin.getOverrideDefaultPermissions(store: settings.store, command: command.name, guildId: guild?.id) : "No settings";
+    final o = override == null;
+
     switch (perms) {
       case BotCommandPermissions.any: return true;
-      case BotCommandPermissions.admin: return isAdmin(settings: settings!, id: user.id);
-      case BotCommandPermissions.claimer: return isClaimer(settings: settings!, id: user.id);
-      case BotCommandPermissions.owner: return isOwner(id: user.id);
+      case BotCommandPermissions.admin: return o ? true : isAdmin(settings: settings!, id: user.id);
+      case BotCommandPermissions.claimer: return o ? true : isClaimer(settings: settings!, id: user.id);
+      case BotCommandPermissions.owner: return o ? true : isOwner(id: user.id);
     }
   }
 

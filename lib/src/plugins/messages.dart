@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math';
 
 import 'package:calebh101_discord/calebh101_discord.dart';
 
@@ -12,6 +13,30 @@ class MessagesPlugin extends BotPlugin {
       deleteMyMessageCommand<T>(store),
       editMyMessageCommand<T>(store),
       messageMe<T>(),
+
+      BotCommand("collapse", "Bot", "Collapse a message of mine, by removing embeds, attachments, and extra text.", (ChatContext context, Snowflake id, [GuildTextChannel? targetChannel]) async {
+        String getNew(String current) {
+          final lines = current.split("\n");
+          final target = lines.sublist(0, min(3, lines.length));
+          final text = target.join("\n");
+          final data = text.substring(0, min(50, text.length));
+          final changed = lines.length != target.length || current != data;
+          final result = "$data${changed ? "..." : ""}";
+          return result.isEmpty ? "||Collapsed||" : result;
+        }
+
+        final channel = targetChannel ?? context.channel;
+
+        try {
+          final message = await channel.messages.get(id);
+          if (message.author.id != context.client.user.id) return context.respondWithError("This message is not mine.", level: ResponseLevel.hint);
+          await message.edit(MessageUpdateBuilder(content: getNew(message.content), attachments: [], embeds: []));
+          await context.respond(MessageBuilder(content: "Message `${message.id}` edited."), level: ResponseLevel.hint);
+        } catch (e) {
+          Logger.warn("CollapseMyMessage", "Unable to edit message $id in channel ${channel.id}: $e");
+          context.respondWithError("Unable to edit message.", level: ResponseLevel.private);
+        }
+      }, permissionsRequired: BotCommandPermissions.owner),
     ];
   }
 

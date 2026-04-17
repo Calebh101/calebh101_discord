@@ -140,7 +140,7 @@ class ModlogEvent {
 
 List<BotCommand> modLogCommandsX<T extends ChatContext>(KVStore store) => [
   BotCommand.command(
-    "modlogchannel", "Set the preferred channel for mod logs. The bot must be able to send a message there.",
+    "setmodlogchannel", "Set the preferred channel for mod logs. The bot must be able to send a message there.",
     (T context, [GuildTextChannel? channel]) async {
       if (context.guild == null || context.member == null) return context.respondWithError("No guild/member found.");
       final settings = context.guild != null ? ServerSettings(store, context.guild!.id) : null;
@@ -165,6 +165,12 @@ List<BotCommand> modLogCommandsX<T extends ChatContext>(KVStore store) => [
     },
     CommandAttributes(permissionsRequired: BotCommandPermissions.admin, category: "Modlog"),
   ),
+  BotCommand("modlogchannel", "Modlog", "Get the current modlog channel.", (T context) async {
+    if (await context.assureGuild()) return;
+    final settings = ServerSettings(store, context.guild!.id);
+    final id = settings.modlogChannel.get();
+    await context.respond(MessageBuilder(content: "Modlog channel is currently ${id != null ? "set to ${id.toChannel()}" : "**not set**"}."));
+  }),
   BotCommand.command("modlogscopes", "Select scopes to log.", (T context, [String? input]) async {
     if (Modlog.events.isEmpty) return context.respondWithError("Modlog is not enabled.\n-# No events allowed. Did you forget to call `Modlog()`?");
     if (context.guild == null || context.member == null) return context.respondWithError("No guild/member found.");

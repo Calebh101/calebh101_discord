@@ -385,7 +385,6 @@ class XPPlugin extends BotPlugin {
     BotCommand.command("xpenabled", "See if the XP system is enabled.", (T context) async {
       if (context.guild == null) return context.respondWithError("No guild found.");
       final settings = Calebh101BotServerSettings(store, context.guild!.id);
-      if (await context.assurePerms(BotCommandPermissions.admin, settings) == false) return;
       final enabled = settings.xpEnabled.get() ?? false;
 
       await context.respond(MessageBuilder(

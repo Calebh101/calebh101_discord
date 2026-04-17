@@ -225,7 +225,9 @@ BotCommand defaultCheck(KVStore store) => BotCommand.check((plugin) {
       return false;
     }
 
-    if (command.enforcePermissions) {
+    final override = RestrictCommandsPlugin.getOverrideDefaultPermissions(store: store, command: command.name, guildId: context.guild?.id);
+
+    if (command.enforcePermissions && override != null) {
       if (command.permissionsRequired == BotCommandPermissions.owner) {
         if (await context.assureOwner() == false) return false;
       } else if (command.permissionsRequired == BotCommandPermissions.admin || command.permissionsRequired == BotCommandPermissions.claimer) {

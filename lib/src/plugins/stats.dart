@@ -10,13 +10,13 @@ class StatsPlugin extends BotPlugin {
   @override
   FutureOr<List<BotCommand>> commands<T extends ChatContext>(CommandsPlugin plugin, KVStore store) {
     return [
-      aboutCommand(store),
-      statusCommand(),
-      pingCommand(),
+      aboutCommand<T>(store),
+      statusCommand<T>(),
+      pingCommand<T>(),
     ];
   }
 
-  BotCommand aboutCommand(KVStore? store) => BotCommand.command("about", "See stats about this bot.", (ChatContext context) async {
+  BotCommand aboutCommand<T extends ChatContext>(KVStore? store) => BotCommand.command("about", "See stats about this bot.", (T context) async {
     final settings = store != null && context.guild != null ? ServerSettings(store, context.guild!.id) : null;
     final prefix = settings?.prefix.get() ?? defaultPrefix;
 
@@ -44,7 +44,7 @@ class StatsPlugin extends BotPlugin {
     ));
   }, CommandAttributes(category: "Bot"));
 
-  BotCommand statusCommand() => BotCommand("status", "Bot", "See the bot's status.", (ChatContext context) async {
+  BotCommand statusCommand<T extends ChatContext>() => BotCommand("status", "Bot", "See the bot's status.", (T context) async {
     const factor = 1024;
     final m = await context.respond(MessageBuilder(content: "Fetching status..."));
     Map<String, String> elements = {};
@@ -55,11 +55,11 @@ class StatsPlugin extends BotPlugin {
     final storage = await getStorage();
 
     String megabytes(num input) {
-      return "${input ~/ (factor * factor)} MiB";
+      return "${(input / (factor * factor)).toStringAsFixed(1)} MiB";
     }
 
     String gigabytes(num input) {
-      return "${input ~/ (factor * factor * factor)} GiB";
+      return "${(input / (factor * factor * factor)).toStringAsFixed(1)} GiB";
     }
 
     elements["System"] = [
@@ -73,7 +73,7 @@ class StatsPlugin extends BotPlugin {
     ].join("\n").trim();
 
     elements["Memory/Storage"] = [
-      "Memory: ${gigabytes(memory.free)} Free / ${gigabytes(memory.total)},",
+      "Memory: ${gigabytes(memory.available)} available / ${gigabytes(memory.total)},",
       "Memory for this process: ${megabytes(rss)} used (max since started: ${megabytes(maxRss)})",
       "Storage: ${gigabytes(storage.free)} Free / ${gigabytes(storage.total)}",
     ].join("\n").trim();
@@ -104,7 +104,7 @@ class StatsPlugin extends BotPlugin {
     }
   }
 
-  Future<({int free, int total})> getMemory() async {
+  Future<({int free, int available, int total})> getMemory() async {
     if (Platform.isMacOS) {
       final totalResult = await Process.run('sysctl', ['-n', 'hw.memsize']);
       final total = int.parse(totalResult.stdout.toString().trim());
@@ -118,19 +118,21 @@ class StatsPlugin extends BotPlugin {
         return int.tryParse(line.split(':').last.trim().replaceAll('.', '')) ?? 0;
       }
 
-      final free = (getPages('Pages free') + getPages('Pages inactive')) * pageSize;
-      return (total: total, free: free);
+      final a = (getPages('Pages free') + getPages('Pages inactive')) * pageSize;
+      final free = getPages("Pages free") * pageSize;
+      return (total: total, free: free, available: a);
     } else {
       return (
         total: SysInfo.getTotalPhysicalMemory(),
-        free: SysInfo.getAvailablePhysicalMemory(),
+        free: SysInfo.getFreePhysicalMemory(),
+        available: SysInfo.getAvailablePhysicalMemory(),
       );
     }
   }
 
-  BotCommand pingCommand() => BotCommand.command(
+  BotCommand pingCommand<T extends ChatContext>() => BotCommand.command(
     "ping", "Pong!",
-    (ChatContext context) async {
+    (T context) async {
       final latency = context.client.httpHandler.latency;
       final realLatency = context.client.httpHandler.realLatency;
       final gatewayLatency = context.client.gateway.latency;

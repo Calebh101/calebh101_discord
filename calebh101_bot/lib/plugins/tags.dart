@@ -142,7 +142,7 @@ class TagsPlugin extends BotPlugin {
           ),
         ]));
       }),
-      BotCommand("topicfromtag", "Tags", "Set a channel's topic from a tag.", (ChatContext context, String name, [GuildTextChannel? target]) async {
+      BotCommand("topicfromtag", "Tags", "Set a channel's topic from a tag.", (T context, String name, [GuildTextChannel? target]) async {
         final channel = target ?? context.channel;
         if (channel is! GuildTextChannel) return context.respondWithError("No channel found.\n-# Got: ${channel.runtimeType.toDiscordCodeString()}, expected: ${RuntimeType<GuildTextChannel>().internalType.toDiscordCodeString()}");
         if (await context.assureGuild() == false) return;
