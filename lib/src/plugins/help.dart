@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math';
 
 import 'package:calebh101_discord/calebh101_discord.dart';
 import 'package:nyxx_commands/src/mirror_utils/function_data.dart';
@@ -25,20 +26,42 @@ class HelpPlugin extends BotPlugin {
         );
       }),
       BotCommand("categories", "Commands", "List all categories.", (T context) async {
-        final categories = BotCommand.getAllCategories();
+        final categories = BotCommand.getAllCategories().entries.sorted((a, b) => a.key.compareTo(b.key));
 
         await respondWithPagination(context, PaginatedEmbedBuilder(
           title: "All Categories",
           footer: ElementBasedEmbedFooterBuilder(elements: ["${categories.length} categories"]),
           color: await getPrimaryColor(context.member) ?? primaryBotColor,
           pages: EmbedPage.generate(List.generate(categories.length, (i) {
-            final command = categories.entries.elementAt(i);
+            final command = categories.elementAt(i);
 
             return EmbedFieldBuilder(name: command.key, value: [
               "${command.value} commands",
             ].join("\n"), isInline: false);
           })),
         ), settings: context.guild != null ? ServerSettings(store, context.guild!.id) : null);
+      }),
+      BotCommand("search", "Commands", "Search for a command.", (T context, GreedyString query) async {
+        final commands = [...BotCommand.commandRegistry.entries, ...BotCommand.getAllCategories().entries];
+        final List<({String name, String description, double score, int type})> ranking = commands.map((x) => (name: x.key, description: x.value is BotCommand ? (x.value as BotCommand).description : "${x.value} commands", score: fuzzyScore(query.data, x.key), type: x.value is int ? 1 : 0 /* command = 0, category = 1 */)).sorted((a, b) => b.score.compareTo(a.score));
+        final results = ranking.sublist(0, min(6, ranking.length));
+        if (results.isEmpty) return context.respondWithError("No results found.");
+
+        await context.respond(MessageBuilder(embeds: [
+          EmbedBuilder(
+            title: "${results.length} Results",
+            description: query.toDiscordCodeBlock(),
+            color: await getColor(context.member),
+            footer: EmbedFooterBuilder(text: "${ranking.length} Total"),
+            fields: results.map((x) {
+              return EmbedFieldBuilder(
+                name: x.name,
+                value: x.description,
+                isInline: false,
+              );
+            }).toList(),
+          ),
+        ]));
       }),
       BotCommand("dumphelp", "Commands", "Dump all help as markdown.", (T context) {
         context.respondWithError("This command is not implemented yet.");
@@ -79,19 +102,6 @@ class HelpPlugin extends BotPlugin {
         pages: EmbedPage.generate(List.generate(commands.length, (i) {
           final command = commands.elementAt(i).value;
           return EmbedFieldBuilder(name: [getName(command), command.category].join(" - "), value: [getDescription(command), if (getPerms(command) != null) "Requires perms: `${getPerms(command)}`"].join(" "), isInline: false);
-        })),
-      );
-    } else if (command.trim() == "categories") {
-      embed = PaginatedEmbedBuilder(
-        title: "All Categories",
-        footer: ElementBasedEmbedFooterBuilder(elements: ["${categories.length} categories"]),
-        color: await getPrimaryColor(context.member) ?? primaryBotColor,
-        pages: EmbedPage.generate(List.generate(categories.length, (i) {
-          final command = categories.entries.elementAt(i);
-
-          return EmbedFieldBuilder(name: command.key, value: [
-            "${command.value} commands",
-          ].join("\n"), isInline: false);
         })),
       );
     } else {
@@ -158,5 +168,5 @@ class HelpPlugin extends BotPlugin {
     } else {
       Logger.print("Help", "No embed received");
     }
-  }, CommandAttributes(category: "Commands", extendedDescription: "Other options:\n- `help all`: Same as just `help`\n- `help categories`: Display all categories"), noGroup: true);
+  }, CommandAttributes(category: "Commands"), noGroup: true);
 }

@@ -540,11 +540,15 @@ class ModerationPlugin extends BotPlugin {
         final old = event.oldMessage;
         if (old != null && old.content == event.message.content) return;
 
+        final author = event.message.author;
+        if (author is! User) return;
+        if (author.isBot || author.isSystem) return;
+
         Modlog.add(ModlogEvent(
           "message.edit",
           title: "Message Edited",
           fields: {
-            "Author": event.message.author.id.value.toMention(),
+            "Author": author.id.value.toMention(),
             "ID": event.message.id.toDiscordCodeString(),
             "Link": "https://discord.com/channels/${[event.guildId ?? "@me", event.message.channelId, event.message.id].join("/")}",
             "Embeds": "${old?.embeds.length} -> ${event.message.embeds.length}".toDiscordCodeString(),
