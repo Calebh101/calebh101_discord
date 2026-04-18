@@ -133,11 +133,12 @@ class RestrictCommandsPlugin extends BotPlugin {
 
         await context.respond(MessageBuilder(content: "Command `$command` permissions will be **${override ? "overridden" : "used"}**."));
       }, permissionsRequired: BotCommandPermissions.admin),
-      BotCommand("checkcommand", "Restrictions", "Check if a command is usable by you.", (T context, String command) async {
+      BotCommand("checkcommand", "Restrictions", "Check if a command is usable by you.", (T context, String command, [User? user]) async {
+        user ??= context.user;
         final entry = BotCommand.getCommand(command);
         if (entry == null) return context.respondWithError("Command not found: `$command`");
 
-        final results = await check(client: context.client, command: command, store: store, guild: context.guild, userId: context.user.id, channelId: context.channel.id);
+        final results = await check(client: context.client, command: command, store: store, guild: context.guild, userId: user.id, channelId: context.channel.id);
         final pass = results != null;
 
         final restrictions = () {
@@ -157,7 +158,7 @@ class RestrictCommandsPlugin extends BotPlugin {
             if (override == null) "Default permissions overridden" else "Requires permissions: `${entry.permissionsRequired.name}`\n-# Not overriding: $override",
           ].join("\n"),
         ));
-      }),
+      }, permissionsRequired: BotCommandPermissions.admin),
       BotCommand("setrestrictions", "Restrictions", "Set command restrictions", (T context, String command, RestrictionCombination mode, GreedyString input) async {
         if (await context.assureGuild() == false) return;
         final settings = RestrictServerSettings(store, context.guild!.id);
