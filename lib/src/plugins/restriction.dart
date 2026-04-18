@@ -172,6 +172,7 @@ class RestrictCommandsPlugin extends BotPlugin {
         final data = CommandRestrictions(command: command, data: restrictions, combination: mode);
 
         final current = settings.restrictions.get() ?? [];
+        current.removeWhere((x) => x.command == command);
         current.add(data);
         settings.restrictions.set(current);
 
@@ -179,6 +180,21 @@ class RestrictCommandsPlugin extends BotPlugin {
       }, permissionsRequired: BotCommandPermissions.admin, extendedDescription: "The first input (and, or) determines if all the restrictions for a command need to be entirely true, or only one of them needs to be true. The input after that are the actual restrictions, which can be the following operators, where `<id>` is an integer:\n\n${[Restriction.values.map((x) {
         return "- `${x.operator}<id>`: ${x.desc}";
       }).join("\n")].join("\n")}"),
+      BotCommand("remrestrictions", "Restrictions", "Remove all restrictions from a command.", (T context, String command) async {
+        if (await context.assureGuild() == false) return;
+        final settings = RestrictServerSettings(store, context.guild!.id);
+        if (await assureCanEditRestrictions(context, settings) == false) return;
+
+        if (BotCommand.getCommand(command) == null) {
+          return context.respondWithError("Command not found: `$command`");
+        }
+
+        final current = settings.restrictions.get() ?? [];
+        current.removeWhere((x) => x.command == command);
+        settings.restrictions.set(current);
+
+        await context.respond(MessageBuilder(content: "Removed all restrictions for command `$command`."));
+      }, permissionsRequired: BotCommandPermissions.admin),
     ];
   }
 }
