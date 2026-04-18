@@ -68,12 +68,14 @@ void main(List<String> arguments) => onStart = () async {
     store: store,
     settings: BotSettings(store),
 
+    converters: (plugin) => [
+      StringList.converter(),
+      GreedyString.converter(),
+    ],
+
     commands: <T extends ChatContext>(plugin) {Logger.print("main",T);return[
       BotCommand.converter((plugin) => plugin.getConverter(RuntimeType<GuildTextChannel>(), logWarn: false)),
       defaultCheck(store),
-
-      StringList.converter().toBotCommand(),
-      GreedyString.converter(),
 
       BotCommand.command("fart", "Fart.", (T context, [int amount = 1]) async {
         if (amount != 1 && !isOwner(id: context.user.id)) return context.respondWithError("You cannot control the amount.");

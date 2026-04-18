@@ -78,8 +78,8 @@ class GreedyString extends ConverterType {
     return data;
   }
 
-  static BotCommand converter() {
-    return BotCommand.converter((_) => Converter<GreedyString>((value, context) {
+  static BotConverter converter() {
+    return BotConverter("GreedyString", (_) => Converter<GreedyString>((value, context) {
       if (value.remaining.trim().isEmpty) return null;
       final result = GreedyString(trimMatchingQuotes(value.remaining.trim()));
       value.index = value.end;

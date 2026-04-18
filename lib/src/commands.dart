@@ -136,6 +136,10 @@ class BotCommand {
     return command!;
   }
 
+  BotConverter getConverterUnsafe(String id) {
+    return BotConverter(id, converter!);
+  }
+
   static Map<String, BotCommand> commandRegistry = {};
   static bool useGroups = true;
 
