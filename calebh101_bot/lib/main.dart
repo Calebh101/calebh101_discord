@@ -103,7 +103,7 @@ void main(List<String> arguments) => onStart = () async {
           () => "P${random(4, 40, "r")}t",
           () => "F${random(1, 5, "a")}rt",
           () => "Th${List.generate(rn(4, 20), (_) => random(1, 4, ro(["h", "t"]))).join("")}",
-          () => "B${maybe("h")}l${random(6, 24, "a")}${maybe("h")}n${maybe("h")}k",
+          () => "B${maybe("h")}l${random(6, 26, "a")}${maybe("h")}n${maybe("h")}k",
           () => "Squ${random(1, 2, ro(["i", "e"]))}rk",
         ];
 
