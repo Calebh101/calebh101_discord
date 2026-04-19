@@ -65,7 +65,7 @@ extension PrettyDuration on Duration {
   }
 
   String prettyDetailed() {
-    return "${inDays}d ${inHours.remainder(24)}h ${inMinutes.remainder(60)}m ${inSeconds.remainder(60)}s";
+    return ["${inDays}d", "${inHours.remainder(24)}h", "${inMinutes.remainder(60)}m", "${inSeconds.remainder(60)}s"].join(" ");
   }
 }
 

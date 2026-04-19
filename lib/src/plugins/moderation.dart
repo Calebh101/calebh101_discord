@@ -511,27 +511,29 @@ class ModerationPlugin extends BotPlugin {
         settings.banMessageRemovalSeconds.set(duration.inSeconds);
         await context.respond(MessageBuilder(content: "Set ban message removal period to **${duration.prettyDetailed()}**."));
       }, permissionsRequired: BotCommandPermissions.admin),
-      BotCommand("banmessageremoval", "Moderation", "Get the ban message removal period.", (T context) async {
-        if (await context.assureGuild() == false) return;
-        final settings = ServerSettings(store, context.guild!.id);
-        var seconds = settings.banMessageRemovalSeconds.get();
-        if (seconds == null || seconds <= 0) seconds = null;
-        final duration = seconds != null ? Duration(seconds: seconds) : null;
-        await context.respond(MessageBuilder(content: duration != null ? "Ban message removal period is currently set to **${duration.prettyDetailed()}**." : "No ban message removal period set."));
-      }),
       BotCommand("setsbmessageremoval", "Moderation", "Set the soft-ban message removal period.", (T context, Duration duration) async {
         if (await context.assureGuild() == false) return;
         final settings = ServerSettings(store, context.guild!.id);
         settings.kickMessageRemovalSeconds.set(duration.inSeconds);
-        await context.respond(MessageBuilder(content: "Set kick message removal period to **${duration.prettyDetailed()}**."));
+        await context.respond(MessageBuilder(content: "Set soft-ban message removal period to **${duration.prettyDetailed()}**."));
       }, permissionsRequired: BotCommandPermissions.admin),
-      BotCommand("sbmessageremoval", "Moderation", "Get the soft-ban message removal period.", (T context) async {
+      BotCommand("messageremoval", "Moderation", "Get the ban and soft-ban message removal period.", (T context) async {
         if (await context.assureGuild() == false) return;
         final settings = ServerSettings(store, context.guild!.id);
-        var seconds = settings.kickMessageRemovalSeconds.get();
-        if (seconds == null || seconds <= 0) seconds = null;
-        final duration = seconds != null ? Duration(seconds: seconds) : null;
-        await context.respond(MessageBuilder(content: duration != null ? "Kick message removal period is currently set to **${duration.prettyDetailed()}**." : "No kick message removal period set."));
+
+        var banSeconds = settings.banMessageRemovalSeconds.get();
+        var sbSeconds = settings.kickMessageRemovalSeconds.get();
+
+        if (banSeconds == null || banSeconds <= 0) banSeconds = null;
+        if (sbSeconds == null || sbSeconds <= 0) sbSeconds = null;
+
+        final banDuration = banSeconds != null ? Duration(seconds: banSeconds) : null;
+        final sbDuration = sbSeconds != null ? Duration(seconds: sbSeconds) : null;
+
+        await context.respond(MessageBuilder(content: [
+          "Ban message removal: **${banDuration?.prettyDetailed() ?? "Not set"}**",
+          "Soft-ban message removal: **${sbDuration?.prettyDetailed() ?? "Not set"}**",
+        ].join("\n")));
       }),
     ];
   }
