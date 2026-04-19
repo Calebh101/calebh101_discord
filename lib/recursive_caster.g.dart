@@ -14,6 +14,7 @@ class RecursiveCaster {
   ///
   /// - [List<String>] (`List<String>`)
   /// - [Map<String, String>] (`Map<String, String>`)
+  /// - [Map<String, String>] (`Map<String, String>`)
   /// - [Map<int, String>] (`Map<int, String>`)
   /// - [Map<String, bool>] (`Map<String, bool>`)
   static T cast<T>(Object? input) {
@@ -24,7 +25,7 @@ class RecursiveCaster {
     throw RecursiveCasterTypeError(T);
   }
   /// This function returns an [Iterable<Type>] of all types supported by your configuration.
-  static Iterable<Type> getAll() => [List<String>, Map<String, String>, Map<int, String>, Map<String, bool>];
+  static Iterable<Type> getAll() => [List<String>, Map<String, String>, Map<String, String>, Map<int, String>, Map<String, bool>];
 }
 /// This error is called if a casting object is not defined for the specified type.
 class RecursiveCasterTypeError extends Error {

@@ -78,6 +78,17 @@ class StatsPlugin extends BotPlugin {
       "Storage: ${gigabytes(storage.free)} Free / ${gigabytes(storage.total)}",
     ].join("\n").trim();
 
+    elements["Uptime"] = [
+      "System: ${await () async {
+        try {
+          return getSystemUptime();
+        } catch (e) {
+          return "Error: $e";
+        }
+      }()}",
+      "Process: ${DateTime.now().difference(started)}",
+    ].join("\n").trim();
+
     elements["Machine"] = await getStatus() ?? "No machine-defined status found.";
     await context.updateMessage(m, MessageUpdateBuilder(content: elements.entries.map((x) => "### ${x.key}\n${x.value.toDiscordCodeBlock()}").join("\n")));
   });
@@ -128,6 +139,35 @@ class StatsPlugin extends BotPlugin {
         available: SysInfo.getAvailablePhysicalMemory(),
       );
     }
+  }
+
+  Future<Duration> getSystemUptime() async {
+    if (Platform.isLinux) {
+      final content = await File('/proc/uptime').readAsString();
+      final seconds = double.parse(content.trim().split(' ')[0]);
+      return Duration(milliseconds: (seconds * 1000).round());
+    }
+
+    if (Platform.isMacOS) {
+      final result = await Process.run('sysctl', ['-n', 'kern.boottime']);
+      final match = RegExp(r'sec = (\d+)').firstMatch(result.stdout as String);
+      if (match == null) throw Exception('Could not parse kern.boottime');
+      final bootEpoch = int.parse(match.group(1)!);
+      final bootTime = DateTime.fromMillisecondsSinceEpoch(bootEpoch * 1000);
+      return DateTime.now().difference(bootTime);
+    }
+
+    if (Platform.isWindows) {
+      final result = await Process.run('powershell', [
+        '-Command',
+        '(Get-Date) - (gcim Win32_OperatingSystem).LastBootUpTime | Select-Object -ExpandProperty TotalSeconds',
+      ]);
+
+      final seconds = double.parse((result.stdout as String).trim());
+      return Duration(milliseconds: (seconds * 1000).round());
+    }
+
+    throw UnsupportedError('Unsupported platform: ${Platform.operatingSystem}');
   }
 
   BotCommand pingCommand<T extends ChatContext>() => BotCommand.command(

@@ -87,13 +87,27 @@ class Modlog {
       final channel = await event.client.channels.get(Snowflake(event.settings!.modlogChannel.get()!));
       if (channel is! GuildTextChannel) return "Specified channel is not a text channel.";
 
+      for (int i = 0; i < (event.fields?.length ?? 0); i++) {
+        final field = event.fields?.entries.elementAtOrNull(i);
+        if (field == null) continue;
+
+        if (field.value.length > 1024) {
+          final value = field.value;
+          final file = "field-${field.key}-${value.length}.txt";
+          event.fields![field.key] = file.toDiscordCodeBlock();
+
+          event.attachments ??= {};
+          event.attachments![file] = value;
+        }
+      }
+
       final message = MessageBuilder(
         embeds: [
           EmbedBuilder(
             title: event.title,
             description: event.description,
-            fields: List.generate(event.fields.length, (i) {
-              final field = event.fields.entries.elementAt(i);
+            fields: List.generate(event.fields?.length ?? 0, (i) {
+              final field = event.fields!.entries.elementAt(i);
               return EmbedFieldBuilder(name: field.key, value: field.value, isInline: false);
             }),
             timestamp: event.timestamp?.toUtc(),
@@ -101,7 +115,7 @@ class Modlog {
             color: modLogSeverityToColor(event.severity),
           ),
         ],
-        attachments: event.attachments.entries.map((x) {
+        attachments: (event.attachments ?? {}).entries.map((x) {
           return AttachmentBuilder(data: utf8.encode(x.value), fileName: x.key);
         }).toList(),
       );
@@ -122,7 +136,7 @@ class ModlogEvent {
   final String eventId;
   final String title;
   final String? description;
-  final Map<String, String> fields;
+  Map<String, String>? fields;
   final ModlogSeverity severity;
   final Uri? url;
   final EmbedImageBuilder? image;
@@ -130,9 +144,9 @@ class ModlogEvent {
   DateTime? timestamp;
   List<String>? alsoTriggerOn;
   late List<String> triggers;
-  final Map<String, String> attachments;
+  Map<String, String>? attachments;
 
-  ModlogEvent(this.eventId, {this.severity = .log, required this.guild, required this.settings, required this.title, this.description, this.fields = const {}, this.timestamp, this.url, this.image, this.thumbail, this.alsoTriggerOn, required this.client, this.attachments = const {}}) {
+  ModlogEvent(this.eventId, {this.severity = .log, required this.guild, required this.settings, required this.title, this.description, this.fields, this.timestamp, this.url, this.image, this.thumbail, this.alsoTriggerOn, required this.client, this.attachments}) {
     timestamp ??= DateTime.now();
     triggers = [eventId, ...?alsoTriggerOn];
   }

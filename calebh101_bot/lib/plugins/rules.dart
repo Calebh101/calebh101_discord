@@ -60,7 +60,7 @@ class RulesPlugin extends BotPlugin {
         settings.rules.set(rules);
         await context.respond(MessageBuilder(content: "Rules set. Run `rules` to view."));
       }),
-      BotCommand("setrulesfrommessage", "Rules", "Set a rule from a message ID.", (T context, Snowflake messageId, [Snowflake? channelId]) async {
+      BotCommand("setrulesfrom", "Rules", "Set a rule from a message ID.", (T context, Snowflake messageId, [Snowflake? channelId]) async {
         if (await context.assureGuild() == false) return;
         final settings = Calebh101BotServerSettings(store, context.guild!.id);
 

@@ -7,6 +7,8 @@ import 'package:calebh101_discord/calebh101_discord.dart';
 import 'package:calebh101_discord/src/logger/logger_override.dart';
 import 'package:collection/collection.dart';
 
+final DateTime started = DateTime.now();
+
 class ClientStore<T extends Nyxx> {
   Map<String, T> clients = {};
   ClientStore(this.clients);

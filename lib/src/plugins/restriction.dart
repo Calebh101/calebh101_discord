@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:calebh101_discord/calebh101_discord.dart';
 import 'package:calebh101_discord/recursive_caster.g.dart';
@@ -195,6 +196,76 @@ class RestrictCommandsPlugin extends BotPlugin {
 
         await context.respond(MessageBuilder(content: "Removed all restrictions for command `$command`."));
       }, permissionsRequired: BotCommandPermissions.admin),
+      BotCommand("allrestrictions", "Restrictions", "View all restrictions for all commands.", (ChatContext context) async {
+        if (await context.assureGuild() == false) return;
+        final settings = RestrictServerSettings(store, context.guild!.id);
+        final data = settings.restrictions.get() ?? [];
+        Map<String, String?> results = Map.fromEntries(BotCommand.commandRegistry.keys.map((x) => MapEntry(x, data.firstWhereOrNull((y) => y.command == x)?.serialize())).where((x) => x.value != null));
+
+        await context.respond(MessageBuilder(content: "Found **${results.length}** commands, of which **${results.values.whereType<String>().length}** had restrictions.", attachments: [
+          AttachmentBuilder(data: utf8.encode(jsonEncode(results)), fileName: "restrictions.txt"),
+        ]));
+      }, permissionsRequired: BotCommandPermissions.admin, aliases: ["saverestrictions"]),
+      BotCommand("clearrestrictions", "Restrictions", "Clear all restrictions for all commands, after dumping them.", (ChatContext context) async {
+        if (await context.assureGuild() == false) return;
+        final settings = RestrictServerSettings(store, context.guild!.id);
+        final data = settings.restrictions.get() ?? [];
+        Map<String, String?> results = Map.fromEntries(BotCommand.commandRegistry.keys.map((x) => MapEntry(x, data.firstWhereOrNull((y) => y.command == x)?.serialize())));
+        settings.restrictions.delete();
+
+        await context.respond(MessageBuilder(content: "Found **${results.length}** commands, of which **${results.values.whereType<String>().length}** had restrictions.\nAll restrictions have been deleted.", attachments: [
+          AttachmentBuilder(data: utf8.encode(jsonEncode(results)), fileName: "restrictions.txt"),
+        ]));
+      }, permissionsRequired: BotCommandPermissions.admin),
+      BotCommand("loadrestrictions", "Restrictions", "Load restrictions from a JSON input.", (ChatContext context) async {
+        String? attachment;
+        Map<String, String>? input;
+
+        if (context is MessageChatContext) {
+          final data = await context.message.attachments.firstOrNull?.fetch();
+          attachment = data == null ? null : utf8.decode(data);
+        } else if (context is InteractionChatContext) {
+          final data = await context.interaction.data.resolved?.attachments?.values.firstOrNull?.fetch();
+          attachment = data == null ? null : utf8.decode(data);
+        }
+
+        if (attachment == null) {
+          return context.respondWithError("No attachment found. Please make sure you're including a valid attachment.");
+        }
+
+        try {
+          input = RecursiveCaster.cast<Map<String, String>>(jsonDecode(attachment) as Map);
+        } catch (e) {
+          final v = () {
+            try {
+              return jsonDecode(attachment!);
+            } catch (_) {
+              return null;
+            }
+          }();
+
+          Logger.warn("LoadRestrictions", "Unable to parse input: $e");
+          return context.respondWithError("The first attachment you passed was not a valid JSON map.\n-# Expected: `${Map<String, String>}`, got: `${v?.runtimeType ?? "<unable to parse>"}`");
+        }
+
+        if (await context.assureGuild() == false) return;
+        final settings = RestrictServerSettings(store, context.guild!.id);
+        final results = <CommandRestrictions>[];
+
+        for (final entry in input.entries) {
+          try {
+            if (BotCommand.getCommand(entry.key) == null) continue;
+            final items = entry.value.split(" ");
+            final combination = RestrictionCombination.values.firstWhere((x) => x.name == items.first.trim());
+            results.add(CommandRestrictions(command: entry.key, data: RestrictionData.tryParse(items[1])!, combination: combination));
+          } catch (e) {
+            Logger.print("LoadRestrictions", "Unable to parse command ${entry.key}: $e");
+          }
+        }
+
+        settings.restrictions.set(results);
+        await context.respond(MessageBuilder(content: "Imported **${results.length}** restrictions from **${input.length}** entries."));
+      }, permissionsRequired: BotCommandPermissions.admin),
     ];
   }
 }
@@ -279,5 +350,9 @@ class CommandRestrictions {
   @override
   String toString() {
     return data.map((x) => x.toString()).join(" ${combination.name} ");
+  }
+
+  String serialize() {
+    return "${combination.name} ${data.map((x) => x.toString()).join(",")}";
   }
 }
