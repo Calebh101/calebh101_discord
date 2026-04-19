@@ -27,8 +27,8 @@ class BotManagePlugin extends BotPlugin {
                 fields: [
                   EmbedFieldBuilder(name: "PID", value: process.pid.toDiscordCodeString(), isInline: true),
                   EmbedFieldBuilder(name: "Exit Code", value: process.exitCode.toDiscordCodeString(), isInline: true),
-                  EmbedFieldBuilder(name: "stdout", value: process.stdout.toDiscordCodeBlock(), isInline: false),
-                  EmbedFieldBuilder(name: "stderr", value: process.stderr.toDiscordCodeBlock(), isInline: false),
+                  EmbedFieldBuilder(name: "stdout", value: process.stdout.toString().toDiscordCodeBlock(), isInline: false),
+                  EmbedFieldBuilder(name: "stderr", value: process.stderr.toString().toDiscordCodeBlock(), isInline: false),
                 ],
                 color: DiscordColor.parseHexString(process.exitCode == 0 ? "#90EE90" : "#FF7F7F"),
               ),
@@ -42,37 +42,44 @@ class BotManagePlugin extends BotPlugin {
         }
 
         bool failed(ProcessResult p) => p.exitCode != 0;
+        final m = await context.respond(MessageBuilder(content: "Updating..."));
+
+        Future<void> fail() async {
+          await context.updateMessage(m, MessageUpdateBuilder(content: "Update failed."));
+        }
 
         if (reset) {
           try {
             final p = await Process.run("git", ["reset", "--hard"], workingDirectory: directory.path, runInShell: true);
             await dmResult("git reset", p);
-            if (failed(p)) return;
+            if (failed(p)) return await fail();
           } catch (e) {
             Logger.warn("Update", "Unable to run command git reset");
-            return;
+            return await fail();
           }
         }
 
         try {
           final p = await Process.run("git", ["pull"], workingDirectory: directory.path, runInShell: true);
           await dmResult("git pull", p);
-          if (failed(p)) return;
+          if (failed(p)) return await fail();
         } catch (e) {
           Logger.warn("Update", "Unable to run command git pull");
-          return;
+          return await fail();
         }
 
         for (int i = 0; i < pubGets; i++) {
           try {
             final p = await Process.run("dart", ["pub", "get"], workingDirectory: directory.path, runInShell: true);
             await dmResult("dart pub get ($i)", p);
-            if (failed(p)) return;
+            if (failed(p)) return await fail();
           } catch (e) {
             Logger.warn("Update", "Unable to run command dart pub get ($i)");
-            return;
+            return await fail();
           }
         }
+
+        await context.updateMessage(m, MessageUpdateBuilder(content: "Updated."));
       }, permissionsRequired: BotCommandPermissions.owner, extendedDescription: "The commands that will be run:\n${{
         "git reset --hard": "Reset all local changes, only if `reset` is true.",
         "git pull": "Pull Git changes.",
