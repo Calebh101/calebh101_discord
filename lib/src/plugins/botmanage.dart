@@ -79,7 +79,10 @@ class BotManagePlugin extends BotPlugin {
 
         if (reset) {
           try {
-            final p = await Process.run("git", ["reset", "--hard"], workingDirectory: directory.path, runInShell: true);
+            Logger.print("Update", "Running command: git reset --hard");
+            final p = await Process.run("git", ["reset", "--hard"], workingDirectory: directory.path);
+            if (p.stdout.toString().isNotEmpty) Logger.print("Update", "Command results (code ${p.exitCode}, pid ${p.pid}) stdout:\n${p.stdout}");
+            if (p.stderr.toString().isNotEmpty) Logger.print("Update", "Command results (code ${p.exitCode}, pid ${p.pid}) stderr:\n${p.stderr}");
             await dmResult("git reset", p);
             if (failed(p)) return await fail();
           } catch (e) {
@@ -89,7 +92,10 @@ class BotManagePlugin extends BotPlugin {
         }
 
         try {
-          final p = await Process.run("git", ["pull"], workingDirectory: directory.path, runInShell: true);
+          Logger.print("Update", "Running command: git pull");
+          final p = await Process.run("git", ["pull"], workingDirectory: directory.path);
+          if (p.stdout.toString().isNotEmpty) Logger.print("Update", "Command results (code ${p.exitCode}, pid ${p.pid}) stdout:\n${p.stdout}");
+          if (p.stderr.toString().isNotEmpty) Logger.print("Update", "Command results (code ${p.exitCode}, pid ${p.pid}) stderr:\n${p.stderr}");
           await dmResult("git pull", p);
           if (failed(p)) return await fail();
         } catch (e) {
@@ -99,7 +105,10 @@ class BotManagePlugin extends BotPlugin {
 
         for (int i = 0; i < pubGets; i++) {
           try {
+            Logger.print("Update", "Running command: dart pub get");
             final p = await Process.run("dart", ["pub", "get"], workingDirectory: directory.path, runInShell: true);
+            if (p.stdout.toString().isNotEmpty) Logger.print("Update", "Command results (code ${p.exitCode}, pid ${p.pid}) stdout:\n${p.stdout}");
+            if (p.stderr.toString().isNotEmpty) Logger.print("Update", "Command results (code ${p.exitCode}, pid ${p.pid}) stderr:\n${p.stderr}");
             await dmResult("dart pub get ($i)", p);
             if (failed(p)) return await fail();
           } catch (e) {
