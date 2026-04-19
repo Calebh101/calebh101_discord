@@ -64,12 +64,12 @@ class ModerationPlugin extends BotPlugin {
           ),
         ]));
       }, permissionsRequired: BotCommandPermissions.admin),
-      BotCommand("kick", "Moderation", "Ban then unban a user.", (T context, Member member, [GreedyString? reason]) async {
+      BotCommand("kick", "Moderation", "Kick a user.", (T context, Member member, [GreedyString? reason]) async {
         try {
           final settings = ifGuild(store, context.guild?.id, (id) => ServerSettings(store, id));
           var deleteMessagesSeconds = settings?.kickMessageRemovalSeconds.get();
           if (deleteMessagesSeconds == null || deleteMessagesSeconds <= 0) deleteMessagesSeconds = null;
-          await member.ban(auditLogReason: "${context.user.username}: ${reason?.data ?? "No reason provided"} (kick)", deleteMessages: deleteMessagesSeconds != null ? Duration(seconds: deleteMessagesSeconds) : null);
+          await member.manager.delete(member.id, auditLogReason: "${context.user.username}: ${reason?.data ?? "No reason provided"} (kick)");
           await member.unban();
         } on HttpResponseError catch (e) {
           Logger.warn("Kick", "Unable to kick ${member.id}: $e");
@@ -109,7 +109,53 @@ class ModerationPlugin extends BotPlugin {
             ].whereType<EmbedFieldBuilder>().toList(),
           ),
         ]));
-      }, permissionsRequired: BotCommandPermissions.admin),
+      }),
+      BotCommand("softban", "Moderation", "Ban then unban a user.", (T context, Member member, [GreedyString? reason]) async {
+        try {
+          final settings = ifGuild(store, context.guild?.id, (id) => ServerSettings(store, id));
+          var deleteMessagesSeconds = settings?.kickMessageRemovalSeconds.get();
+          if (deleteMessagesSeconds == null || deleteMessagesSeconds <= 0) deleteMessagesSeconds = null;
+          await member.ban(auditLogReason: "${context.user.username}: ${reason?.data ?? "No reason provided"} (soft-ban)", deleteMessages: deleteMessagesSeconds != null ? Duration(seconds: deleteMessagesSeconds) : null);
+          await member.unban();
+        } on HttpResponseError catch (e) {
+          Logger.warn("Softban", "Unable to soft-ban ${member.id}: $e");
+          final fail = e.message;
+
+          await context.respond(MessageBuilder(embeds: [
+            EmbedBuilder(
+              description: "## Unable to Soft-Ban ${member.toMention()}\n${await memberToString(member, client: context.client, detailed: true)}\n${reason?.toDiscordCodeBlock() ?? "No reason provided"}\n\n${fail.toDiscordCodeBlock()}",
+              color: await getColor(context.member),
+            ),
+          ]));
+
+          return;
+        }
+
+        Modlog.add(ModlogEvent(
+          "mod.softban",
+          title: "Soft-Banned User",
+          fields: {
+            "Target": member.toMention(),
+            "Author": context.user.toMention(),
+            "Reason": reason?.data.toDiscordCodeBlock() ?? "No reason provided",
+          },
+          guild: context.guild,
+          settings: ifGuild(store, context.guild?.id, (id) => ServerSettings(store, id)),
+          client: context.client,
+          severity: ModlogSeverity.severe,
+        ));
+
+        await context.respond(MessageBuilder(embeds: [
+          EmbedBuilder(
+            description: "## Soft-banned ${member.toMention()}\n${await memberToString(member, client: context.client, detailed: true)}",
+            color: await getColor(context.member),
+            fields: [
+              warnsToField(store, member.id),
+              EmbedFieldBuilder(name: "Reason", value: reason?.data ?? "No reason provided.", isInline: false),
+            ].whereType<EmbedFieldBuilder>().toList(),
+          ),
+        ]));
+      }, permissionsRequired: BotCommandPermissions.admin, aliases: ["sb"]),
       BotCommand("unban", "Moderation", "Unban a user.", (T context, String userId) async {
         final userIdInt = int.tryParse(userId);
         final user = userIdInt != null ? Snowflake(userIdInt) : null;
@@ -304,6 +350,7 @@ class ModerationPlugin extends BotPlugin {
             description: await memberToString(member, client: context.client, detailed: true),
             fields: [
               warnsToField(store, member.id, force: true),
+              EmbedFieldBuilder(name: "Timeout", value: "Until ${member.communicationDisabledUntil?.toDiscordTimestamp(DiscordTimestamp.shortDateTime) ?? "never"} (${member.communicationDisabledUntil?.toDiscordTimestamp(DiscordTimestamp.relative) ?? "never"})", isInline: false),
             ].whereType<EmbedFieldBuilder>().toList(),
             color: await getColor(context.member),
           ),
@@ -472,13 +519,13 @@ class ModerationPlugin extends BotPlugin {
         final duration = seconds != null ? Duration(seconds: seconds) : null;
         await context.respond(MessageBuilder(content: duration != null ? "Ban message removal period is currently set to **${duration.prettyDetailed()}**." : "No ban message removal period set."));
       }),
-      BotCommand("setkickmessageremoval", "Moderation", "Set the kick message removal period.", (T context, Duration duration) async {
+      BotCommand("setsbmessageremoval", "Moderation", "Set the soft-ban message removal period.", (T context, Duration duration) async {
         if (await context.assureGuild() == false) return;
         final settings = ServerSettings(store, context.guild!.id);
         settings.kickMessageRemovalSeconds.set(duration.inSeconds);
         await context.respond(MessageBuilder(content: "Set kick message removal period to **${duration.prettyDetailed()}**."));
       }, permissionsRequired: BotCommandPermissions.admin),
-      BotCommand("kickmessageremoval", "Moderation", "Get the kick message removal period.", (T context) async {
+      BotCommand("sbmessageremoval", "Moderation", "Get the soft-ban message removal period.", (T context) async {
         if (await context.assureGuild() == false) return;
         final settings = ServerSettings(store, context.guild!.id);
         var seconds = settings.kickMessageRemovalSeconds.get();
@@ -504,8 +551,8 @@ class ModerationPlugin extends BotPlugin {
 
     return [
       {
-        ModlogGroup.all: (levelBelow) => {...levelBelow, "mod.timein", "mod.unwarn", "message.send", "audit", ...memberUpdateProperties.keys.where((x) => x != "timeout").map((x) => "members.update.$x")},
-        ModlogGroup.normal: (levelBelow) => {...levelBelow, "mod.ban", "mod.unban", "mod.timeout", "mod.kick", "mod.warn", "mod.purge", "message.delete", "message.edit", "members.add", "members.remove", "members.ban", "members.unban", "message.bulkdelete", "invite.create", "invite.delete", "members.update.timeout"},
+        ModlogGroup.all: (levelBelow) => {...levelBelow, "mod.timein", "mod.unwarn", "message.send", "audit", ...memberUpdateProperties.keys.where((x) => x != "timeout").map((x) => "member.update.$x")},
+        ModlogGroup.normal: (levelBelow) => {...levelBelow, "mod.ban", "mod.unban", "mod.timeout", "mod.kick", "mod.warn", "mod.purge", "mod.softban", "message.delete", "message.edit", "member.add", "member.remove", "member.ban", "member.unban", "message.bulkdelete", "invite.create", "invite.delete", "member.update.timeout"},
         ModlogGroup.quiet: (levelBelow) => {...levelBelow},
         ModlogGroup.off: (_) => {},
       },
@@ -635,7 +682,7 @@ class ModerationPlugin extends BotPlugin {
 
       client.onGuildMemberAdd.listen((event) async {
         Modlog.add(ModlogEvent(
-          "members.add",
+          "member.add",
           title: "Member Added",
           fields: {
             "Member": event.member.toMention(),
@@ -649,7 +696,7 @@ class ModerationPlugin extends BotPlugin {
 
       client.onGuildMemberRemove.listen((event) async {
         Modlog.add(ModlogEvent(
-          "members.remove",
+          "member.remove",
           title: "Member Removed",
           fields: {
             "Member": event.user.toMention(),
@@ -663,7 +710,7 @@ class ModerationPlugin extends BotPlugin {
 
       client.onGuildBanAdd.listen((event) async {
         Modlog.add(ModlogEvent(
-          "members.ban",
+          "member.ban",
           title: "Member Banned",
           fields: {
             "Member": event.user.toMention(),
@@ -678,7 +725,7 @@ class ModerationPlugin extends BotPlugin {
 
       client.onGuildBanRemove.listen((event) async {
         Modlog.add(ModlogEvent(
-          "members.unban",
+          "member.unban",
           title: "Member Unbanned",
           fields: {
             "Member": event.user.toMention(),
@@ -739,7 +786,7 @@ class ModerationPlugin extends BotPlugin {
           if (changed.isEmpty) continue;
 
           Modlog.add(ModlogEvent(
-            "members.update.${property.key}",
+            "member.update.${property.key}",
             title: "Member Updated (${property.key})",
             fields: Map.fromEntries(changed.map((x) {
               return MapEntry("`${typeToString(x.$1)}` `${x.$2}`", "${x.$3} -> ${x.$4}".toDiscordCodeBlock());
@@ -820,7 +867,7 @@ EmbedFieldBuilder? warnsToField(KVStore store, Snowflake userId, {bool force = f
   final warns = settings.warns.get() ?? [];
 
   if (force == false && warns.isEmpty) return null;
-  return EmbedFieldBuilder(name: "Warns", value: "**${warns.length}**, most recent: ${warns.first.timestamp.toDiscordTimestamp(DiscordTimestamp.shortDateTime)})", isInline: false);
+  return EmbedFieldBuilder(name: "Warns", value: "**${warns.length}**, most recent: ${warns.firstOrNull?.timestamp.toDiscordTimestamp(DiscordTimestamp.shortDateTime) ?? "never"}", isInline: false);
 }
 
 Map<String, Object?> parseArgs(String input) {
