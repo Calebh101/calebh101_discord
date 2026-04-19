@@ -293,6 +293,7 @@ class BotSettings extends EntitySettings {
 
   @Deprecated("Use BotTokenStore instead.")
   SettingsObject<List<Snowflake>> get ignored => SettingsObject(this, "ignored", encodeFunction: (input) => input.map((x) => x.value).toList(), decodeFunction: (input) => (input as List?)?.map((x) => Snowflake(x)).toList());
+  SettingsObject<(Snowflake client, Snowflake channel, Snowflake user)> get whoRestartedMe => SettingsObject(this, "whoRestartedMe", encodeFunction: (input) => [input.$1.value, input.$2.value, input.$3.value], decodeFunction: (input) => input is List ? (Snowflake(input[0]), Snowflake(input[1]), Snowflake(input[2])) : null);
 
   Future<bool> init() async {
     // Meant to be overridden

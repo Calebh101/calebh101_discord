@@ -83,7 +83,7 @@ class BotCommandOptions {
   }
 }
 
-class BotCommand {
+class BotCommand<T extends Function> {
   Converter? Function(CommandsPlugin plugin)? converter;
   Check? Function(CommandsPlugin plugin)? check;
   ChatCommand? command;
@@ -92,7 +92,7 @@ class BotCommand {
   late final List<String>? aliases;
   late final String category;
   late final String description;
-  late final Function execute;
+  late final T execute;
   late BotCommandPermissions permissionsRequired;
   late final bool enforcePermissions;
   late final bool noGroup;
@@ -118,7 +118,7 @@ class BotCommand {
   BotCommand.check(this.check);
 
   @Deprecated("Use the unnamed constructor instead.")
-  factory BotCommand.command(String name, String description, Function execute, CommandAttributes attributes, {CommandOptions? options, String group = "", bool noGroup = false}) {
+  factory BotCommand.command(String name, String description, T execute, CommandAttributes attributes, {CommandOptions? options, String group = "", bool noGroup = false}) {
     return BotCommand(name, attributes.category, description, execute, extendedDescription: attributes.extendedDescription, permissionsRequired: attributes.permissionsRequired, enforcePermissions: false, group: group, noGroup: noGroup);
   }
 

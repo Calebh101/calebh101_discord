@@ -2,14 +2,40 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:calebh101_discord/calebh101_discord.dart';
+import 'package:collection/collection.dart';
 
 class BotManagePlugin extends BotPlugin {
   BotManagePlugin() : super(id: "botmanage", version: Version.parse("1.0.0A"));
 
   @override
+  Future<void> onClientLoad(BotContext context) async {
+    final settings = BotSettings(context.store);
+    final data = settings.whoRestartedMe.get();
+    settings.whoRestartedMe.delete();
+
+    if (data == null) return;
+    final client = context.clients.clients.values.firstWhereOrNull((x) => x.user.id == data.$1);
+    if (client == null) return;
+    late GuildTextChannel channel;
+
+    try {
+      channel = await client.channels.get(data.$2) as GuildTextChannel;
+    } catch (e) {
+      Logger.warn("BotManage", "Unable to get channel ${data.$2} for client ${data.$1}: $e");
+      return;
+    }
+
+    try {
+      await channel.sendMessage(MessageBuilder(content: "I'm back, ${data.$3.value.toMention()}!\n-# Client ID: `${data.$1}`"));
+    } catch (e) {
+      Logger.warn("BotManage", "Unable to send message in channel ${channel.id} for client ${data.$1} to user ${data.$3}: $e");
+    }
+  }
+
+  @override
   FutureOr<List<BotCommand>> commands<T extends ChatContext>(CommandsPlugin plugin, KVStore store) {
     return [
-      restartCommand<T>(),
+      restartCommand<T>(store),
       killCommand<T>(),
       echoDebugCommand<T>(store),
       BotCommand("test", "Bot", "Run tests with the bot.", (T context) async {
@@ -91,7 +117,10 @@ class BotManagePlugin extends BotPlugin {
     ];
   }
 
-  BotCommand restartCommand<T extends ChatContext>() => BotCommand.command("restart", "Restart the bot.", (T context) async {
+  BotCommand restartCommand<T extends ChatContext>(KVStore store) => BotCommand.command("restart", "Restart the bot.", (T context) async {
+    final settings = BotSettings(store);
+    settings.whoRestartedMe.set((context.client.user.id, context.channel.id, context.user.id));
+
     if (await context.assureOwner() == false) return;
     await context.respond(MessageBuilder(content: "Restarting..."));
     Logger.print("Commands.Kill", "User ${context.user.id} requested my restart.");
