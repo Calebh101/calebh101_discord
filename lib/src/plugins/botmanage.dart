@@ -41,6 +41,9 @@ class BotManagePlugin extends BotPlugin {
       BotCommand("test", "Bot", "Run tests with the bot.", (T context) async {
         await context.respond(MessageBuilder(content: "This command has not been implemented yet."));
       }, permissionsRequired: BotCommandPermissions.admin),
+      BotCommand("throw", "Debug", "Throw an exception.", (ChatContext context, [GreedyString? message]) {
+        throw CommandsException("${context.user.id}: ${message?.data}");
+      }, permissionsRequired: BotCommandPermissions.owner),
       BotCommand("update", "Bot", "Update the bot's code. A restart will be required to apply.", (T context, [bool reset = false]) async {
         final int pubGets = 2;
         final directory = Directory.current;
@@ -105,7 +108,7 @@ class BotManagePlugin extends BotPlugin {
 
         for (int i = 0; i < pubGets; i++) {
           try {
-            Logger.print("Update", "Running command: dart pub get");
+            Logger.print("Update", "Running command: dart pub get ($i)");
             final p = await Process.run("dart", ["pub", "get"], workingDirectory: directory.path, runInShell: true);
             if (p.stdout.toString().isNotEmpty) Logger.print("Update", "Command results (code ${p.exitCode}, pid ${p.pid}) stdout:\n${p.stdout}");
             if (p.stderr.toString().isNotEmpty) Logger.print("Update", "Command results (code ${p.exitCode}, pid ${p.pid}) stderr:\n${p.stderr}");
@@ -148,6 +151,7 @@ class BotManagePlugin extends BotPlugin {
   }, CommandAttributes(permissionsRequired: BotCommandPermissions.owner, category: "Bot"));
 
   BotCommand echoDebugCommand<T extends ChatContext>(KVStore store) => BotCommand.command("echo", "Echo the input text from the bot.", (T context, String text, [int count = 1]) async {
+    if (text.length * count > 5000) return context.respondWithError("Response would've been too long.\nLength: ${text.length * count} characters");
     if (context.guild == null || context.member == null) return context.respondWithError("No guild/member found.");
     final settings = ServerSettings(store, context.guild!.id);
     if (await context.assurePerms(BotCommandPermissions.owner, settings) == false) return;

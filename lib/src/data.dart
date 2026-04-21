@@ -411,12 +411,13 @@ enum IsAdminType {
   user,
 }
 
-DefinedUser? globalOwner;
+List<DefinedUser>? globalOwners;
 DefinedServer? globalSupportServer;
+Future<void> Function(Snowflake id, Object? e, {NyxxGateway? client})? onCommandErrorDm;
 late String globalBotName;
 
-bool isAdmin({required ServerSettings settings, IsAdminType type = IsAdminType.user, required Snowflake id, Snowflake? owner}) {
-  if (isOwner(id: id, owner: owner) || isClaimer(settings: settings, id: id)) return true;
+bool isAdmin({required ServerSettings settings, IsAdminType type = IsAdminType.user, required Snowflake id}) {
+  if (isOwner(id: id) || isClaimer(settings: settings, id: id)) return true;
   if (type == IsAdminType.user && settings.mainAdmin.get() == id.toString()) return true;
 
   for (final x in settings.admins.get() ?? []) {
@@ -428,10 +429,10 @@ bool isAdmin({required ServerSettings settings, IsAdminType type = IsAdminType.u
   return false;
 }
 
-bool isOwner({required Snowflake id, Snowflake? owner, bool overrideIgnoreOwner = false}) {
+bool isOwner({required Snowflake id, bool overrideIgnoreOwner = false}) {
   if (!overrideIgnoreOwner && ignoreOwner) return false;
-  owner ??= globalOwner?.id;
-  if (owner != null && owner == id) return true;
+  if (globalOwners == null) return false;
+  if (globalOwners!.any((x) => x.id == id)) return true;
   return false;
 }
 

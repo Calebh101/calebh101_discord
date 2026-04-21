@@ -261,10 +261,12 @@ class AdminPlugin extends BotPlugin {
     BotCommand.command("owner", "See stats about who owns the bot, who owns the server, and who's claimed the bot.", (T context) async {
       final settings = context.guild == null ? null : ServerSettings(store, context.guild!.id);
       final mainAdmin = settings?.mainAdmin.get();
+      final owners = globalOwners ?? [];
       Map<String, String> results = {};
 
-      if (globalOwner != null) {
-        results["Bot Owner"] = "**${globalOwner!.name}** (*${globalOwner!.username}*)";
+      for (int i = 0; i < owners.length; i++) {
+        final owner = owners[i];
+        results["Bot Owner #${i + 1}"] = "**${owner.name}** (*${owner.username}*)";
       }
 
       if (mainAdmin != null) {

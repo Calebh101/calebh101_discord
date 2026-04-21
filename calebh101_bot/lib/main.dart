@@ -51,9 +51,9 @@ void main(List<String> arguments) => onStart = () async {
 
   final context = await load(
     botName: "Kyle",
-    version: Version.parse("0.0.0A"),
+    version: Version.parse("1.0.0A"),
 
-    owner: calebh101,
+    owners: [calebh101],
     supportServer: calebh101Server,
     tokens: tokens.single(),
     plugins: plugins,

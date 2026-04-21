@@ -95,7 +95,7 @@ set onStart(OnStart value) {
 /// [permissions] is a list of permissions. For bot apps, you should start out with `[...GatewayIntents.allUnprivileged, GatewayIntents.messageContent]`.
 ///
 /// [createBot] will create a bot user using `client.user.get()` if true.
-Future<BotContext?> load({required BotSettings settings, required FutureOr<Pattern> Function(MessageCreateEvent)? prefix, List<BotCommand>? Function<T extends ChatContext>(CommandsPlugin plugin)? commands, List<BotConverter>? Function(CommandsPlugin plugin)? converters, required List<Flag<GatewayIntents>> permissions, bool createBot = true, List<TerminalCommand> terminalCommands = const [], required DefinedUser owner, required DefinedServer? supportServer, required KVStore store, required DiscordColor primaryColor, required String botName, required Version version, required List<String> args, required ArgParser Function(ArgParser parser) argParser, required Map<String, String> tokens, required PluginStore plugins}) async {
+Future<BotContext?> load({required BotSettings settings, required FutureOr<Pattern> Function(MessageCreateEvent)? prefix, List<BotCommand>? Function<T extends ChatContext>(CommandsPlugin plugin)? commands, List<BotConverter>? Function(CommandsPlugin plugin)? converters, required List<Flag<GatewayIntents>> permissions, bool createBot = true, List<TerminalCommand> terminalCommands = const [], required List<DefinedUser> owners, required DefinedServer? supportServer, required KVStore store, required DiscordColor primaryColor, required String botName, required Version version, required List<String> args, required ArgParser Function(ArgParser parser) argParser, required Map<String, String> tokens, required PluginStore plugins}) async {
   try {
     final _ = _onStart.hashCode;
   } catch (e) {
@@ -116,7 +116,7 @@ Future<BotContext?> load({required BotSettings settings, required FutureOr<Patte
 
   botVersion = version;
   globalBotName = botName;
-  globalOwner = owner;
+  globalOwners = owners;
   primaryBotColor = primaryColor;
   globalSupportServer = supportServer;
 
@@ -218,6 +218,11 @@ Future<BotContext?> load({required BotSettings settings, required FutureOr<Patte
     }
   }
 
+  T? ifContextual<T>(Object? e, T? Function(ContextualException e) callback) {
+    if (e is ContextualException) return callback.call(e);
+    return null;
+  }
+
   cmd.onCommandError.listen((e) async {
     if (e is CommandNotFoundException || e is CheckFailedException) return;
     Logger.warn("Commands", "Command error: $e (error: ${e.runtimeType}, context: ${e is ContextualException ? e.context.runtimeType : null})", trace: e.stackTrace);
@@ -250,7 +255,58 @@ Future<BotContext?> load({required BotSettings settings, required FutureOr<Patte
         content: "An unknown error has occurred.\n```${e.runtimeType}```",
       ));
     }
+
+    for (final o in owners){
+      onCommandErrorDm?.call(o.id, e);
+    }
   });
+
+  onCommandErrorDm = (id, e, {client}) async {
+    List<Object> errors = [];
+    bool success = false;
+    final c = client != null ? [client] : clients.clients.values;
+
+    for (int i = 0; i < c.length; i++) {
+      final client = c.elementAt(i);
+
+      try {
+        final channel = await client.users.createDm(id);
+        final context = ifContextual(e, (e) => e.context);
+
+        await channel.sendMessage(MessageBuilder(embeds: [EmbedBuilder(
+          title: "Unhandled Command Error",
+          description: [
+            "Type: ${e.runtimeType}",
+            if (context != null) "Context: ${context.runtimeType}",
+          ].join("\n").toDiscordCodeBlock(),
+          fields: [
+            if (e is CommandsException) EmbedFieldBuilder(name: "Message", value: e.message.toDiscordCodeBlock(), isInline: false),
+            if (e is CommandsException) EmbedFieldBuilder(name: "Stack Trace", value: e.stackTrace.toDiscordCodeBlock(), isInline: false),
+            if (context != null) EmbedFieldBuilder(name: "Where", value: [
+              "Client: ${context.client.user.id.toDiscordCodeString()}",
+              "Guild: ${context.guild?.id.toDiscordCodeString()}",
+              "Channel: ${context.channel.id.toDiscordCodeString()}",
+              "Link: https://discord.com/channels/${[context.guild?.id ?? "@me", context.channel.id].join("/")}",
+            ].join("\n"), isInline: false),
+            if (context != null) EmbedFieldBuilder(name: "Who", value: [
+              "User ID: ${context.user.id.toDiscordCodeString()}",
+              "User mention: ${context.user.toMention()}",
+              "User name: ${await memberFromUserToString(context.user, client: client, guild: context.guild)}",
+            ].join("\n"), isInline: false),
+          ],
+        )]));
+
+        success = true;
+        break;
+      } catch (e) {
+        errors.add(e);
+      }
+    }
+
+    if (!success) {
+      Logger.warn("onCommandErrorDm", "Unable to DM error: ${errors.join(", ")}");
+    }
+  };
 
   clients.run((client) => client.onMessageCreate.listen((event) async {
     if (isIgnored(store, event.message.author.id)) return;
