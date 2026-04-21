@@ -98,6 +98,24 @@ class GreedyString extends ConverterType {
   }
 }
 
+class NoArgs extends ConverterType {
+  const NoArgs();
+
+  @override
+  String get name => "No arguments";
+
+  @override
+  String get info => "Makes sure no arguments are passed.";
+
+  static BotConverter converter() {
+    return BotConverter("NoArgs", (plugin) => Converter<NoArgs>((value, context) {
+      final remaining = value.remaining.trim();
+      if (remaining.isNotEmpty) return null;
+      return NoArgs();
+    }));
+  }
+}
+
 BotConverter durationConverter() {
   return BotConverter("duration", (_) => Converter<Duration>((value, context) {
     final text = value.getQuotedWord();
