@@ -132,8 +132,8 @@ class EventManager {
   /// A handler for [MessageCreateEvent]s.
   ///
   /// Attach to [NyxxGateway.onMessageCreate].
-  Future<void> processMessageCreateEvent(MessageCreateEvent event) async {
-    if (commands.prefix == null) return;
+  Future<bool> processMessageCreateEvent(MessageCreateEvent event) async {
+    if (commands.prefix == null) return false;
 
     final message = event.message;
 
@@ -146,17 +146,21 @@ class EventManager {
       ChatContext context = await commands.contextManager.createMessageChatContext(message, view, matchedPrefix.group(0)!);
 
       if (message.author is User && (message.author as User).isBot && !context.command.resolvedOptions.acceptBotCommands!) {
-        return;
+        return false;
       }
 
       if (message.author.id == await event.gateway.client.users.fetchCurrentUser() && !context.command.resolvedOptions.acceptSelfCommands!) {
-        return;
+        return false;
       }
 
       logger.fine('Invoking command ${context.command.name} from message $message');
 
       await context.command.invoke(context);
+
+      return true;
     }
+
+    return false;
   }
 
   /// A handler for generic interaction contexts.

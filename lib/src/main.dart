@@ -223,6 +223,11 @@ Future<BotContext?> load({required BotSettings settings, required FutureOr<Patte
     return null;
   }
 
+  R? ifIs<R, T>(Object? o, R Function(T o) c, {R? Function(dynamic o)? otherwise}) {
+    if (o is T) return c.call(o);
+    return otherwise?.call(o);
+  }
+
   cmd.onCommandError.listen((e) async {
     if (e is CommandNotFoundException || e is CheckFailedException) return;
     Logger.warn("Commands", "Command error: $e (error: ${e.runtimeType}, context: ${e is ContextualException ? e.context.runtimeType : null})", trace: e.stackTrace);
@@ -272,6 +277,7 @@ Future<BotContext?> load({required BotSettings settings, required FutureOr<Patte
       try {
         final channel = await client.users.createDm(id);
         final context = ifContextual(e, (e) => e.context);
+        final message = ifIs<Snowflake, MessageChatContext>(context, (x) => x.message.id) ?? ifIs<Snowflake?, InteractionChatContext>(context, (x) => x.interaction.message?.id);
 
         await channel.sendMessage(MessageBuilder(embeds: [EmbedBuilder(
           title: "Unhandled Command Error",
@@ -280,13 +286,14 @@ Future<BotContext?> load({required BotSettings settings, required FutureOr<Patte
             if (context != null) "Context: ${context.runtimeType}",
           ].join("\n").toDiscordCodeBlock(),
           fields: [
-            if (e is CommandsException) EmbedFieldBuilder(name: "Message", value: e.message.toDiscordCodeBlock(), isInline: false),
-            if (e is CommandsException) EmbedFieldBuilder(name: "Stack Trace", value: e.stackTrace.toDiscordCodeBlock(), isInline: false),
+            EmbedFieldBuilder(name: "Message", value: (ifIs<String, CommandsException>(e, (e) => e.message) ?? e.toString()).toDiscordCodeBlock(), isInline: false),
+            EmbedFieldBuilder(name: "Stack Trace", value: (ifIs<StackTrace?, CommandsException>(e, (e) => e.stackTrace) ?? StackTrace.current).toDiscordCodeBlock(), isInline: false),
             if (context != null) EmbedFieldBuilder(name: "Where", value: [
               "Client: ${context.client.user.id.toDiscordCodeString()}",
               "Guild: ${context.guild?.id.toDiscordCodeString()}",
               "Channel: ${context.channel.id.toDiscordCodeString()}",
-              "Link: https://discord.com/channels/${[context.guild?.id ?? "@me", context.channel.id].join("/")}",
+              "Message: $message",
+              "Link: https://discord.com/channels/${[context.guild?.id ?? "@me", context.channel.id, ?message].join("/")}",
             ].join("\n"), isInline: false),
             if (context != null) EmbedFieldBuilder(name: "Who", value: [
               "User ID: ${context.user.id.toDiscordCodeString()}",

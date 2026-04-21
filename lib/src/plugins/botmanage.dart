@@ -41,8 +41,15 @@ class BotManagePlugin extends BotPlugin {
       BotCommand("test", "Bot", "Run tests with the bot.", (T context) async {
         await context.respond(MessageBuilder(content: "This command has not been implemented yet."));
       }, permissionsRequired: BotCommandPermissions.admin),
-      BotCommand("throw", "Debug", "Throw an exception.", (ChatContext context, [GreedyString? message]) {
-        throw CommandsException("${context.user.id}: ${message?.data}");
+      BotCommand("throw", "Debug", "Throw an exception.", (ChatContext context, [int type = 0, GreedyString? message]) {
+        switch (type) {
+          case 0:
+            throw CommandsException("${context.user.id}: ${message?.data}");
+          case 1:
+            throw Exception("${context.user.id}: ${message?.data}");
+          default:
+            return context.respondWithError("Invalid type: $type");
+        }
       }, permissionsRequired: BotCommandPermissions.owner),
       BotCommand("update", "Bot", "Update the bot's code. A restart will be required to apply.", (T context, [bool reset = false]) async {
         final int pubGets = 2;

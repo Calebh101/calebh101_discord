@@ -66,10 +66,31 @@ class HelpPlugin extends BotPlugin {
       BotCommand("dumphelp", "Commands", "Dump all help as markdown.", (T context) {
         context.respondWithError("This command is not implemented yet.");
       }),
+      BotCommand("r", "Commands", "Get your last message, and try to use it to run a command.", (MessageChatContext context) async {
+        late List<Message> allMessages;
+
+        try {
+          allMessages = await context.channel.messages.fetchMany(limit: 20, before: context.message.id);
+        } catch (e) {
+          Logger.warn("Commands.r", "Unable to get messages: $e");
+          return context.respondWithError("Unable to get messages.");
+        }
+
+        final message = allMessages.sorted((a, b) => b.timestamp.compareTo(a.timestamp)).firstWhereOrNull((x) => x.author.id == context.user.id);
+        Logger.print("Commands.r", "Received message ${message?.id} from user ${context.user.id}:\n${message?.content.trim()}");
+        if (message == null) return context.respondWithError("Couldn't find a recent message from you.");
+
+        final event = MessageCreateEvent(gateway: context.client.gateway, guildId: context.guild?.id, member: context.member, mentions: [], message: message);
+        final x = await plugin.eventManager.processMessageCreateEvent(event);
+
+        if (!x) {
+          await context.respond(MessageBuilder(content: "Couldn't process your latest message.\n${message.content.toDiscordCodeBlock()}"));
+        }
+      }, options: BotCommandOptions(type: CommandType.textOnly)),
     ];
   }
 
-  BotCommand helpCommand<T extends ChatContext>(KVStore store, CommandsPlugin plugin, {bool useCategories = true}) => BotCommand.command("help", "Show help for all commands, or a specific command${useCategories ? "/category" : ""}.", (T context, [@Description("Command or category to search.") String? command, bool dump = false]) async {
+  BotCommand helpCommand<T extends ChatContext>(KVStore store, CommandsPlugin plugin, {bool useCategories = true}) => BotCommand("help", "Commands", "Show help for all commands, or a specific command${useCategories ? "/category" : ""}.", (T context, [@Description("Command or category to search.") String? command, bool dump = false]) async {
     Logger.print("Help", "Loading help with input $command (dump=$dump)");
     if (command?.trim() == "all") command = null;
     final settings = context.guild != null ? ServerSettings(store, context.guild!.id) : null;
@@ -105,9 +126,37 @@ class HelpPlugin extends BotPlugin {
         })),
       );
     } else {
-      final category = useCategories ? categories.entries.firstWhereOrNull((x) => x.key == command!.trim()) : null;
+      final c = commands.firstWhereOrNull((x) => x.key == command?.split(" ").last)?.value;
+      final category = useCategories ? categories.entries.firstWhereOrNull((x) => x.key.toLowerCase() == command?.toLowerCase().trim()) : null; // Fallback, so make it case-insensitive
+      if (c == null && category == null) return context.respondWithError("Invalid command${useCategories ? "/category" : ""}: `$command`\nRun `search \"$command\"` to search through all commands.");
 
-      if (category != null) {
+      if (c != null) {
+        String argumentToString(ParameterData arg) {
+          final converter = plugin.getConverter(arg.type);
+
+          if (converter != null && converter.choices != null && converter.choices!.isNotEmpty) {
+            final choices = converter.choices!.map((x) => x.name);
+            return "${arg.name} [${choices.join(", ")}]";
+          } else {
+            return "${arg.name}${arg.isOptional ? "?" : ""} (${arg.type.internalType})";
+          }
+        }
+
+        await context.respond(MessageBuilder(embeds: [
+          EmbedBuilder(
+            title: "Command ${getName(c)}",
+            color: await getPrimaryColor(context.member) ?? primaryBotColor,
+            description: [
+              if (c.aliases != null) aliases(c),
+              "${[if (!c.noGroup && BotCommand.useGroups) c.group, c.name].join(" ")} ${(c.command as ChatCommand).arguments.map((x) => argumentToString(x)).join(" ")}".toDiscordCodeBlock(),
+              "Category: ${c.category}",
+              if (getPerms(c) != null) "Requires perms: `${getPerms(c)}`",
+              getDescription(c),
+              if (c.extendedDescription != null) "\n${c.extendedDescription}",
+            ].join("\n"),
+          ),
+        ]));
+      } else if (category != null) {
         if (category.value <= 0) return context.respondWithError("Category ${category.key} has no commands.");
         final commandsInCategory = commands.where((x) => x.value.category == category.key);
 
@@ -124,35 +173,6 @@ class HelpPlugin extends BotPlugin {
             ].join(" "), isInline: false);
           })),
         );
-      } else {
-        final c = commands.firstWhereOrNull((x) => x.key == command?.split(" ").last)?.value;
-        if (c == null) return context.respondWithError("Invalid command${useCategories ? "/category" : ""}: `$command`");
-
-        String argumentToString(ParameterData arg) {
-          final converter = plugin.getConverter(arg.type);
-
-          if (converter != null && converter.choices != null && converter.choices!.isNotEmpty) {
-            final choices = converter.choices!.map((x) => x.name);
-            return "${arg.name} [${choices.join(", ")}]";
-          } else {
-            return "${arg.name} (${arg.type.internalType})";
-          }
-        }
-
-        await context.respond(MessageBuilder(embeds: [
-          EmbedBuilder(
-            title: "Command ${getName(c)}",
-            color: await getPrimaryColor(context.member) ?? primaryBotColor,
-            description: [
-              if (c.aliases != null) aliases(c),
-              "${[if (!c.noGroup) c.group, c.name].join(" ")} ${(c.command as ChatCommand).arguments.map((x) => argumentToString(x)).join(" ")}".toDiscordCodeBlock(),
-              "Category: ${c.category}",
-              if (getPerms(c) != null) "Requires perms: `${getPerms(c)}`",
-              getDescription(c),
-              if (c.extendedDescription != null) "\n${c.extendedDescription}",
-            ].join("\n"),
-          ),
-        ]));
       }
     }
 
@@ -168,5 +188,5 @@ class HelpPlugin extends BotPlugin {
     } else {
       Logger.print("Help", "No embed received");
     }
-  }, CommandAttributes(category: "Commands"), noGroup: true);
+  }, noGroup: true, aliases: ["commands"]);
 }
