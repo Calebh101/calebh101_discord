@@ -5,6 +5,8 @@ import 'package:calebh101_discord/calebh101_discord.dart';
 import 'package:nyxx_commands/src/mirror_utils/function_data.dart';
 import 'package:collection/collection.dart';
 
+Map<Snowflake, int> rTrain = {};
+
 class HelpPlugin extends BotPlugin {
   HelpPlugin() : super(id: "help", version: Version.parse("1.0.0A"));
 
@@ -79,12 +81,14 @@ class HelpPlugin extends BotPlugin {
         final message = allMessages.sorted((a, b) => b.timestamp.compareTo(a.timestamp)).firstWhereOrNull((x) => x.author.id == context.user.id);
         Logger.print("Commands.r", "Received message ${message?.id} from user ${context.user.id}:\n${message?.content.trim()}");
         if (message == null) return context.respondWithError("Couldn't find a recent message from you.");
+        if (message.content.trim() == context.message.content.trim()) return context.respondWithError("You can't train repeats.");
 
+        rTrain[context.user.id] = (rTrain[context.user.id] ?? 0) + 1;
         final event = MessageCreateEvent(gateway: context.client.gateway, guildId: context.guild?.id, member: context.member, mentions: [], message: message);
         final x = await plugin.eventManager.processMessageCreateEvent(event);
 
-        if (!x) {
-          await context.respond(MessageBuilder(content: "Couldn't process your latest message.\n${message.content.toDiscordCodeBlock()}"));
+        if (x == null) {
+          await context.respond(MessageBuilder(content: "Couldn't process your latest message: ${context.createDiscordLink(message.id)}"));
         }
       }, options: BotCommandOptions(type: CommandType.textOnly)),
     ];

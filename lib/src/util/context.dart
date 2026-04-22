@@ -65,4 +65,8 @@ extension CommandContextHelper on CommandContext {
 
     return true;
   }
+
+  Uri createDiscordLink([Snowflake? message]) {
+    return discordLink(guild?.id, channel.id, message);
+  }
 }

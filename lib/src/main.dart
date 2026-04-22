@@ -418,3 +418,7 @@ Future<String?> getStatus() async {
     return null;
   }
 }
+
+Uri discordLink(Snowflake? guild, Snowflake channel, [Snowflake? message]) {
+  return Uri.parse("https://discord.com/channels/${[guild ?? "@me", channel, ?message].join("/")}");
+}
