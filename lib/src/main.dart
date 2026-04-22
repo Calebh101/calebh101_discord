@@ -278,29 +278,34 @@ Future<BotContext?> load({required BotSettings settings, required FutureOr<Patte
         final channel = await client.users.createDm(id);
         final context = ifContextual(e, (e) => e.context);
         final message = ifIs<Snowflake, MessageChatContext>(context, (x) => x.message.id) ?? ifIs<Snowflake?, InteractionChatContext>(context, (x) => x.interaction.message?.id);
+        final timestamp = message?.timestamp.toUtc() ?? DateTime.now().toUtc();
 
         await channel.sendMessage(MessageBuilder(embeds: [EmbedBuilder(
           title: "Unhandled Command Error",
           description: [
             "Type: ${e.runtimeType}",
-            if (context != null) "Context: ${context.runtimeType}",
+            "Context: ${context.runtimeType}",
           ].join("\n").toDiscordCodeBlock(),
           fields: [
             EmbedFieldBuilder(name: "Message", value: (ifIs<String, CommandsException>(e, (e) => e.message) ?? e.toString()).toDiscordCodeBlock(), isInline: false),
             EmbedFieldBuilder(name: "Stack Trace", value: (ifIs<StackTrace?, CommandsException>(e, (e) => e.stackTrace) ?? StackTrace.current).toDiscordCodeBlock(), isInline: false),
             if (context != null) EmbedFieldBuilder(name: "Where", value: [
               "Client: ${context.client.user.id.toDiscordCodeString()}",
-              "Guild: ${context.guild?.id.toDiscordCodeString()}",
+              "Guild: ${context.guild?.id.toDiscordCodeString() ?? "none"}",
               "Channel: ${context.channel.id.toDiscordCodeString()}",
               "Message: $message",
-              "Link: https://discord.com/channels/${[context.guild?.id ?? "@me", context.channel.id, ?message].join("/")}",
+              "Link: ${discordLink(context.guild?.id, channel.id, message)}",
             ].join("\n"), isInline: false),
             if (context != null) EmbedFieldBuilder(name: "Who", value: [
               "User ID: ${context.user.id.toDiscordCodeString()}",
               "User mention: ${context.user.toMention()}",
               "User name: ${await memberFromUserToString(context.user, client: client, guild: context.guild)}",
             ].join("\n"), isInline: false),
+            EmbedFieldBuilder(name: "Timestamp", value: "${timestamp.toDiscordTimestamp(DiscordTimestamp.shortDateTime)} (${timestamp.toDiscordTimestamp(DiscordTimestamp.relative)}) (source: `${message != null ? "message" : "system"}`)", isInline: false),
           ],
+          color: DiscordColor.parseHexString("#FF7F7F"),
+          timestamp: timestamp,
+          thumbnail: EmbedThumbnailBuilder(url: context?.member?.avatar?.url ?? context?.user.avatar.url ?? (await client.user.get()).avatar.url),
         )]));
 
         success = true;
