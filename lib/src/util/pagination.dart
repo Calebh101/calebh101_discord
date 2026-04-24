@@ -154,7 +154,7 @@ Future<bool> respondWithPagination(ChatContext context, PaginatedEmbedBuilder em
   ));
 
   int page = 0;
-  int secondsRemaining = timeLimit.inSeconds; // 5 minutes
+  int secondsRemaining = timeLimit.inSeconds;
 
   Future<void> Function() onTimeUp = () async {
     Logger.warn("Pagination", "Pagination session with user ${context.user.id} has not set onTimeUp at this point. The paginated embed will appear broken.");

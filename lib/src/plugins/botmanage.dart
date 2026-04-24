@@ -38,6 +38,8 @@ class BotManagePlugin extends BotPlugin {
       restartCommand<T>(store),
       killCommand<T>(),
       echoDebugCommand<T>(store),
+      ?confirmationTest(),
+
       BotCommand("test", "Bot", "Run tests with the bot.", (T context) async {
         await context.respond(MessageBuilder(content: "This command has not been implemented yet."));
       }, permissionsRequired: BotCommandPermissions.admin),

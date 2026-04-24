@@ -261,7 +261,7 @@ Future<BotContext?> load({required BotSettings settings, required FutureOr<Patte
       ));
     }
 
-    for (final o in owners){
+    for (final o in owners) {
       onCommandErrorDm?.call(o.id, e);
     }
   });
@@ -277,8 +277,9 @@ Future<BotContext?> load({required BotSettings settings, required FutureOr<Patte
       try {
         final channel = await client.users.createDm(id);
         final context = ifContextual(e, (e) => e.context);
-        final message = ifIs<Snowflake, MessageChatContext>(context, (x) => x.message.id) ?? ifIs<Snowflake?, InteractionChatContext>(context, (x) => x.interaction.message?.id);
+        final message = ifIs<Message, MessageChatContext>(context, (x) => x.message) ?? ifIs<Message?, InteractionChatContext>(context, (x) => x.interaction.message);
         final timestamp = message?.timestamp.toUtc() ?? DateTime.now().toUtc();
+        final stack = (ifIs<StackTrace?, CommandsException>(e, (e) => e.stackTrace) ?? StackTrace.current).toString();
 
         await channel.sendMessage(MessageBuilder(embeds: [EmbedBuilder(
           title: "Unhandled Command Error",
@@ -287,14 +288,14 @@ Future<BotContext?> load({required BotSettings settings, required FutureOr<Patte
             "Context: ${context.runtimeType}",
           ].join("\n").toDiscordCodeBlock(),
           fields: [
-            EmbedFieldBuilder(name: "Message", value: (ifIs<String, CommandsException>(e, (e) => e.message) ?? e.toString()).toDiscordCodeBlock(), isInline: false),
-            EmbedFieldBuilder(name: "Stack Trace", value: (ifIs<StackTrace?, CommandsException>(e, (e) => e.stackTrace) ?? StackTrace.current).toDiscordCodeBlock(), isInline: false),
+            EmbedFieldBuilder(name: "Error", value: (ifIs<String, CommandsException>(e, (e) => e.message) ?? e.toString()).toDiscordCodeBlock(), isInline: false),
+            EmbedFieldBuilder(name: "Stack Trace", value: stack.substring(0, min(stack.length, 1024)).toDiscordCodeBlock(), isInline: false),
             if (context != null) EmbedFieldBuilder(name: "Where", value: [
               "Client: ${context.client.user.id.toDiscordCodeString()}",
               "Guild: ${context.guild?.id.toDiscordCodeString() ?? "none"}",
               "Channel: ${context.channel.id.toDiscordCodeString()}",
-              "Message: $message",
-              "Link: ${discordLink(context.guild?.id, channel.id, message)}",
+              "Message: ${message?.id.toDiscordCodeString() ?? "none"}",
+              "Link: ${discordLink(context.guild?.id, channel.id, message?.id)}",
             ].join("\n"), isInline: false),
             if (context != null) EmbedFieldBuilder(name: "Who", value: [
               "User ID: ${context.user.id.toDiscordCodeString()}",
@@ -302,6 +303,7 @@ Future<BotContext?> load({required BotSettings settings, required FutureOr<Patte
               "User name: ${await memberFromUserToString(context.user, client: client, guild: context.guild)}",
             ].join("\n"), isInline: false),
             EmbedFieldBuilder(name: "Timestamp", value: "${timestamp.toDiscordTimestamp(DiscordTimestamp.shortDateTime)} (${timestamp.toDiscordTimestamp(DiscordTimestamp.relative)}) (source: `${message != null ? "message" : "system"}`)", isInline: false),
+            if (message != null) EmbedFieldBuilder(name: "Message", value: message.content.substring(0, min(message.content.length, 1024)), isInline: false),
           ],
           color: DiscordColor.parseHexString("#FF7F7F"),
           timestamp: timestamp,

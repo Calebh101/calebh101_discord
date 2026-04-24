@@ -13,6 +13,7 @@ export 'src/util/context.dart';
 export 'src/util/modlog.dart';
 export 'src/util/pagination.dart';
 export 'src/util/arguments.dart';
+export 'src/util/confirmation.dart';
 
 export 'src/plugins/modlog.dart';
 export 'src/plugins/messages.dart';

@@ -16,11 +16,34 @@ class ModerationPlugin extends BotPlugin {
     return [durationConverter()];
   }
 
+  Future<String> confirmstringify(Member member, NyxxGateway client) async {
+    final user = member.user ?? await client.users[member.id].get();
+
+    try {
+      return [
+        (member.nick ?? user.globalName ?? user.username),
+        "(${user.username})",
+        "(${member.id})",
+      ].join(" ");
+    } catch (e) {
+      Logger.print("confirmstringify", "$e (member=${member.runtimeType}, user=${member.user.runtimeType}, nick=${member.nick}, id=${member.id}");
+      return await userToString(user) ?? "undefined";
+    }
+  }
+
+  Future<bool> confirm(ChatContext context, String action) async {
+    final result = await confirmation(action, context);
+    if (result.result == true) return true;
+    await context.respond(MessageBuilder(embeds: [result.toEmbed()]));
+    return false;
+  }
+
   @override
   FutureOr<List<BotCommand>> commands<T extends ChatContext>(CommandsPlugin plugin, KVStore store) {
     return [
       BotCommand("ban", "Moderation", "Ban a user.", (T context, Member member, [GreedyString? reason]) async {
         try {
+          if (await confirm(context, "ban ${await confirmstringify(member, context.client)}") == false) return;
           final settings = ifGuild(store, context.guild?.id, (id) => ServerSettings(store, id));
           var deleteMessagesSeconds = settings?.banMessageRemovalSeconds.get();
           if (deleteMessagesSeconds == null || deleteMessagesSeconds <= 0) deleteMessagesSeconds = null;
@@ -66,6 +89,7 @@ class ModerationPlugin extends BotPlugin {
       }, permissionsRequired: BotCommandPermissions.admin),
       BotCommand("kick", "Moderation", "Kick a user.", (T context, Member member, [GreedyString? reason]) async {
         try {
+          if (await confirm(context, "kick ${await confirmstringify(member, context.client)}") == false) return;
           final settings = ifGuild(store, context.guild?.id, (id) => ServerSettings(store, id));
           var deleteMessagesSeconds = settings?.kickMessageRemovalSeconds.get();
           if (deleteMessagesSeconds == null || deleteMessagesSeconds <= 0) deleteMessagesSeconds = null;
@@ -112,6 +136,7 @@ class ModerationPlugin extends BotPlugin {
       }),
       BotCommand("softban", "Moderation", "Ban then unban a user.", (T context, Member member, [GreedyString? reason]) async {
         try {
+          if (await confirm(context, "softban ${await confirmstringify(member, context.client)}") == false) return;
           final settings = ifGuild(store, context.guild?.id, (id) => ServerSettings(store, id));
           var deleteMessagesSeconds = settings?.kickMessageRemovalSeconds.get();
           if (deleteMessagesSeconds == null || deleteMessagesSeconds <= 0) deleteMessagesSeconds = null;
@@ -242,7 +267,7 @@ class ModerationPlugin extends BotPlugin {
             color: await getColor(context.member),
           ),
         ]));
-      }, permissionsRequired: BotCommandPermissions.admin),
+      }, permissionsRequired: BotCommandPermissions.admin, aliases: ["to"]),
       BotCommand("timein", "Moderation", "Remove timeout of a user.", (T context, Member member) async {
         try {
           await member.update(MemberUpdateBuilder(communicationDisabledUntil: null), auditLogReason: context.user.username);
@@ -282,7 +307,7 @@ class ModerationPlugin extends BotPlugin {
             ].whereType<EmbedFieldBuilder>().toList(),
           ),
         ]));
-      }, permissionsRequired: BotCommandPermissions.admin, aliases: ["untimeout", "remtimeout"]),
+      }, permissionsRequired: BotCommandPermissions.admin, aliases: ["untimeout", "remtimeout", "ti"]),
       BotCommand("warns", "Moderation", "See someone's warns.", (T context, Member member) async {
         final settings = UserSettings(store, member.id);
         final warns = settings.warns.get() ?? [];
@@ -294,8 +319,9 @@ class ModerationPlugin extends BotPlugin {
           pages: EmbedPage.generate(warns.mapIndexed((i, x) => EmbedFieldBuilder(name: "${i + 1}. ${x.timestamp.toDiscordTimestamp(DiscordTimestamp.longDateTime)}", value: x.reason ?? "No reason provided", isInline: false)).toList()),
           color: await getColor(context.member),
         ), settings: ifGuild(store, context.guild?.id, (id) => ServerSettings(store, id)));
-      }, permissionsRequired: BotCommandPermissions.admin),
+      }, permissionsRequired: BotCommandPermissions.admin, aliases: ["listwarns", "wl"]),
       BotCommand("warn", "Moderation", "Warn someone.", (T context, Member member, [GreedyString? reason]) async {
+        if (await confirm(context, "warn ${await confirmstringify(member, context.client)}") == false) return;
         final settings = UserSettings(store, member.id);
         final warns = settings.warns.get() ?? [];
         final warn = Warn(timestamp: DateTime.now().toUtc(), reason: reason?.data);
@@ -319,7 +345,7 @@ class ModerationPlugin extends BotPlugin {
         ));
 
         await context.respond(MessageBuilder(content: "Warned ${await memberToString(member, client: context.client)}. This is warn **#${warns.length}**.\n${reason ?? "No reason provided."}"));
-      }, permissionsRequired: BotCommandPermissions.admin),
+      }, permissionsRequired: BotCommandPermissions.admin, aliases: ["w"]),
       BotCommand("unwarn", "Moderation", "Remove a warn from someone", (T context, Member member, [int? index]) async {
         final settings = UserSettings(store, member.id);
         final warns = settings.warns.get() ?? [];
@@ -355,7 +381,7 @@ class ModerationPlugin extends BotPlugin {
             color: await getColor(context.member),
           ),
         ]));
-      }, permissionsRequired: BotCommandPermissions.admin),
+      }, permissionsRequired: BotCommandPermissions.admin, aliases: ["s"]),
       BotCommand("purge", "Moderation", "Purge messages from a channel. Messages must be under 14 days old.", (T context, int amount, [GreedyString? args]) async {
         if (await context.assureGuild() == false) return;
         if (amount <= 2) return context.respondWithError("Too little messages. Must be greater than 2.");
@@ -451,6 +477,7 @@ class ModerationPlugin extends BotPlugin {
           messages.removeWhere((x) => x.content.trim().endsWith(text));
         }
 
+        if (await confirm(context, "purge ${messages.length} messages") == false) return;
         final preview = arguments.containsKey("preview");
         await context.updateMessage(m, MessageUpdateBuilder(content: "Purging ${messages.length} messages..."));
         if (!preview) await purge(channel, messages);
