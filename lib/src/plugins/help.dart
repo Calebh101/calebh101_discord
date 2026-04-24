@@ -44,8 +44,16 @@ class HelpPlugin extends BotPlugin {
         ), settings: context.guild != null ? ServerSettings(store, context.guild!.id) : null);
       }),
       BotCommand("search", "Commands", "Search for a command.", (T context, GreedyString query) async {
+        String aliases(BotCommand command) {
+          return "(AKA ${command.aliases!.join(", ")})";
+        }
+
+        String getName(BotCommand command) {
+          return [if (!command.noGroup && BotCommand.useGroups) command.group, command.name, if (command.aliases != null) aliases(command)].join(" ");
+        }
+
         final commands = [...BotCommand.commandRegistry.entries, ...BotCommand.getAllCategories().entries];
-        final List<({String name, String description, double score, int type})> ranking = commands.map((x) => (name: x.key, description: x.value is BotCommand ? (x.value as BotCommand).description : "${x.value} commands", score: fuzzyScore(query.data, x.key), type: x.value is int ? 1 : 0 /* command = 0, category = 1 */)).sorted((a, b) => b.score.compareTo(a.score));
+        final List<({String name, String description, double score, int type})> ranking = commands.map((x) => (name: x.value is BotCommand ? getName(x.value as BotCommand) : x.key, description: x.value is BotCommand ? (x.value as BotCommand).description : "${x.value} commands", score: x.value is BotCommand ? (x.value as BotCommand).getNames().map((y) => fuzzyScore(query.data, y)).reduce((a, b) => a > b ? a : b) : fuzzyScore(query.data, x.key), type: x.value is int ? 1 : 0 /* command = 0, category = 1 */)).sorted((a, b) => b.score.compareTo(a.score));
         final results = ranking.sublist(0, min(6, ranking.length));
         if (results.isEmpty) return context.respondWithError("No results found.");
 
@@ -130,7 +138,7 @@ class HelpPlugin extends BotPlugin {
         })),
       );
     } else {
-      final c = commands.firstWhereOrNull((x) => x.key == command?.split(" ").last)?.value;
+      final c = commands.firstWhereOrNull((x) => [x.value.name, ...?x.value.aliases].contains(command?.split(" ").last))?.value;
       final category = useCategories ? categories.entries.firstWhereOrNull((x) => x.key.toLowerCase() == command?.toLowerCase().trim()) : null; // Fallback, so make it case-insensitive
       if (c == null && category == null) return context.respondWithError("Invalid command${useCategories ? "/category" : ""}: `$command`\nRun `search \"$command\"` to search through all commands.");
 
@@ -151,7 +159,6 @@ class HelpPlugin extends BotPlugin {
             title: "Command ${getName(c)}",
             color: await getPrimaryColor(context.member) ?? primaryBotColor,
             description: [
-              if (c.aliases != null) aliases(c),
               "${[if (!c.noGroup && BotCommand.useGroups) c.group, c.name].join(" ")} ${(c.command as ChatCommand).arguments.map((x) => argumentToString(x)).join(" ")}".toDiscordCodeBlock(),
               "Category: ${c.category}",
               if (getPerms(c) != null) "Requires perms: `${getPerms(c)}`",

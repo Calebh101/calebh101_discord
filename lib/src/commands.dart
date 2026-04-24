@@ -117,6 +117,10 @@ class BotCommand<T extends Function> {
   BotCommand.converter(this.converter);
   BotCommand.check(this.check);
 
+  List<String> getNames() {
+    return [name, ...?aliases];
+  }
+
   @Deprecated("Use the unnamed constructor instead.")
   factory BotCommand.command(String name, String description, T execute, CommandAttributes attributes, {CommandOptions? options, String group = "", bool noGroup = false}) {
     return BotCommand(name, attributes.category, description, execute, extendedDescription: attributes.extendedDescription, permissionsRequired: attributes.permissionsRequired, enforcePermissions: false, group: group, noGroup: noGroup);
