@@ -197,6 +197,10 @@ class SettingsObject<T> {
 
   SettingsObject(this.obj, this.key, {this.decodeFunction, this.encodeFunction});
 
+  static SettingsObject<List<T>> list<T>(EntitySettings obj, String key) {
+    return SettingsObject(obj, key, decodeFunction: (input) => (input as List?)?.map((x) => x as T).toList());
+  }
+
   T? get() {
     try {
       return (decodeFunction ?? cast).call(obj.store.get(obj.scope, obj.id.toString(), key));

@@ -94,7 +94,6 @@ class ModerationPlugin extends BotPlugin {
           var deleteMessagesSeconds = settings?.kickMessageRemovalSeconds.get();
           if (deleteMessagesSeconds == null || deleteMessagesSeconds <= 0) deleteMessagesSeconds = null;
           await member.manager.delete(member.id, auditLogReason: "${context.user.username}: ${reason?.data ?? "No reason provided"} (kick)");
-          await member.unban();
         } on HttpResponseError catch (e) {
           Logger.warn("Kick", "Unable to kick ${member.id}: $e");
           final fail = e.message;

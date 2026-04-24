@@ -51,7 +51,7 @@ FutureOr<String> userOrMemberToString(Member? member, User user, {bool detailed 
   return await memberToString(member, detailed: detailed, client: client) ?? await userToString(user, detailed: detailed) ?? "`${user.id}`";
 }
 
-String? roleToString(Role? role) {
+Future<String?> roleToString(Role? role) async {
   if (role == null) return null;
   return "**${role.name}**";
 }

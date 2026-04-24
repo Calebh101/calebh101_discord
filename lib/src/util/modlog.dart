@@ -150,6 +150,8 @@ class ModlogEvent {
     timestamp ??= DateTime.now();
     triggers = [eventId, ...?alsoTriggerOn];
   }
+
+  ModlogEvent.fromContext(this.eventId, {this.severity = .log, required ChatContext context, required this.settings, required this.title, this.description, this.fields, this.timestamp, this.url, this.image, this.thumbail, this.alsoTriggerOn, this.attachments}) : client = context.client, guild = context.guild;
 }
 
 List<BotCommand> modLogCommandsX<T extends ChatContext>(KVStore store) => [

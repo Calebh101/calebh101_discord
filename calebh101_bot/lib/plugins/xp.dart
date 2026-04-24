@@ -143,7 +143,7 @@ class XPPlugin extends BotPlugin {
 
       await context.respond(MessageBuilder(
         content: "## All XP Levels for *${context.guild!.name}*\n\n${(await Future.wait(roles.map((x) async {
-          return "- ${roleToString(await getRole(context.guild!, Snowflake(x.roleId)))}: **${x.requiredXp}** XP required";
+          return "- ${await roleToString(await getRole(context.guild!, Snowflake(x.roleId)))}: **${x.requiredXp}** XP required";
         }))).join("\n")}",
       ));
     }, CommandAttributes(category: "XP")),
@@ -159,7 +159,7 @@ class XPPlugin extends BotPlugin {
       settings.xpLevels.set(roles);
 
       await context.respond(MessageBuilder(
-        content: "Added XP level ${roleToString(role)} with **$requiredXp** XP!",
+        content: "Added XP level ${await roleToString(role)} with **$requiredXp** XP!",
       ));
     }, CommandAttributes(category: "XP", permissionsRequired: BotCommandPermissions.admin)),
 
@@ -179,7 +179,7 @@ class XPPlugin extends BotPlugin {
       settings.xpLevels.set(roles);
 
       await context.respond(MessageBuilder(
-        content: "Set XP level ${roleToString(role)}'s required XP to **$requiredXp** XP.",
+        content: "Set XP level ${await roleToString(role)}'s required XP to **$requiredXp** XP.",
       ));
     }, CommandAttributes(category: "XP", permissionsRequired: BotCommandPermissions.admin)),
 
@@ -193,7 +193,7 @@ class XPPlugin extends BotPlugin {
       settings.xpLevels.set(roles);
 
       await context.respond(MessageBuilder(
-        content: "Removed XP level ${roleToString(role)}.",
+        content: "Removed XP level ${await roleToString(role)}.",
       ));
     }, CommandAttributes(category: "XP", permissionsRequired: BotCommandPermissions.admin)),
 
