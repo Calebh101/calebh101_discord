@@ -173,6 +173,7 @@ class Calebh101BotServerSettings extends ServerSettings {
   SettingsObject<bool> get xpEnabled => SettingsObject(this, "xpEnabled");
   SettingsObject<Snowflake> get mathChannel => SettingsObject(this, "mathChannel", encodeFunction: (input) => input.value, decodeFunction: (input) => input is int ? Snowflake(input) : null);
   SettingsObject<Math> get currentMath => SettingsObject(this, "currentMath", encodeFunction: (input) => input.toJson(), decodeFunction: (input) => input != null ? Math.fromJson(input) : null);
+  SettingsObject<DateTime> get lastMath => SettingsObject(this, "lastMath", encodeFunction: (input) => input.millisecondsSinceEpoch, decodeFunction: (input) => DateTime.fromMillisecondsSinceEpoch(input));
   SettingsObject<List<String>> get allowedMathTypes => SettingsObject(this, "allowedMathTypes", encodeFunction: (input) => input as List?, decodeFunction: (input) => RecursiveCaster.cast<List<String>>(input));
   SettingsObject<Map<int, String>> get rules => SettingsObject(this, "rules", encodeFunction: (input) => input.map((k, v) => MapEntry(k.toString(), v)), decodeFunction: (input) => input is Map ? input.map((k, v) => MapEntry(int.parse(k), v)) : null);
 
@@ -187,6 +188,7 @@ class Calebh101BotUserPerServerSettings extends UserPerServerSettings {
   SettingsObject<double> get xp => SettingsObject(this, "xp");
   SettingsObject<int> get lastXpHour => SettingsObject(this, "lastXpHour");
   SettingsObject<double> get xpThisHour => SettingsObject(this, "xpThisHour");
+  SettingsObject<int> get mathStreak => SettingsObject(this, "mathStreak");
 
   Calebh101BotUserPerServerSettings(super.store, super.server, super.user);
 }

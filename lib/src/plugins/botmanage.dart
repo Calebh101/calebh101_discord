@@ -33,6 +33,11 @@ class BotManagePlugin extends BotPlugin {
   }
 
   @override
+  FutureOr<List<BotConverter<dynamic>>> converters(CommandsPlugin plugin, KVStore store) {
+    return [GreedyQuotedList.converter()];
+  }
+
+  @override
   FutureOr<List<BotCommand>> commands<T extends ChatContext>(CommandsPlugin plugin, KVStore store) {
     return [
       restartCommand<T>(store),

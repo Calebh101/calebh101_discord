@@ -52,7 +52,7 @@ class MathPlugin extends BotPlugin {
         final allowedTypes = settings.allowedMathTypes.get() ?? Math.defaultTypes;
         final math = settings.currentMath.get() ?? newFormula(allowedTypes: allowedTypes);
         settings.currentMath.set(math);
-        await context.respond(MessageBuilder(embeds: [await math.toEmbed(context.member!)]));
+        await context.respond(MessageBuilder(embeds: [await math.toEmbed(context.member!, null)]));
       }),
       BotCommand("newmath", "Math", "Print a new math formula.", (T context) async {
         if (await context.assureGuild() == false) return;
@@ -60,12 +60,14 @@ class MathPlugin extends BotPlugin {
         final allowedTypes = settings.allowedMathTypes.get() ?? Math.defaultTypes;
         final math = newFormula(allowedTypes: allowedTypes);
         settings.currentMath.set(math);
-        await context.respond(MessageBuilder(embeds: [await math.toEmbed(context.member!)]));
+        settings.lastMath.set(DateTime.now());
+        await context.respond(MessageBuilder(embeds: [await math.toEmbed(context.member!, null)]));
       }, permissionsRequired: BotCommandPermissions.admin),
       BotCommand("resetmath", "Math", "Reset the current math formula.", (T context) async {
         if (await context.assureGuild() == false) return;
         final settings = Calebh101BotServerSettings(store, context.guild!.id);
         settings.currentMath.delete();
+        settings.lastMath.set(DateTime.now());
         await context.respond(MessageBuilder(content: "Math formula cleared."));
       }, permissionsRequired: BotCommandPermissions.admin),
       BotCommand("mathanswer", "Math", "Reset the current math formula.", (T context) async {
@@ -106,6 +108,12 @@ class MathPlugin extends BotPlugin {
       final settings = Calebh101BotServerSettings(store, event.guildId!);
       if (settings.mathChannel.get() == null || settings.mathChannel.get() != event.message.channelId) return;
 
+      final last = settings.lastMath.get();
+      if (last != null && DateTime.now().difference(last).inMilliseconds < 1000) return;
+
+      final userSettings = Calebh101BotUserPerServerSettings(store, event.guildId!, event.message.author.id);
+      final streak = userSettings.mathStreak.get() ?? 0;
+
       final math = settings.currentMath.get();
       if (math == null) return;
 
@@ -115,11 +123,16 @@ class MathPlugin extends BotPlugin {
 
       if (success) {
         final allowedTypes = settings.allowedMathTypes.get() ?? Math.defaultTypes;
-        await event.message.react(ReactionBuilder(name: "✅", id: null));
         final math = newFormula(allowedTypes: allowedTypes);
+
         settings.currentMath.set(math);
-        await event.message.channel.sendMessage(MessageBuilder(embeds: [await math.toEmbed(await event.member!.get())]));
+        settings.lastMath.set(DateTime.now());
+        userSettings.mathStreak.set(streak + 1);
+
+        await event.message.react(ReactionBuilder(name: "✅", id: null));
+        await event.message.channel.sendMessage(MessageBuilder(embeds: [await math.toEmbed(await event.member!.get(), streak + 1)]));
       } else {
+        userSettings.mathStreak.set(0);
         await event.message.react(ReactionBuilder(name: "❌", id: null));
       }
     }));
@@ -194,9 +207,10 @@ abstract class Math {
   }
 
   /// Override this if you need a complex embed.
-  FutureOr<EmbedBuilder> toEmbed(Member member) async => EmbedBuilder(
+  FutureOr<EmbedBuilder> toEmbed(Member member, int? streak) async => EmbedBuilder(
     title: "$this",
     color: await getColor(member),
+    footer: streak != null ? EmbedFooterBuilder(text: "Streak: $streak") : null,
   );
 
   factory Math.fromJson(Map input) {

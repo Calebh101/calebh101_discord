@@ -49,7 +49,7 @@ class CrosspostPlugin extends BotPlugin {
         final user = message.author as User;
 
         if (user.isBot || user.isSystem) return;
-        if (isAdmin(settings: settings, id: userId)) return;
+        if (event.member != null && isAdmin(settings: settings, member: await event.member!.get())) return;
 
         messages[userId]!.removeWhere(
           (entry) => now.difference(entry.timestamp) > window,

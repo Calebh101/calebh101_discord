@@ -439,5 +439,16 @@ class AdminPlugin extends BotPlugin {
       settings.warningChannel.set(channel.id.value);
       await context.respond(MessageBuilder(content: "Warning channel set to ${channel.toMention()}."));
     }, permissionsRequired: BotCommandPermissions.admin),
+    BotCommand("findrole", "Server", "Find a role by ID.", (ChatContext context, int id) async {
+      final role = await () async {
+        try {
+          return context.guild!.roles.get(Snowflake(id));
+        } catch (_) {
+          return null;
+        }
+      }();
+
+      await context.respond(MessageBuilder(content: role != null ? "Role `$id`: ${await roleToString(role)}" : "No role found for ID `$id`."));
+    }),
   ];
 }

@@ -404,7 +404,7 @@ class XPPlugin extends BotPlugin {
 
       List<String> properties = [
         if (guild.ownerId == member.id) "Server Owner",
-        if (isAdmin(settings: serverSettings, id: member.id)) "Bot Admin",
+        if (isAdmin(settings: serverSettings, member: member)) "Bot Admin",
         if (isClaimer(settings: serverSettings, id: member.id)) "Bot Claimer",
         if (isOwner(id: member.id)) "Bot Owner",
       ];
@@ -421,7 +421,7 @@ class XPPlugin extends BotPlugin {
               EmbedFieldBuilder(name: "Joined On", value: "${member.joinedAt.toDiscordTimestamp(DiscordTimestamp.longDateTime)} (${member.joinedAt.toDiscordTimestamp(DiscordTimestamp.relative)})", isInline: false),
               if (properties.isNotEmpty) EmbedFieldBuilder(name: "Properties", value: properties.join(", "), isInline: false),
             ],
-            footer: isAdmin(settings: serverSettings, id: context.user.id) ? EmbedFooterBuilder(text: "Exact XP: ${settings.xp.get()}") : null,
+            footer: isAdmin(settings: serverSettings, member: context.member!) ? EmbedFooterBuilder(text: "Exact XP: ${settings.xp.get()}") : null,
             thumbnail: avatar != null ? EmbedThumbnailBuilder(url: avatar.url) : null,
           ),
         ],

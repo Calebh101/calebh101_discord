@@ -116,6 +116,29 @@ class NoArgs extends ConverterType {
   }
 }
 
+class GreedyQuotedList extends ConverterType {
+  final List<String> input;
+  const GreedyQuotedList(this.input);
+
+  @override
+  String get name => "Greedy quoted list";
+
+  @override
+  String get info => "List of quoted words.";
+
+  static BotConverter converter() {
+    return BotConverter("GreedyQuotedList", (plugin) => Converter<GreedyQuotedList>((value, context) {
+      List<String> results = [];
+
+      while (value.remaining.trim().isNotEmpty) {
+        results.add(value.getQuotedWord());
+      }
+
+      return GreedyQuotedList(results);
+    }));
+  }
+}
+
 BotConverter durationConverter() {
   return BotConverter("duration", (_) => Converter<Duration>((value, context) {
     final text = value.getQuotedWord();

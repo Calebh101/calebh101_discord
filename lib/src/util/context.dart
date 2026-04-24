@@ -17,7 +17,7 @@ extension CommandContextHelper on CommandContext {
 
     switch (perms) {
       case BotCommandPermissions.any: return true;
-      case BotCommandPermissions.admin: return o ? true : isAdmin(settings: settings!, id: user.id);
+      case BotCommandPermissions.admin: return o ? true : (member == null ? false : isAdmin(settings: settings!, member: member!));
       case BotCommandPermissions.claimer: return o ? true : isClaimer(settings: settings!, id: user.id);
       case BotCommandPermissions.owner: return o ? true : isOwner(id: user.id);
     }

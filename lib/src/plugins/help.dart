@@ -91,13 +91,46 @@ class HelpPlugin extends BotPlugin {
         if (message == null) return context.respondWithError("Couldn't find a recent message from you.");
         if (message.content.trim() == context.message.content.trim()) return context.respondWithError("You can't train repeats.");
 
-        rTrain[context.user.id] = (rTrain[context.user.id] ?? 0) + 1;
         final event = MessageCreateEvent(gateway: context.client.gateway, guildId: context.guild?.id, member: context.member, mentions: [], message: message);
         final x = await plugin.eventManager.processMessageCreateEvent(event);
 
         if (x == null) {
           await context.respond(MessageBuilder(content: "Couldn't process your latest message: ${context.createDiscordLink(message.id)}"));
         }
+      }, options: BotCommandOptions(type: CommandType.textOnly)),
+      BotCommand("eval", "Bot", "Evaluate commands.", (MessageChatContext context, GreedyQuotedList input) async {
+        int success = 0;
+
+        for (String x in input.input) {
+          if (x.startsWith(context.prefix)) x = x.replaceFirst(context.prefix, "");
+          final items = x.split(" ");
+          Logger.print("eval", "${context.user.id}: $x");
+
+          final command = BotCommand.commandRegistry.entries.firstWhereOrNull((x) => x.key == items.first);
+          if (command == null || command.value.command == null) continue;
+
+          final m = await context.channel.sendMessage(MessageBuilder(content: "${context.prefix}$x"));
+          await command.value.command!.invoke(MessageChatContext(message: m, prefix: context.prefix, rawArguments: items.length > 1 ? items.sublist(1).join(" ") : "", command: command.value.command!, user: context.user, member: context.member, guild: context.guild, channel: context.channel, commands: plugin, client: context.client));
+          success++;
+        }
+
+        await context.respond(MessageBuilder(content: "Evaluated **$success** commands."));
+      }, options: BotCommandOptions(type: CommandType.textOnly)),
+      BotCommand("evalas", "Bot", "Evaluate commands as a user.", (MessageChatContext context, User user, GreedyQuotedList input) async {
+        int success = 0;
+
+        for (final x in input.input) {
+          final items = x.split(" ");
+          Logger.print("eval", "${context.user.id} (${user.id}): $x");
+          final command = BotCommand.commandRegistry.entries.firstWhereOrNull((x) => x.key == items.first);
+          if (command == null || command.value.command == null) continue;
+
+          final m = await context.channel.sendMessage(MessageBuilder(content: "${context.prefix}$x", referencedMessage: MessageReferenceBuilder(type: MessageReferenceType.defaultType, messageId: context.message.id, failIfInexistent: false), allowedMentions: AllowedMentions(repliedUser: false)));
+          await command.value.command!.invoke(MessageChatContext(message: m, prefix: context.prefix, rawArguments: items.length > 1 ? items.sublist(1).join(" ") : "", command: command.value.command!, user: user, member: await userToMember(user, guild: context.guild), guild: context.guild, channel: context.channel, commands: plugin, client: context.client));
+          success++;
+        }
+
+        await context.respond(MessageBuilder(content: "Evaluated **$success** commands as user ${await memberFromUserToString(user, client: context.client, guild: context.guild)}."));
       }, options: BotCommandOptions(type: CommandType.textOnly)),
     ];
   }

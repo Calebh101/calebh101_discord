@@ -45,7 +45,7 @@ class RestrictCommandsPlugin extends BotPlugin {
 
     final settings = RestrictServerSettings(store, guild.id);
     if (isClaimer(settings: settings, id: userId)) return "Bot claimer";
-    if (canAdminUseDisabledCommands(settings) && isAdmin(settings: settings, id: userId)) return "Bot admin";
+    if (canAdminUseDisabledCommands(settings) && isAdmin(settings: settings, member: await guild.members.get(userId))) return "Bot admin";
     List<Snowflake>? roleIds;
 
     Future<List<Snowflake>> getRoleIds() async {

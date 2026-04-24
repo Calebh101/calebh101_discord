@@ -420,13 +420,19 @@ DefinedServer? globalSupportServer;
 Future<void> Function(Snowflake id, Object? e, {NyxxGateway? client})? onCommandErrorDm;
 late String globalBotName;
 
-bool isAdmin({required ServerSettings settings, IsAdminType type = IsAdminType.user, required Snowflake id}) {
-  if (isOwner(id: id) || isClaimer(settings: settings, id: id)) return true;
-  if (type == IsAdminType.user && settings.mainAdmin.get() == id.toString()) return true;
+bool isAdmin({required ServerSettings settings, required Member member}) {
+  if (isOwner(id: member.id) || isClaimer(settings: settings, id: member.id)) return true;
+  if (settings.mainAdmin.get() == id.toString()) return true;
 
   for (final x in settings.admins.get() ?? []) {
-    if (x["type"] == type.name && x["id"] == id.toString()) {
-      return true;
+    if (x["type"] == "user") {
+      if (x["id"] == member.id.toString()) {
+        return true;
+      }
+    } else if (x["type"] == "role") {
+      if (member.roleIds.any((y) => y.toString() == x["id"])) {
+        return true;
+      }
     }
   }
 
