@@ -245,7 +245,6 @@ BotCommand defaultCheck(KVStore store) => BotCommand.check((plugin) {
         }
 
         final settings = ServerSettings(store, context.guild!.id);
-        Logger.print("d", "${command.permissionsRequired}, ${settings.admins.get()}, ${context.member != null ? isAdmin(settings: settings, member: context.member!) : null}");
         if (await context.assurePerms(command.permissionsRequired, settings) == false) return false;
       }
     }

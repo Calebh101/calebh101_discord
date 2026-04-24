@@ -98,6 +98,15 @@ class MathPlugin extends BotPlugin {
       BotCommand("mathsymbol", "Math", "Print a math symbol.", (T context, Symbol symbol) async {
         await context.respond(MessageBuilder(content: symbol.symbol.toDiscordCodeBlock()));
       }),
+      BotCommand("mathstreak", "Math", "Print a math symbol.", (T context, [User? user]) async {
+        if (await context.assureGuild() == false) return;
+        user ??= context.user;
+
+        final settings = Calebh101BotUserPerServerSettings(store, context.guild!.id, user.id);
+        final streak = settings.mathStreak.get() ?? 0;
+
+        await context.respond(MessageBuilder(content: "Current math streak for ${await memberFromUserToString(user, client: context.client, guild: context.guild)}: **$streak**"));
+      }),
     ];
   }
 
