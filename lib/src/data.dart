@@ -417,8 +417,10 @@ enum IsAdminType {
 
 List<DefinedUser>? globalOwners;
 DefinedServer? globalSupportServer;
-Future<void> Function(Snowflake id, Object? e, {NyxxGateway? client})? onCommandErrorDm;
 late String globalBotName;
+
+/// First parameter is calling user's ID.
+Future<void> Function(Snowflake id, Object? e, {NyxxGateway? client})? onCommandErrorDm;
 
 bool isAdmin({required ServerSettings settings, required Member member}) {
   if (isOwner(id: member.id) || isClaimer(settings: settings, id: member.id)) return true;

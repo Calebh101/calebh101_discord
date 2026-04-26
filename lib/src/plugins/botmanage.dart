@@ -140,6 +140,18 @@ class BotManagePlugin extends BotPlugin {
         "git pull": "Pull Git changes.",
         "dart pub get": "Download dependencies.",
       }.entries.map((x) => "- `${x.key}`: ${x.value}").join("\n")}"),
+      BotCommand("leave", "Bot", "Leave a server.", (T context, [Guild? target]) async {
+        final guild = target ?? context.guild;
+        if (guild == null) return context.respondWithError("No guild found.");
+
+        try {
+          await guild.leave();
+          await alertOwners(context.client, EmbedBuilder(title: "Left guild ${guild.id} (${guild.name})", fields: [EmbedFieldBuilder(name: "Author", value: context.user.toMention(), isInline: false)]));
+        } catch (e) {
+          Logger.warn("Leave", "Unable to leave ${guild.id}: $e");
+          await context.respond(MessageBuilder(content: "Unable to leave guild ${guild.id.toDiscordCodeString()}.\n${e.runtimeType.toDiscordCodeBlock()}"));
+        }
+      }, permissionsRequired: BotCommandPermissions.owner),
     ];
   }
 

@@ -96,10 +96,11 @@ class BotCommand<T extends Function> {
   late BotCommandPermissions permissionsRequired;
   late final bool enforcePermissions;
   late final bool noGroup;
+  late final bool needsGuild;
   late String group;
   String? extendedDescription;
 
-  BotCommand(this.name, this.category, this.description, this.execute, {this.permissionsRequired = BotCommandPermissions.any, this.extendedDescription, this.enforcePermissions = true, this.noGroup = false, this.aliases, BotCommandOptions? options, this.group = ""}) {
+  BotCommand(this.name, this.category, this.description, this.execute, {this.permissionsRequired = BotCommandPermissions.any, this.extendedDescription, this.enforcePermissions = true, this.noGroup = false, this.aliases, BotCommandOptions? options, this.group = "", this.needsGuild = false}) {
     final wrappedExecute = (MessageChatContext context, List<dynamic> args) async {
       await Function.apply(execute, [context, ...args]);
     };
@@ -255,6 +256,10 @@ BotCommand defaultCheck(KVStore store) => BotCommand.check((plugin) {
     if (!pass) {
       if (context is MessageChatContext) await context.message.react(ReactionBuilder(name: "🚫", id: null));
       if (context is InteractionChatContext) await context.respond(MessageBuilder(content: "Command is disabled."), level: ResponseLevel.hint);
+    }
+
+    if (command.needsGuild) {
+      if (await context.assureGuild() == false) return false;
     }
 
     return pass;

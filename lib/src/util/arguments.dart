@@ -139,6 +139,33 @@ class GreedyQuotedList extends ConverterType {
   }
 }
 
+class GreedyRoleList extends ConverterType {
+  final List<Role> input;
+  const GreedyRoleList(this.input);
+
+  @override
+  String get name => "Greedy list of roles";
+
+  @override
+  String get info => "List of roles.";
+
+  static BotConverter converter() {
+    return BotConverter("GreedyRoleList", (plugin) => Converter<GreedyRoleList>((value, context) async {
+      List<Role> results = [];
+
+      while (value.remaining.trim().isNotEmpty) {
+        try {
+          final id = int.parse(value.getQuotedWord());
+          final role = await context.guild!.roles.get(Snowflake(id));
+          results.add(role);
+        } catch (_) {}
+      }
+
+      return GreedyRoleList(results);
+    }));
+  }
+}
+
 BotConverter durationConverter() {
   return BotConverter("duration", (_) => Converter<Duration>((value, context) {
     final text = value.getQuotedWord();

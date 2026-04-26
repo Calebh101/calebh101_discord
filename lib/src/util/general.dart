@@ -176,3 +176,17 @@ double fuzzyScore(String query, String result) {
 
   return totalScore / queryWords.length;
 }
+
+Future<void> alertOwners(NyxxGateway client, EmbedBuilder embed) async {
+  if (globalOwners == null) return;
+
+  for (final owner in globalOwners!) {
+    try {
+      final user = await client.users.get(owner.id);
+      final channel = await client.users.createDm(user.id);
+      await channel.sendMessage(MessageBuilder(embeds: [embed]));
+    } catch (e) {
+      Logger.warn("AlertOwner", "Error: $e");
+    }
+  }
+}

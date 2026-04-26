@@ -723,17 +723,19 @@ class ModerationPlugin extends BotPlugin {
       });
 
       client.onGuildMemberRemove.listen((event) async {
-        Modlog.add(ModlogEvent(
-          "member.remove",
-          title: "Member Removed",
-          fields: {
-            "Member": event.user.toMention(),
-            "ID": event.user.id.toDiscordCodeString(),
-          },
-          guild: await event.guild.get(),
-          settings: ifGuild(context.store, event.guildId, (id) => ServerSettings(context.store, id)),
-          client: client,
-        ));
+        try {
+          Modlog.add(ModlogEvent(
+            "member.remove",
+            title: "Member Removed",
+            fields: {
+              "Member": event.user.toMention(),
+              "ID": event.user.id.toDiscordCodeString(),
+            },
+            guild: await event.guild.get(),
+            settings: ifGuild(context.store, event.guildId, (id) => ServerSettings(context.store, id)),
+            client: client,
+          ));
+        } catch (_) {}
       });
 
       client.onGuildBanAdd.listen((event) async {
