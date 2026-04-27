@@ -50,7 +50,7 @@ class BotManagePlugin extends BotPlugin {
       }, permissionsRequired: BotCommandPermissions.admin),
       BotCommand("wait", "Debug", "Wait X amount of seconds before responding.", (ChatContext context, int seconds) async {
         await Future.delayed(Duration(seconds: seconds));
-        await context.respond(MessageBuilder(content: "Waited **$seconds** seconds."));
+        await context.respond(MessageBuilder(content: "Waited **$seconds** seconds."), level: ResponseLevel.hint);
       }, permissionsRequired: BotCommandPermissions.owner),
       BotCommand("throw", "Debug", "Throw an exception.", (ChatContext context, [int type = 0, GreedyString? message]) {
         switch (type) {
