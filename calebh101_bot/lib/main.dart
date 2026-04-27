@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math';
 
 import 'package:calebh101_bot/plugins/crosspost.dart';
@@ -73,11 +74,39 @@ void main(List<String> arguments) => onStart = () async {
     converters: (plugin) => [
       StringList.converter(),
       GreedyString.converter(),
+      GreedyGuildTextChannelList.converter(),
     ],
 
     commands: <T extends ChatContext>(plugin) {Logger.print("main",T);return[
       BotCommand.converter((plugin) => plugin.getConverter(RuntimeType<GuildTextChannel>(), logWarn: false)),
       defaultCheck(store),
+
+      BotCommand("typing", "Debug", "Keep typing.", (ChatContext context, int seconds, [GreedyGuildTextChannelList? targets]) async {
+        List<GuildTextChannel> channels = targets?.input ?? [if (context.channel is GuildTextChannel) context.channel as GuildTextChannel];
+        if (channels.isEmpty) return context.respondWithError("No channel found.");
+
+        void trigger() async {
+          for (final x in channels) {
+            try {
+              await x.triggerTyping();
+            } catch (_) {}
+          }
+        }
+
+        await context.respond(MessageBuilder(content: "Typing for **$seconds** seconds in ${channels.map((x) => x.toMention()).join(", ")}."));
+        int elapsed = 0;
+        trigger();
+
+        Timer.periodic(Duration(seconds: 5), (timer) async {
+          elapsed += 5;
+          trigger();
+
+          if (elapsed >= seconds - 5) {
+            timer.cancel();
+            Logger.print("Typing", "Done");
+          }
+        });
+      }, permissionsRequired: BotCommandPermissions.owner),
 
       BotCommand.command("fart", "Fart.", (T context, [int amount = 1]) async {
         if (amount != 1 && !isOwner(id: context.user.id)) return context.respondWithError("You cannot control the amount.");

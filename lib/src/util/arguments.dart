@@ -166,6 +166,38 @@ class GreedyRoleList extends ConverterType {
   }
 }
 
+class GreedyGuildTextChannelList extends ConverterType {
+  final List<GuildTextChannel> input;
+  const GreedyGuildTextChannelList(this.input);
+
+  @override
+  String get name => "Greedy list of channels";
+
+  @override
+  String get info => "List of channels.";
+
+  static BotConverter converter() {
+    return BotConverter("GreedyRoleList", (plugin) => Converter<GreedyGuildTextChannelList>((value, context) async {
+      if (value.remaining.trim() == "allInGuild" && context.guild != null) {
+        value.index = value.end;
+        return GreedyGuildTextChannelList((await context.guild!.fetchChannels()).whereType<GuildTextChannel>().toList());
+      }
+
+      List<GuildTextChannel> results = [];
+
+      while (value.remaining.trim().isNotEmpty) {
+        try {
+          final id = int.parse(value.getQuotedWord());
+          final channel = await context.client.channels.get(Snowflake(id));
+          results.add(channel as GuildTextChannel);
+        } catch (_) {}
+      }
+
+      return GreedyGuildTextChannelList(results);
+    }));
+  }
+}
+
 BotConverter durationConverter() {
   return BotConverter("duration", (_) => Converter<Duration>((value, context) {
     final text = value.getQuotedWord();
