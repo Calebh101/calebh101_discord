@@ -295,7 +295,7 @@ Future<BotContext?> load({required BotSettings settings, required FutureOr<Patte
               "Guild: ${context.guild?.id.toDiscordCodeString() ?? "none"}",
               "Channel: ${context.channel.id.toDiscordCodeString()}",
               "Message: ${message?.id.toDiscordCodeString() ?? "none"}",
-              "Link: ${discordLink(context.guild?.id, channel.id, message?.id)}",
+              "Link: ${discordLink(context.guild?.id, context.channel.id, message?.id)}",
             ].join("\n"), isInline: false),
             if (context != null) EmbedFieldBuilder(name: "Who", value: [
               "User ID: ${context.user.id.toDiscordCodeString()}",
