@@ -422,6 +422,8 @@ late String globalBotName;
 /// First parameter is calling user's ID.
 Future<void> Function(Snowflake id, Object? e, {NyxxGateway? client})? onCommandErrorDm;
 
+Future<void> Function(CommandsException e)? onCommandError;
+
 bool isAdmin({required ServerSettings settings, required Member member}) {
   if (isOwner(id: member.id) || isClaimer(settings: settings, id: member.id)) return true;
   if (settings.mainAdmin.get() == id.toString()) return true;

@@ -126,7 +126,17 @@ class HelpPlugin extends BotPlugin {
           if (command == null || command.value.command == null) continue;
 
           final m = await context.channel.sendMessage(MessageBuilder(content: "${context.prefix}$x", referencedMessage: MessageReferenceBuilder(type: MessageReferenceType.defaultType, messageId: context.message.id, failIfInexistent: false), allowedMentions: AllowedMentions(repliedUser: false)));
-          await command.value.command!.invoke(MessageChatContext(message: m, prefix: context.prefix, rawArguments: items.length > 1 ? items.sublist(1).join(" ") : "", command: command.value.command!, user: user, member: await userToMember(user, guild: context.guild), guild: context.guild, channel: context.channel, commands: plugin, client: context.client));
+
+          try {
+            await command.value.command!.invoke(MessageChatContext(message: m, prefix: context.prefix, rawArguments: items.length > 1 ? items.sublist(1).join(" ") : "", command: command.value.command!, user: user, member: await userToMember(user, guild: context.guild), guild: context.guild, channel: context.channel, commands: plugin, client: context.client));
+          } on UncaughtException catch (e) {
+            if (e.exception is CommandsException) onCommandError?.call(e.exception as CommandsException);
+            else Logger.warn("evalas", "Error (${e.runtimeType}, ${e.exception.runtimeType}): ${e.exception}");
+          } catch (e) {
+            Logger.warn("evalas", "Error (${e.runtimeType}): $e");
+            if (e is CommandsException) onCommandError?.call(e);
+          }
+
           success++;
         }
 

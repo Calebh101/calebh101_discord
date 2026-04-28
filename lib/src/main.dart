@@ -228,7 +228,7 @@ Future<BotContext?> load({required BotSettings settings, required FutureOr<Patte
     return otherwise?.call(o);
   }
 
-  cmd.onCommandError.listen((e) async {
+  onCommandError = ((e) async {
     if (e is CommandNotFoundException || e is CheckFailedException) return;
     Logger.warn("Commands", "Command error: $e (error: ${e.runtimeType}, context: ${e is ContextualException ? e.context.runtimeType : null})", trace: e.stackTrace);
 
@@ -321,6 +321,8 @@ Future<BotContext?> load({required BotSettings settings, required FutureOr<Patte
       Logger.warn("onCommandErrorDm", "Unable to DM error: ${errors.join(", ")}");
     }
   };
+
+  cmd.onCommandError.listen(onCommandError);
 
   clients.run((client) => client.onMessageCreate.listen((event) async {
     if (isIgnored(store, event.message.author.id)) return;
