@@ -12,6 +12,7 @@ import 'package:calebh101_bot/plugins/xp.dart';
 import 'package:calebh101_discord/calebh101_discord.dart';
 import 'package:calebh101_discord/recursive_caster.g.dart';
 import 'package:collection/collection.dart';
+import 'package:quick_listener/quick_listener.dart';
 
 final double maxXpPerHour = 1;
 final double xpPerReaction = 0.01;
@@ -77,13 +78,19 @@ void main(List<String> arguments) => onStart = () async {
       GreedyGuildTextChannelList.converter(),
     ],
 
-    commands: <T extends ChatContext>(plugin) {Logger.print("main",T);return[
+    commands: <T extends ChatContext>(plugin) => [
       BotCommand.converter((plugin) => plugin.getConverter(RuntimeType<GuildTextChannel>(), logWarn: false)),
       defaultCheck(store),
 
-      BotCommand("typing", "Debug", "Keep typing.", (ChatContext context, int seconds, [GreedyGuildTextChannelList? targets]) async {
+      BotCommand("stoptyping", "Debug", "Stop typing.", (ChatContext context) async {
+        QuickListener("typing").broadcast();
+        await context.respond(MessageBuilder(content: "Stopped typing."));
+      }),
+
+      BotCommand("typing", "Debug", "Keep typing.", (ChatContext context, [int? seconds, GreedyGuildTextChannelList? targets]) async {
         List<GuildTextChannel> channels = targets?.input ?? [if (context.channel is GuildTextChannel) context.channel as GuildTextChannel];
         if (channels.isEmpty) return context.respondWithError("No channel found.");
+        if (seconds == null || seconds <= 0) seconds = null;
 
         void trigger() async {
           for (final x in channels) {
@@ -93,16 +100,24 @@ void main(List<String> arguments) => onStart = () async {
           }
         }
 
-        await context.respond(MessageBuilder(content: "Typing for **$seconds** seconds in ${channels.map((x) => x.toMention()).join(", ")}."));
+        await context.respond(MessageBuilder(content: "Typing ${seconds != null ? "for **$seconds** seconds" : "**forever**"} in ${channels.map((x) => x.toMention()).join(", ")}."));
         int elapsed = 0;
+        bool stop = false;
         trigger();
+
+        final listener = QuickListener("typing").listen((_, _) => stop = true);
 
         Timer.periodic(Duration(seconds: 5), (timer) async {
           elapsed += 5;
           trigger();
 
-          if (elapsed >= seconds - 5) {
+          if (seconds != null && elapsed >= seconds - 5) {
+            stop = true;
+          }
+
+          if (stop) {
             timer.cancel();
+            listener.dispose();
             Logger.print("Typing", "Done");
           }
         });
@@ -142,7 +157,7 @@ void main(List<String> arguments) => onStart = () async {
           content: List.generate(amount, (_) => ro(farts).call()).join("\n"),
         ));
       }, CommandAttributes(category: "Fun"))
-    ];},
+    ],
   );
 
   if (context == null) return;
