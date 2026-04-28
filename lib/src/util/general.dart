@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:math';
 
 import 'package:calebh101_discord/calebh101_discord.dart';
+import 'package:chrono_dart/chrono_dart.dart';
 import 'package:collection/collection.dart';
 
 Future<DiscordColor> getColor([Member? member]) async {
@@ -136,6 +137,10 @@ Duration? parseDuration(String text) {
     minutes: int.tryParse(match[6] ?? '') ?? 0,
     seconds: int.tryParse(match[7] ?? '') ?? 0,
   );
+}
+
+DateTime? parseDateTime(String text) {
+  return Chrono.parseDate(text);
 }
 
 int levenshtein(String a, String b) {

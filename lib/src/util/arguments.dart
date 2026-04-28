@@ -204,3 +204,10 @@ BotConverter durationConverter() {
     return parseDuration(text);
   }));
 }
+
+BotConverter dateTimeConverter() {
+  return BotConverter("datetime", (_) => Converter<DateTime>((value, context) {
+    final text = value.getQuotedWord();
+    return parseDateTime(text);
+  }));
+}
