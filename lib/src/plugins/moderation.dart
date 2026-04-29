@@ -476,7 +476,14 @@ class ModerationPlugin extends BotPlugin {
           messages.removeWhere((x) => x.content.trim().endsWith(text));
         }
 
-        if (await confirm(context, "purge ${messages.length} messages") == false) return;
+        await Future.wait(messages.map((x) => x.react(ReactionBuilder(name: "🎯", id: null))));
+        final confirmResult = await confirm(context, "purge ${messages.length} messages");
+
+        if (!confirmResult) {
+          await Future.wait(messages.map((x) => x.deleteReaction(ReactionBuilder(name: "🎯", id: null), userId: context.client.user.id)));
+          return;
+        }
+
         final preview = arguments.containsKey("preview");
         await context.updateMessage(m, MessageUpdateBuilder(content: "Purging ${messages.length} messages..."));
         if (!preview) await purge(channel, messages);

@@ -61,7 +61,7 @@ Future<ConfirmationDetails> confirmation(String action, ChatContext context, {Us
         timestamp: DateTime.now().toUtc(),
         color: await getColor(await userToMember(user, guild: context.guild)),
       ),
-    ]));
+    ], content: user.toMention()));
 
     final controller = StreamController<MessageCreateEvent>();
     context.client.onMessageCreate.listen((x) => controller.isClosed ? null : controller.sink.add(x));
