@@ -491,7 +491,8 @@ class ModerationPlugin extends BotPlugin {
 
         final preview = arguments.containsKey("preview");
         await context.updateMessage(m, MessageUpdateBuilder(content: "Purging ${automatic.length} messages..."));
-        if (!preview) await purge(channel, automatic);
+        if (!preview && automatic.length > 1) await purge(channel, automatic);
+        if (automatic.length == 1) await automatic.first.delete();
 
         await context.updateMessage(m, MessageUpdateBuilder(content: "Purging ${manual.length} messages manually..."));
         if (!preview) await Future.wait(manual.map((x) => tryCatchA(() => x.delete())));
@@ -511,7 +512,7 @@ class ModerationPlugin extends BotPlugin {
           title: "Purged Messages",
           fields: {
             "Channel": channel.toMention(),
-            "Amount": "$amount -> ${messages.length}".toDiscordCodeString(),
+            "Amount": "$amount -> ${messages.length} (automatic: ${automatic.length}, manual: ${manual.length})".toDiscordCodeString(),
             "Author": context.user.toMention(),
             "Arguments": arguments.entries.map((x) => "- ${x.key.toDiscordCodeString()}: ${x.value.toDiscordCodeString()}").join("\n"),
           },
