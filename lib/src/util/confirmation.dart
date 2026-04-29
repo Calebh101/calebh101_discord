@@ -24,7 +24,7 @@ class ConfirmationDetails {
   }
 }
 
-Future<ConfirmationDetails> confirmation(String action, ChatContext context, {User? user, bool deleteOriginalOnReturn = true, bool inDms = false, bool useCode = true, Duration timeLimit = const Duration(seconds: 30)}) async {
+Future<ConfirmationDetails> confirmation(String action, ChatContext context, {User? user, bool deleteOriginalOnReturn = true, bool inDms = false, bool useCode = true, Duration timeLimit = const Duration(seconds: 30), bool deleteUserConfirmationInput = false}) async {
   user ??= context.user;
   late TextChannel channel;
   int secondsRemaining = timeLimit.inSeconds;
@@ -80,6 +80,7 @@ Future<ConfirmationDetails> confirmation(String action, ChatContext context, {Us
 
       countdown.cancel();
       if (deleteOriginalOnReturn) await tryCatchA(() => m.delete());
+      if (deleteUserConfirmationInput) await tryCatchA(() => event.message.delete());
       return ConfirmationDetails(action: action, result: result);
     }
 

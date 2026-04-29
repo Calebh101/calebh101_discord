@@ -387,10 +387,12 @@ class ModerationPlugin extends BotPlugin {
         final m = await context.respond(MessageBuilder(content: "Purging $amount messages..."));
         final channel = context.channel as GuildTextChannel;
 
-        var messages = (await channel.messages.fetchManyUnlimited(amount)).where((x) => x.timestamp.isBefore(m.timestamp)).where((x) => DateTime.now().difference(x.timestamp) < Duration(days: 14)).toList();
-        Logger.print("Purge", "Found ${messages.length} messages from $amount requested");
-        if (messages.length < 2) return context.respondWithError("Only found **${messages.length}** valid messages.");
         final Map<String, Object?> arguments = args != null ? parseArgs(args.data) : {};
+        bool quiet = arguments.containsKey("quiet");
+
+        var messages = (await channel.messages.fetchManyUnlimited(amount)).where((x) => x.timestamp.isBefore(m.timestamp)).toList();
+        Logger.print("Purge", "Found ${messages.length} messages from $amount requested");
+        if (messages.length < 2) return context.respondWithError("Only found **${messages.length}** valid messages.${messages.isNotEmpty ? "\n${messages.map((x) => discordLink(context.guild?.id, x.channelId, x.id))}" : ""}", level: ResponseLevel.hint);
 
         if (arguments["userIds"] is List<Snowflake>) {
           final ids = arguments["userIds"] as List<Snowflake>;
@@ -476,8 +478,11 @@ class ModerationPlugin extends BotPlugin {
           messages.removeWhere((x) => x.content.trim().endsWith(text));
         }
 
+        final automatic = messages.where((x) => DateTime.now().difference(x.timestamp) < Duration(days: 14)).toList();
+        final manual = messages.where((x) => DateTime.now().difference(x.timestamp) >= Duration(days: 14)).toList();
+
         await Future.wait(messages.map((x) => x.react(ReactionBuilder(name: "🎯", id: null))));
-        final confirmResult = await confirm(context, "purge ${messages.length} messages");
+        final confirmResult = await confirm(context, "purge ${messages.length} messages (${automatic.length} automatic, ${manual.length} manual)");
 
         if (!confirmResult) {
           await Future.wait(messages.map((x) => x.deleteReaction(ReactionBuilder(name: "🎯", id: null), userId: context.client.user.id)));
@@ -485,15 +490,18 @@ class ModerationPlugin extends BotPlugin {
         }
 
         final preview = arguments.containsKey("preview");
-        await context.updateMessage(m, MessageUpdateBuilder(content: "Purging ${messages.length} messages..."));
-        if (!preview) await purge(channel, messages);
+        await context.updateMessage(m, MessageUpdateBuilder(content: "Purging ${automatic.length} messages..."));
+        if (!preview) await purge(channel, automatic);
+
+        await context.updateMessage(m, MessageUpdateBuilder(content: "Purging ${manual.length} messages manually..."));
+        if (!preview) await Future.wait(manual.map((x) => tryCatchA(() => x.delete())));
 
         final m2 = await context.channel.sendMessage(MessageBuilder(content: [
           "Purged ${messages.length} messages.",
           if (dev) arguments.entries.map((x) => "-# `${x.key}`: `${x.value}`").join("\n"),
         ].join("\n")));
 
-        if (arguments.containsKey("quiet")) {
+        if (quiet) {
           await tryCatchA(() => m.delete());
           await tryCatchA(() => m2.delete());
         }
