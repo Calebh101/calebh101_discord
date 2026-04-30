@@ -201,6 +201,14 @@ class SettingsObject<T> {
     return SettingsObject(obj, key, decodeFunction: (input) => (input as List?)?.map((x) => x as T).toList());
   }
 
+  static SettingsObject<Snowflake> snowflake<T>(EntitySettings obj, String key) {
+    return SettingsObject<Snowflake>(obj, key, encodeFunction: (input) => input.value, decodeFunction: (input) => input != null ? Snowflake(input) : null);
+  }
+
+  bool exists() {
+    return get() != null;
+  }
+
   T? get() {
     try {
       return (decodeFunction ?? cast).call(obj.store.get(obj.scope, obj.id.toString(), key));
@@ -226,6 +234,16 @@ class SettingsObject<T> {
 
   static R cast<R>(dynamic input) {
     return input as R;
+  }
+}
+
+class SettingsObjectNotNull<T> extends SettingsObject<T> {
+  final T Function() defaultFunction;
+  SettingsObjectNotNull(super.obj, super.key, {super.encodeFunction, super.decodeFunction, required this.defaultFunction});
+
+  @override
+  T get() {
+    return super.get() ?? defaultFunction.call();
   }
 }
 
@@ -315,7 +333,7 @@ T? ifGuild<T extends ServerSettings>(KVStore store, Snowflake? id, T Function(Sn
 class ServerSettings extends EntitySettings {
   ServerSettings(super.store, Snowflake id) : super(id: id.toString(), scope: Scope.server);
 
-  SettingsObject<String> get prefix => SettingsObject(this, "prefix");
+  SettingsObjectNotNull<String> get prefix => SettingsObjectNotNull(this, "prefix", defaultFunction: () => defaultPrefix);
   SettingsObject<String> get mainAdmin => SettingsObject(this, "mainAdmin");
   SettingsObject<List> get admins => SettingsObject(this, "admins");
   SettingsObject<int> get modlogChannel => SettingsObject(this, "modlogChannel");

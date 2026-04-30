@@ -187,12 +187,13 @@ class GreedyGuildTextChannelList extends ConverterType {
 
       while (value.remaining.trim().isNotEmpty) {
         try {
-          final id = int.parse(value.getQuotedWord());
+          final id = int.parse(value.getQuotedWord().replaceAll(RegExp(r'[<#>]'), ''));
           final channel = await context.client.channels.get(Snowflake(id));
           results.add(channel as GuildTextChannel);
         } catch (_) {}
       }
 
+      value.index = value.end;
       return GreedyGuildTextChannelList(results);
     }));
   }

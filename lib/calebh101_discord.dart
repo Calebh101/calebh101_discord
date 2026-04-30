@@ -14,6 +14,8 @@ export 'src/util/modlog.dart';
 export 'src/util/pagination.dart';
 export 'src/util/arguments.dart';
 export 'src/util/confirmation.dart';
+export 'src/util/saferegex.dart';
+export 'src/util/emojis.dart';
 
 export 'src/plugins/modlog.dart';
 export 'src/plugins/messages.dart';

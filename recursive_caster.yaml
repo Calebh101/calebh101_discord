@@ -7,6 +7,7 @@ types:
 - List<String>
 - Map<String, String>
 - Map<String, String?>
+- Map<String, List<String>>
 - Map<int, String>
 - Map<String, bool>
 

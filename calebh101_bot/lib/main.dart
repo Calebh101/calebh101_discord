@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:math';
 
+import 'package:calebh101_bot/plugins/botchat.dart';
 import 'package:calebh101_bot/plugins/crosspost.dart';
 import 'package:calebh101_bot/plugins/math.dart';
 import 'package:calebh101_bot/plugins/remind.dart';
@@ -51,6 +52,7 @@ void main(List<String> arguments) => onStart = () async {
     TagsPlugin(),
     RestrictCommandsPlugin(),
     StickyRoles(),
+    BotChatPlugin(),
   ]);
 
   final context = await load(
@@ -81,6 +83,17 @@ void main(List<String> arguments) => onStart = () async {
     commands: <T extends ChatContext>(plugin) => [
       BotCommand.converter((plugin) => plugin.getConverter(RuntimeType<GuildTextChannel>(), logWarn: false)),
       defaultCheck(store),
+
+      BotCommand("printemojis", "Debug", "Emojis.", (ChatContext context, [int? required]) async {
+        final results = await askForEmojis(context, required);
+        final m = await context.respond(MessageBuilder(content: results != null ? "Found **${results.emojis.length}** emojis." : "No emojis found."));
+
+        for (final Emoji emoji in results?.emojis ?? []) {
+          try {
+            await m.react(ReactionBuilder.fromEmoji(emoji));
+          } catch (_) {}
+        }
+      }),
 
       BotCommand("stoptyping", "Debug", "Stop typing.", (ChatContext context) async {
         QuickListener("typing").broadcast();
@@ -235,4 +248,27 @@ class Calebh101BotUserPerServerSettings extends UserPerServerSettings {
   SettingsObject<int> get mathStreak => SettingsObject(this, "mathStreak");
 
   Calebh101BotUserPerServerSettings(super.store, super.server, super.user);
+}
+
+Future<List<Message>> getAllMessages(TextChannel channel, {required int limit, int limitPer = 100}) async {
+  List<Message> result = [];
+
+  while (true) {
+    try {
+      final messages = await channel.messages.fetchMany(limit: limitPer, after: result.lastOrNull?.id);
+      Logger.print("getAllMessages", "Found ${messages.length} (${result.length} existing)");
+
+      if (messages.isEmpty) break;
+      result.addAll(messages);
+      if (result.length >= limit) break;
+      if (messages.length < limitPer) break;
+    } catch (e) {
+      Logger.warn("getAllMessages", "Error: $e (${result.length} existing)");
+      break;
+    }
+  }
+
+  final r = result.sublist(0, min(limit, result.length));
+  Logger.print("getAllMessages", "Found ${r.length} results from limit of $limit");
+  return r;
 }
