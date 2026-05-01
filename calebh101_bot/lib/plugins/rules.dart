@@ -42,6 +42,21 @@ class RulesPlugin extends BotPlugin {
         if (await context.assureGuild() == false) return;
         final settings = Calebh101BotServerSettings(store, context.guild!.id);
         final rules = settings.rules.get() ?? {};
+        if (rules.isEmpty) return context.respondWithError("No rules set. Add some with either `setrules` or `parserules`!");
+
+        await respondWithPagination(context, PaginatedEmbedBuilder(
+          pages: EmbedPage.generate(rules.entries.mapIndexed((i, rule) {
+            return EmbedFieldBuilder(name: "Rule #${rule.key}", value: rule.value, isInline: false);
+          }).toList()),
+          title: "All Rules for ${context.guild!.name}",
+          color: await getColor(context.member),
+          footer: ElementBasedEmbedFooterBuilder(elements: ["${rules.length} Rules"]),
+        ), settings: settings);
+      }),
+      BotCommand("allrules", "Rules", "Get all the rules.", (T context) async {
+        if (await context.assureGuild() == false) return;
+        final settings = Calebh101BotServerSettings(store, context.guild!.id);
+        final rules = settings.rules.get() ?? {};
 
         if (rules.isEmpty) return context.respondWithError("No rules set. Add some with either `setrules` or `parserules`!");
         await context.respond(MessageBuilder(content: rules.entries.map((x) => "${x.key}. ${x.value}").join("\n")));
