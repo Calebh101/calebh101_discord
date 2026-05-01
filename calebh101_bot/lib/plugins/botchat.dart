@@ -7,43 +7,60 @@ import 'package:calebh101_discord/calebh101_discord.dart';
 import 'package:calebh101_discord/recursive_caster.g.dart';
 import 'package:collection/collection.dart';
 
+class GuildCarrier {
+  final Guild guild;
+  const GuildCarrier(this.guild);
+}
+
 class BotChatPlugin extends BotPlugin {
   BotChatPlugin() : super(id: "botchat", version: Version.parse("1.0.0A"));
+
+  MarkovChain newChain(dynamic context) {
+    final Guild guild = context.guild!;
+    return MarkovChain(order: BotChatServerSettings(store, guild.id).botchatOrder.get() ?? 1);
+  }
 
   @override
   FutureOr<List<BotCommand<Function>>> commands<T extends ChatContext>(CommandsPlugin plugin, KVStore store) {
     return [
       BotCommand("chat", "Chat", "Chat with the bot!", (ChatContext context, [GreedyString? input]) async {
-        final chain = BotChatServerSettings(store, context.guild!.id).chain.get();
+        final chain = BotChatServerSettings(store, context.guild!.id).chain.get() ?? newChain(context);
         final results = await Future(() => chain.generate(input?.data)).timeout(Duration(seconds: 10));
 
         await context.respond(MessageBuilder(
           content: results.join(" ").nullIfEmpty ?? "No message returned.",
           allowedMentions: AllowedMentions(),
         ));
-      }, aliases: ["c"], needsGuild: true),
+      }, needsGuild: true),
       BotCommand("train", "Chat", "Train on messages in a channel.", (ChatContext context, int limit, GreedyGuildTextChannelList channels) async {
         final settings = BotChatServerSettings(store, context.guild!.id);
-        final chain = settings.chain.get();
+        final chain = settings.chain.get() ?? newChain(context);
         final messages = (await Future.wait<List<Message>>(channels.input.map((x) async => await getAllMessages(x, limit: limit)))).flattened;
-        chain.train(messages.map((x) => x.content.split(" ")).flatten().toList());
+        chain.train(messages.where((x) => x.author is User && !(x.author as User).isBot).map((x) => x.content.split(" ")).flatten().toList());
         settings.chain.set(chain);
         await context.respond(MessageBuilder(content: "Trained on **${messages.length}** messages (**${channels.input.length}** channels). There are now **${chain.chain.length}** total entries."));
       }, permissionsRequired: BotCommandPermissions.admin, needsGuild: true),
-      BotCommand("trained", "Chat", "Train on messages in a channel.", (ChatContext context) async {
+      BotCommand("trained", "Chat", "See the bot's training data.", (ChatContext context) async {
         final settings = BotChatServerSettings(store, context.guild!.id);
-        final chain = settings.chain.get();
+        final chain = settings.chain.get() ?? newChain(context);
         final total = chain.chain.entries.map((x) => x.key.length + x.value.map((x) => x.length).sum).sum;
-        await context.respond(MessageBuilder(content: "There are **${chain.chain.length}** total entries (**$total** total characters)."));
+        await context.respond(MessageBuilder(content: "There are **${chain.chain.length}** total entries (**$total** total characters).\nOrder: **${chain.order}**"));
       }, needsGuild: true),
-      BotCommand("prunetrained", "Chat", "Train on messages in a channel.", (ChatContext context, int entries) async {
+      BotCommand("prunetrained", "Chat", "Remove random entries that the bot has trained on.", (ChatContext context, int entries) async {
         final settings = BotChatServerSettings(store, context.guild!.id);
-        final chain = settings.chain.get();
+        final chain = settings.chain.get() ?? newChain(context);
         if (entries > chain.chain.entries.length || entries <= 0) return context.respondWithError("Too many or too little entries specified.");
 
         chain.chain = Map.fromEntries(chain.chain.entries.toList().sublist(0, chain.chain.entries.length - entries));
         settings.chain.set(chain);
         await context.respond(MessageBuilder(content: "There are now **${chain.chain.length}** total entries."));
+      }, permissionsRequired: BotCommandPermissions.admin, needsGuild: true),
+      BotCommand("cleartrained", "Chat", "Remove all entries that the bot has trained on, and optionally set the order.", (ChatContext context, [int? order]) async {
+        if ((order ?? 0) < 1) return context.respondWithError("Invalid order: `$order`");
+        final settings = BotChatServerSettings(store, context.guild!.id);
+        settings.botchatOrder.set(order);
+        settings.chain.set(newChain(context));
+        await context.respond(MessageBuilder(content: "Chain cleared. New order: ${order != null ? "**$order**" : "Not specified"}"));
       }, permissionsRequired: BotCommandPermissions.admin, needsGuild: true),
       BotCommand("setbotchatchannel", "Chat", "Set the bot chatting channel.", (ChatContext context, GuildTextChannel channel) async {
         final settings = BotChatServerSettings(store, context.guild!.id);
@@ -68,7 +85,7 @@ class BotChatPlugin extends BotPlugin {
         if (event.message.content.startsWith(settings.prefix.get())) return;
         if (!settings.botchatChannel.exists() || event.message.channelId != settings.botchatChannel.get()) return;
         await event.message.channel.triggerTyping();
-        final chain = BotChatServerSettings(store, event.guildId!).chain.get();
+        final chain = BotChatServerSettings(store, event.guildId!).chain.get() ?? newChain(GuildCarrier(await event.guild!.get()));
 
         try {
           final results = await Future(() => chain.generate(event.message.content)).timeout(Duration(seconds: 10));
@@ -90,7 +107,8 @@ class BotChatServerSettings extends Calebh101BotServerSettings {
   BotChatServerSettings(super.store, super.id);
 
   SettingsObject<Snowflake> get botchatChannel => SettingsObject.snowflake(this, "botchatChannel");
-  SettingsObjectNotNull<MarkovChain> get chain => SettingsObjectNotNull(this, "markovChain", encodeFunction: (input) => jsonEncode(input.chain), decodeFunction: (input) => input != null ? MarkovChain.fromChain(RecursiveCaster.cast<Map<String, List<String>>>(jsonDecode(input))) : null, defaultFunction: () => MarkovChain());
+  SettingsObject<int> get botchatOrder => SettingsObject(this, "botchatOrder");
+  SettingsObject<MarkovChain> get chain => SettingsObject(this, "markovChain", encodeFunction: (input) => jsonEncode(input.toJson()), decodeFunction: (input) => input != null ? MarkovChain.fromJson(jsonDecode(input)) : null);
 }
 
 class MarkovChain {
@@ -100,6 +118,17 @@ class MarkovChain {
 
   MarkovChain({this.order = 1});
   MarkovChain.fromChain(this.chain, {this.order = 1});
+
+  Map toJson() {
+    return {
+      "order": order,
+      "chain": chain,
+    };
+  }
+
+  static MarkovChain fromJson(Map data) {
+    return MarkovChain.fromChain(RecursiveCaster.cast<Map<String, List<String>>>(data["chain"]), order: data["order"] is int ? data["order"] : 1);
+  }
 
   void train(List<String> tokens) {
     for (int i = 0; i < tokens.length - order; i++) {
