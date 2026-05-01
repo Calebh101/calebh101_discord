@@ -6,19 +6,22 @@ import 'package:collection/collection.dart';
 
 Future<Map<int, String>> parseRules(String text, KVStore store) async {
   final settings = RulesBotSettings(store);
-  final regex = settings.rulesRegex.get() ?? RegExp(r'(?=^(?:Rule\s+)?\d+\.]s+)', multiLine: true);
+  final regex = settings.rulesRegex.get() ?? RegExp(r'^(?:Rule\s+)?(\d+)\.\s+', multiLine: true);
   Logger.print("Rules", "Using pattern: $regex");
 
-  return Map.fromEntries((await Future.wait(
-    text.split(regex).map((s) => s.trim()).where((s) => s.isNotEmpty)
-      .map((s) async {
-        final match = await safematch(RegExp(r'^\d+'), (p) => p.firstMatch(s));
-        if (match == null) return null;
-        final num = int.parse(match.group(0)!);
-        final content = s.replaceFirst(RegExp(r'^\d+\. '), '').trim();
-        return MapEntry(num, content);
-      }))).whereType<MapEntry<int, String>>(),
-  );
+  final matches = regex.allMatches(text).toList();
+  final Map<int, String> rules = {};
+
+  for (int i = 0; i < matches.length; i++) {
+    final match = matches[i];
+    final num = int.parse(match.group(1)!);
+    final contentStart = match.end;
+    final contentEnd = i + 1 < matches.length ? matches[i + 1].start : text.length;
+    final content = text.substring(contentStart, contentEnd).trim();
+    rules[num] = content;
+  }
+
+  return rules;
 }
 
 class RulesPlugin extends BotPlugin {
@@ -58,7 +61,7 @@ class RulesPlugin extends BotPlugin {
         final rules = await parseRules(input.data, store);
         if (rules.isEmpty) return context.respondWithError("No rules were able to be parsed.");
         settings.rules.set(rules);
-        await context.respond(MessageBuilder(content: "Rules set. Run `rules` to view."));
+        await context.respond(MessageBuilder(content: "**${rules.length}** rules set. Run `rules` to view."));
       }),
       BotCommand("setrulesfrom", "Rules", "Set a rule from a message ID.", (T context, Snowflake messageId, [Snowflake? channelId]) async {
         if (await context.assureGuild() == false) return;
@@ -80,7 +83,7 @@ class RulesPlugin extends BotPlugin {
         final rules = await parseRules(message.content, store);
         if (rules.isEmpty) return context.respondWithError("No rules were able to be parsed.");
         settings.rules.set(rules);
-        await context.respond(MessageBuilder(content: "Rules set. Run `rules` to view."));
+        await context.respond(MessageBuilder(content: "**${rules.length}** rules set. Run `rules` to view."));
       }),
       BotCommand("setrulesfromall", "Rules", "Set a rule from messages in a range..", (T context, GuildTextChannel? channel, [Snowflake? after, Snowflake? before]) async {
         if (await context.assureGuild() == false) return;
@@ -105,7 +108,7 @@ class RulesPlugin extends BotPlugin {
         final rules = await parseRules(content, store);
         if (rules.isEmpty) return context.respondWithError("No rules were able to be parsed.");
         settings.rules.set(rules);
-        await context.respond(MessageBuilder(content: "Rules set. Run `rules` to view."));
+        await context.respond(MessageBuilder(content: "**${rules.length}** rules set. Run `rules` to view."));
       }),
       BotCommand("rulesregex", "Rules", "Get the current rules regex.", (T context) async {
         final settings = RulesBotSettings(store);
@@ -138,5 +141,5 @@ class RulesPlugin extends BotPlugin {
 class RulesBotSettings extends BotSettings {
   RulesBotSettings(super.store);
 
-  SettingsObject<RegExp> get rulesRegex => SettingsObject(this, "rulesRegex", encodeFunction: (input) => input.pattern.replaceAll("\\\\", "\\"), decodeFunction: (input) => input != null ? RegExp(input, multiLine: true) : null);
+  SettingsObject<RegExp> get rulesRegex => SettingsObject(this, "rulesRegex", encodeFunction: (input) => input.pattern.replaceAll("\\\\", "\\"), decodeFunction: (input) => input != null ? RegExp(input, multiLine: true, dotAll: false) : null);
 }

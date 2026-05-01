@@ -7,15 +7,21 @@ import 'package:json_annotation/json_annotation.dart';
 
 part 'math.g.dart';
 
+double getCurrentStreakScale(int streak) {
+  return min(1, streak / 500);
+}
+
 class MathPlugin extends BotPlugin {
   MathPlugin() : super(id: "math", version: Version.parse("1.0.0A"));
 
   @override
   Future<void> onRegister() {
     // Register each math plugin with their IDs here.
+
     Math.register("addsubtract", fromJson: AddSubtractMath.fromJson);
     Math.register("multdiv", fromJson: MultDivMath.fromJson);
     Math.register("exponent", fromJson: ExponentMath.fromJson);
+
     return super.onRegister();
   }
 
@@ -50,15 +56,17 @@ class MathPlugin extends BotPlugin {
         if (await context.assureGuild() == false) return;
         final settings = Calebh101BotServerSettings(store, context.guild!.id);
         final allowedTypes = settings.allowedMathTypes.get() ?? Math.defaultTypes;
-        final math = settings.currentMath.get() ?? newFormula(allowedTypes: allowedTypes);
+        final math = settings.currentMath.get() ?? newFormula(allowedTypes: allowedTypes, currentStreakScale: 0);
         settings.currentMath.set(math);
         await context.respond(MessageBuilder(embeds: [await math.toEmbed(context.member!, null)]));
       }),
-      BotCommand("newmath", "Math", "Print a new math formula.", (T context) async {
+      BotCommand("newmath", "Math", "Print a new math formula.", (T context, [double streakScale = 0]) async {
         if (await context.assureGuild() == false) return;
+        if (streakScale < 0 || streakScale > 1) return context.respondWithError("Invalid streak scale: `$streakScale`");
+
         final settings = Calebh101BotServerSettings(store, context.guild!.id);
         final allowedTypes = settings.allowedMathTypes.get() ?? Math.defaultTypes;
-        final math = newFormula(allowedTypes: allowedTypes);
+        final math = newFormula(allowedTypes: allowedTypes, currentStreakScale: streakScale);
         settings.currentMath.set(math);
         settings.lastMath.set(DateTime.now());
         await context.respond(MessageBuilder(embeds: [await math.toEmbed(context.member!, null)]));
@@ -132,7 +140,7 @@ class MathPlugin extends BotPlugin {
 
       if (success) {
         final allowedTypes = settings.allowedMathTypes.get() ?? Math.defaultTypes;
-        final math = newFormula(allowedTypes: allowedTypes);
+        final math = newFormula(allowedTypes: allowedTypes, currentStreakScale: getCurrentStreakScale(streak));
 
         settings.currentMath.set(math);
         settings.lastMath.set(DateTime.now());
@@ -147,7 +155,7 @@ class MathPlugin extends BotPlugin {
     }));
   }
 
-  Math newFormula({required List<String> allowedTypes}) {
+  Math newFormula({required List<String> allowedTypes, required double currentStreakScale}) {
     final id = allowedTypes[Random().nextInt(allowedTypes.length)];
 
     // Each ID you defined above needs to be added as a case here.
@@ -176,8 +184,14 @@ class MathPlugin extends BotPlugin {
             r = a - b;
             break;
           case Symbol.multiply:
-            a = Random().nextInt(30) + 1;
-            b = Random().nextInt(6) + 2;
+            if (currentStreakScale < 0.3) {
+              a = Random().nextInt(20) + 1;
+              b = Random().nextInt(6) + 2;
+            } else {
+              a = Random().nextInt(30) + 1;
+              b = Random().nextInt(6) + 2;
+            }
+
             r = a * b;
             break;
           case Symbol.divide:
@@ -190,7 +204,16 @@ class MathPlugin extends BotPlugin {
         return id == "multdiv" ? MultDivMath(a: a, b: b, result: r, symbol: symbol) : AddSubtractMath(a: a, b: b, result: r, symbol: symbol);
       case "exponent":
         final int a = Random().nextInt(9) + 2;
-        final int b = Random().nextInt(2) + 2;
+        late final int b;
+
+        if (currentStreakScale < 0.25) {
+          b = 2;
+        } else if (currentStreakScale < 0.5) {
+          b = Random().nextInt(2) + 2;
+        } else {
+          b = Random().nextInt(3) + 2;
+        }
+
         return ExponentMath(a: a, b: b, result: pow(a, b).toInt());
     }
 
