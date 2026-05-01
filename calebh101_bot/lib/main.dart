@@ -9,6 +9,7 @@ import 'package:calebh101_bot/plugins/rules.dart';
 import 'package:calebh101_bot/plugins/selfreact.dart';
 import 'package:calebh101_bot/plugins/stickyroles.dart';
 import 'package:calebh101_bot/plugins/tags.dart';
+import 'package:calebh101_bot/plugins/welcome.dart';
 import 'package:calebh101_bot/plugins/xp.dart';
 import 'package:calebh101_discord/calebh101_discord.dart';
 import 'package:calebh101_discord/recursive_caster.g.dart';
@@ -53,6 +54,7 @@ void main(List<String> arguments) => onStart = () async {
     RestrictCommandsPlugin(),
     StickyRoles(),
     BotChatPlugin(),
+    WelcomePlugin(),
   ]);
 
   final context = await load(

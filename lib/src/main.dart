@@ -241,7 +241,7 @@ Future<BotContext?> load({required BotSettings settings, required FutureOr<Patte
       context.respondWithError([
         message,
         if (codeblock != null) "```$codeblocklang\n$codeblock\n```",
-        if (showHelp) "Run `${settings.prefix.get() ?? defaultPrefix}help ${context.command.name}` for more info.",
+        if (showHelp) "Run `${settings.prefix.get()}help ${context.command.name}` for more info.",
       ].join("\n"));
     }
 

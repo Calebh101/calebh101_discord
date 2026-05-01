@@ -12,3 +12,5 @@ settings.json
 tokens.json
 *.db
 *.setting
+
+.DS_*
