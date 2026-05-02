@@ -55,6 +55,7 @@ void main(List<String> arguments) => onStart = () async {
     StickyRoles(),
     BotChatPlugin(),
     WelcomePlugin(),
+    MutePlugin(),
   ]);
 
   final context = await load(

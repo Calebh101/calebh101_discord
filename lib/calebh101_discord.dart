@@ -27,6 +27,7 @@ export 'src/plugins/help.dart';
 export 'src/plugins/botmanage.dart';
 export 'src/plugins/moderation.dart';
 export 'src/plugins/restriction.dart';
+export 'src/plugins/mute.dart';
 
 export 'package:nyxx/nyxx.dart' hide Logger;
 export 'package:nyxx_commands/nyxx_commands.dart';

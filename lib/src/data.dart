@@ -197,8 +197,15 @@ class SettingsObject<T> {
 
   SettingsObject(this.obj, this.key, {this.decodeFunction, this.encodeFunction});
 
-  static SettingsObject<List<T>> list<T>(EntitySettings obj, String key) {
-    return SettingsObject(obj, key, decodeFunction: (input) => (input as List?)?.map((x) => x as T).toList());
+  static SettingsObject<List<T>> list<T>(EntitySettings obj, String key, {T Function(dynamic input)? decodeFunction, dynamic Function(List<T>)? encodeFunction}) {
+    return SettingsObject(obj, key, encodeFunction: encodeFunction, decodeFunction: (input) => (input as List?)?.map((x) {
+      if (decodeFunction != null) return decodeFunction.call(x);
+      return x as T;
+    }).toList());
+  }
+
+  static SettingsObject<List<Snowflake>> listSnowflake<T>(EntitySettings obj, String key) {
+    return list<Snowflake>(obj, key, encodeFunction: (input) => input.map((x) => x.value).toList(), decodeFunction: (input) => input != null ? Snowflake(input) : input);
   }
 
   static SettingsObject<Snowflake> snowflake<T>(EntitySettings obj, String key) {

@@ -7,9 +7,9 @@ part of 'restriction.dart';
 // **************************************************************************
 
 RestrictionData _$RestrictionDataFromJson(Map json) => RestrictionData(
-      type: $enumDecode(_$RestrictionEnumMap, json['type']),
-      data: (json['data'] as num).toInt(),
-    );
+  type: $enumDecode(_$RestrictionEnumMap, json['type']),
+  data: (json['data'] as num).toInt(),
+);
 
 Map<String, dynamic> _$RestrictionDataToJson(RestrictionData instance) =>
     <String, dynamic>{
@@ -32,17 +32,19 @@ CommandRestrictions _$CommandRestrictionsFromJson(Map json) =>
       data: (json['data'] as List<dynamic>)
           .map((e) => RestrictionData.fromJson(e as Map))
           .toList(),
-      combination:
-          $enumDecode(_$RestrictionCombinationEnumMap, json['combination']),
+      combination: $enumDecode(
+        _$RestrictionCombinationEnumMap,
+        json['combination'],
+      ),
     );
 
 Map<String, dynamic> _$CommandRestrictionsToJson(
-        CommandRestrictions instance) =>
-    <String, dynamic>{
-      'command': instance.command,
-      'data': instance.data,
-      'combination': _$RestrictionCombinationEnumMap[instance.combination]!,
-    };
+  CommandRestrictions instance,
+) => <String, dynamic>{
+  'command': instance.command,
+  'data': instance.data,
+  'combination': _$RestrictionCombinationEnumMap[instance.combination]!,
+};
 
 const _$RestrictionCombinationEnumMap = {
   RestrictionCombination.and: 'and',
