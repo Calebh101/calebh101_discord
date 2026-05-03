@@ -42,9 +42,9 @@ class MutePlugin extends BotPlugin {
         for (int i = 0; i < channels.length; i++) {
           final channel = channels[i];
           final ignored = ignore.contains(channel.id);
-          Logger.print("Mute", "Syncing channel $i/${channels.length - 1} ${channel.id} (${channel.name})... (ignore: $ignored/${ignore.length})");
 
-          if (i % 10 == 0) {
+          if ((i + 1) % 10 == 0) {
+            Logger.print("Mute", "Syncing channel $i/${channels.length - 1}. ${channel.id} (${channel.name})... (ignore: $ignored/${ignore.length})");
             await context.updateMessage(m, MessageUpdateBuilder(content: "Updating ${i + 1}/${channels.length} channels..."));
           }
 
