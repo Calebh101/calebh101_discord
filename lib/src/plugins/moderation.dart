@@ -41,6 +41,66 @@ class ModerationPlugin extends BotPlugin {
   @override
   FutureOr<List<BotCommand>> commands<T extends ChatContext>(CommandsPlugin plugin, KVStore store) {
     return [
+      BotCommand("block", "Moderation", "Block a user. Next time they joined this guild, they will get instantly banned.", (T context, Snowflake userId, [GreedyString? reason]) async {
+        final settings = UserPerServerSettings(store, context.guild!.id, userId);
+        if (settings.blocked.get() == true) return context.respondWithError("User is already blocked.");
+        if (await confirm(context, "block $userId") == false) return;
+        settings.blocked.set(true);
+
+        Modlog.add(ModlogEvent(
+          "mod.block.set",
+          title: "Blocked User",
+          fields: {
+            "Target": userId.value.toMention(),
+            "Author": context.user.toMention(),
+            "Reason": reason?.data.toDiscordCodeBlock() ?? "No reason provided",
+          },
+          guild: context.guild,
+          settings: ifGuild(store, context.guild?.id, (id) => ServerSettings(store, id)),
+          client: context.client,
+          severity: ModlogSeverity.severe,
+        ));
+
+        await context.respond(MessageBuilder(embeds: [
+          EmbedBuilder(
+            description: "## Blocked ${userId.value.toMention()} (`$userId`)",
+            color: await getColor(context.member),
+            fields: [
+              warnsToField(store, userId, guild: context.guild!),
+              EmbedFieldBuilder(name: "Reason", value: reason?.data ?? "No reason provided.", isInline: false),
+            ].whereType<EmbedFieldBuilder>().toList(),
+          ),
+        ]));
+      }, permissionsRequired: BotCommandPermissions.admin, needsGuild: true, aliases: ["b"]),
+      BotCommand("unblock", "Moderation", "Unblock a user.", (T context, Snowflake userId) async {
+        final settings = UserPerServerSettings(store, context.guild!.id, userId);
+        if (settings.blocked.get() == false) return context.respondWithError("User is already unblocked.");
+        if (await confirm(context, "unblock $userId") == false) return;
+        settings.blocked.set(true);
+
+        Modlog.add(ModlogEvent(
+          "mod.block.set",
+          title: "Unblocked User",
+          fields: {
+            "Target": userId.value.toMention(),
+            "Author": context.user.toMention(),
+          },
+          guild: context.guild,
+          settings: ifGuild(store, context.guild?.id, (id) => ServerSettings(store, id)),
+          client: context.client,
+          severity: ModlogSeverity.good,
+        ));
+
+        await context.respond(MessageBuilder(embeds: [
+          EmbedBuilder(
+            description: "## Unblocked ${userId.value.toMention()} (`$userId`)",
+            color: await getColor(context.member),
+            fields: [
+              warnsToField(store, userId, guild: context.guild!),
+            ].whereType<EmbedFieldBuilder>().toList(),
+          ),
+        ]));
+      }, permissionsRequired: BotCommandPermissions.admin, needsGuild: true, aliases: ["ub"]),
       BotCommand("ban", "Moderation", "Ban a user.", (T context, Member member, [GreedyString? reason]) async {
         try {
           if (await confirm(context, "ban ${await confirmstringify(member, context.client)}") == false) return;
@@ -81,7 +141,7 @@ class ModerationPlugin extends BotPlugin {
             description: "## Banned ${member.toMention()}\n${await memberToString(member, client: context.client, detailed: true)}",
             color: await getColor(context.member),
             fields: [
-              warnsToField(store, member.id),
+              warnsToField(store, member.id, guild: context.guild!),
               EmbedFieldBuilder(name: "Reason", value: reason?.data ?? "No reason provided.", isInline: false),
             ].whereType<EmbedFieldBuilder>().toList(),
           ),
@@ -127,7 +187,7 @@ class ModerationPlugin extends BotPlugin {
             description: "## Kicked ${member.toMention()}\n${await memberToString(member, client: context.client, detailed: true)}",
             color: await getColor(context.member),
             fields: [
-              warnsToField(store, member.id),
+              warnsToField(store, member.id, guild: context.guild!),
               EmbedFieldBuilder(name: "Reason", value: reason?.data ?? "No reason provided.", isInline: false),
             ].whereType<EmbedFieldBuilder>().toList(),
           ),
@@ -174,7 +234,7 @@ class ModerationPlugin extends BotPlugin {
             description: "## Soft-banned ${member.toMention()}\n${await memberToString(member, client: context.client, detailed: true)}",
             color: await getColor(context.member),
             fields: [
-              warnsToField(store, member.id),
+              warnsToField(store, member.id, guild: context.guild!),
               EmbedFieldBuilder(name: "Reason", value: reason?.data ?? "No reason provided.", isInline: false),
             ].whereType<EmbedFieldBuilder>().toList(),
           ),
@@ -219,7 +279,7 @@ class ModerationPlugin extends BotPlugin {
             description: "## Unbanned ${user.value.toMention()}",
             color: await getColor(context.member),
             fields: [
-              warnsToField(store, user),
+              warnsToField(store, user, guild: context.guild!),
             ].whereType<EmbedFieldBuilder>().toList(),
           ),
         ]));
@@ -260,7 +320,7 @@ class ModerationPlugin extends BotPlugin {
           EmbedBuilder(
             description: "## Timed out ${member.toMention()} for ${duration.pretty()}\n${await memberToString(member, client: context.client, detailed: true)}",
             fields: [
-              warnsToField(store, member.id),
+              warnsToField(store, member.id, guild: context.guild!),
               EmbedFieldBuilder(name: "Reason", value: reason?.data ?? "No reason provided.", isInline: false),
             ].whereType<EmbedFieldBuilder>().toList(),
             color: await getColor(context.member),
@@ -302,13 +362,13 @@ class ModerationPlugin extends BotPlugin {
             description: "## Removed timeout of ${member.toMention()}\n${await memberToString(member, client: context.client, detailed: true)}",
             color: await getColor(context.member),
             fields: [
-              warnsToField(store, member.id),
+              warnsToField(store, member.id, guild: context.guild!),
             ].whereType<EmbedFieldBuilder>().toList(),
           ),
         ]));
       }, permissionsRequired: BotCommandPermissions.admin, aliases: ["untimeout", "remtimeout", "ti"]),
       BotCommand("warns", "Moderation", "See someone's warns.", (T context, Member member) async {
-        final settings = UserSettings(store, member.id);
+        final settings = UserPerServerSettings(store, context.guild!.id, member.id);
         final warns = settings.warns.get() ?? [];
         if (warns.isEmpty) return context.respondWithError("No warns for ${await memberToString(member, client: context.client)}!");
 
@@ -321,7 +381,7 @@ class ModerationPlugin extends BotPlugin {
       }, permissionsRequired: BotCommandPermissions.admin, aliases: ["listwarns", "wl"]),
       BotCommand("warn", "Moderation", "Warn someone.", (T context, Member member, [GreedyString? reason]) async {
         if (await confirm(context, "warn ${await confirmstringify(member, context.client)}") == false) return;
-        final settings = UserSettings(store, member.id);
+        final settings = UserPerServerSettings(store, context.guild!.id, member.id);
         final warns = settings.warns.get() ?? [];
         final warn = Warn(timestamp: DateTime.now().toUtc(), reason: reason?.data);
 
@@ -346,7 +406,7 @@ class ModerationPlugin extends BotPlugin {
         await context.respond(MessageBuilder(content: "Warned ${await memberToString(member, client: context.client)}. This is warn **#${warns.length}**.\n${reason ?? "No reason provided."}"));
       }, permissionsRequired: BotCommandPermissions.admin, aliases: ["w"]),
       BotCommand("unwarn", "Moderation", "Remove a warn from someone", (T context, Member member, [int? index]) async {
-        final settings = UserSettings(store, member.id);
+        final settings = UserPerServerSettings(store, context.guild!.id, member.id);
         final warns = settings.warns.get() ?? [];
         index ??= warns.length;
         if (warns.isEmpty || warns.length < index || index < 1) return context.respondWithError("No warns for index $index.");
@@ -374,7 +434,7 @@ class ModerationPlugin extends BotPlugin {
           EmbedBuilder(
             description: await memberToString(member, client: context.client, detailed: true),
             fields: [
-              warnsToField(store, member.id, force: true),
+              warnsToField(store, member.id, force: true, guild: context.guild!),
               EmbedFieldBuilder(name: "Timeout", value: "Until ${member.communicationDisabledUntil?.toDiscordTimestamp(DiscordTimestamp.shortDateTime) ?? "never"} (${member.communicationDisabledUntil?.toDiscordTimestamp(DiscordTimestamp.relative) ?? "never"})", isInline: false),
             ].whereType<EmbedFieldBuilder>().toList(),
             color: await getColor(context.member),
@@ -596,7 +656,7 @@ class ModerationPlugin extends BotPlugin {
     return [
       {
         ModlogGroup.all: (levelBelow) => {...levelBelow, "mod.timein", "mod.unwarn", "message.send", "audit", ...memberUpdateProperties.keys.where((x) => x != "timeout").map((x) => "member.update.$x")},
-        ModlogGroup.normal: (levelBelow) => {...levelBelow, "mod.ban", "mod.unban", "mod.timeout", "mod.kick", "mod.warn", "mod.purge", "mod.softban", "message.delete", "message.edit", "member.add", "member.remove", "member.ban", "member.unban", "message.bulkdelete", "invite.create", "invite.delete", "member.update.timeout"},
+        ModlogGroup.normal: (levelBelow) => {...levelBelow, "mod.ban", "mod.unban", "mod.timeout", "mod.kick", "mod.warn", "mod.purge", "mod.softban", "message.delete", "message.edit", "member.add", "member.remove", "member.ban", "member.unban", "message.bulkdelete", "invite.create", "invite.delete", "member.update.timeout", "mod.block.set", "mod.block.catch"},
         ModlogGroup.quiet: (levelBelow) => {...levelBelow},
         ModlogGroup.off: (_) => {},
       },
@@ -725,16 +785,34 @@ class ModerationPlugin extends BotPlugin {
       });
 
       client.onGuildMemberAdd.listen((event) async {
+        bool? blocked = false;
+        final settings = UserPerServerSettings(context.store, event.guildId, event.member.id);
+
+        if (settings.blocked.get()) {
+          try {
+            await event.member.ban(auditLogReason: "User is blocked.");
+            settings.blocked.set(true);
+            blocked = true;
+          } catch (e) {
+            Logger.warn("Moderation", "Unable to ban after block ${event.member.id}: $e");
+            blocked = null;
+          }
+        }
+
         Modlog.add(ModlogEvent(
           "member.add",
           title: "Member Added",
           fields: {
             "Member": event.member.toMention(),
+            "Block": blocked == false ? "Not blocked" : (
+              blocked == true ? "User has been banned because they were blocked.\nThey will be unblocked, but will still be banned." : "User was unable to be banned."
+            ),
           },
           guild: await event.guild.get(),
           settings: ifGuild(context.store, event.guildId, (id) => ServerSettings(context.store, id)),
           client: client,
-          severity: ModlogSeverity.good,
+          severity: blocked == false ? ModlogSeverity.good : ModlogSeverity.severe,
+          alsoTriggerOn: [if (blocked != false) "mod.block.catch"],
         ));
       });
 
@@ -908,8 +986,8 @@ class Warn {
   int get hashCode => timestamp.hashCode;
 }
 
-EmbedFieldBuilder? warnsToField(KVStore store, Snowflake userId, {bool force = false}) {
-  final settings = UserSettings(store, userId);
+EmbedFieldBuilder? warnsToField(KVStore store, Snowflake userId, {bool force = false, required Guild guild}) {
+  final settings = UserPerServerSettings(store, guild.id, userId);
   final warns = settings.warns.get() ?? [];
 
   if (force == false && warns.isEmpty) return null;

@@ -211,6 +211,7 @@ class BotConverter<T> {
 
 enum BotCommandPermissions {
   any,
+  mod,
   admin,
   claimer,
   owner,

@@ -16,7 +16,7 @@ class AdminPlugin extends BotPlugin {
     return [{
       ModlogGroup.all: (levelBelow) => {...levelBelow},
       ModlogGroup.normal: (levelBelow) => {...levelBelow},
-      ModlogGroup.quiet: (levelBelow) => {...levelBelow, "adminuser.add", "adminuser.remove", "adminrole.add", "adminrole.remove", "claim"},
+      ModlogGroup.quiet: (levelBelow) => {...levelBelow, "adminuser.add", "adminuser.remove", "adminrole.add", "adminrole.remove", "moduser.add", "moduser.remove", "modrole.add", "modrole.remove", "claim"},
       ModlogGroup.off: (_) => {},
     }];
   }
@@ -152,6 +152,138 @@ class AdminPlugin extends BotPlugin {
         content: found ? "Removed role *${role.name}* from admin." : "Role *${role.name}* is not currently admin.",
       ));
     }, CommandAttributes(permissionsRequired: BotCommandPermissions.admin, category: "Server")),
+
+    BotCommand.command("addmoduser", "Add an admin user.", (T context, User user) async {
+      if (context.guild == null || context.member == null) return context.respondWithError("No guild/member found.");
+      final settings = ServerSettings(store, context.guild!.id);
+      if (await context.assurePerms(BotCommandPermissions.admin, settings) == false) return;
+      final admins = settings.mods.get() ?? [];
+
+      if (admins.any((x) => x["type"] == "user" && x["id"] == user.id.toString())) {
+        return context.respond(MessageBuilder(
+          content: "${await userToString(user)} is already an admin.",
+        )).toVoid();
+      }
+
+      admins.add({"type": "user", "id": user.id.toString()});
+      settings.admins.set(admins);
+
+      Modlog.add(ModlogEvent(
+        "moduser.add",
+        client: context.client,
+        guild: context.guild,
+        title: "Mod User Added",
+        fields: {
+          "Who": "<@${user.id}>",
+          "Author": "<@${context.user.id}>",
+        },
+        settings: settings,
+      ));
+
+      context.respond(MessageBuilder(
+        content: "Added ${await userToString(user)} as a moderator!",
+      ));
+    }, CommandAttributes(permissionsRequired: BotCommandPermissions.admin, category: "Server")),
+    BotCommand.command("addmodrole", "Add a role as mod.", (T context, Role role) async {
+      if (context.guild == null || context.member == null) return context.respondWithError("No guild/member found.");
+      final settings = ServerSettings(store, context.guild!.id);
+      if (await context.assurePerms(BotCommandPermissions.admin, settings) == false) return;
+      final mods = settings.mods.get() ?? [];
+
+      if (mods.any((x) => x["type"] == "role" && x["id"] == role.id.toString())) {
+        return context.respond(MessageBuilder(
+          content: "Role *${role.name}* is already a moderator.",
+        )).toVoid();
+      }
+
+      mods.add({"type": "role", "id": role.id.toString()});
+      settings.mods.set(mods);
+
+      Modlog.add(ModlogEvent(
+        "modrole.add",
+        client: context.client,
+        guild: context.guild,
+        title: "Mod Role Added",
+        fields: {
+          "Who": "<@${role.id}>",
+          "Author": "<@${context.user.id}>",
+        },
+        settings: settings,
+      ));
+
+      context.respond(MessageBuilder(
+        content: "Added role *${role.name}* as moderator!",
+      ));
+    }, CommandAttributes(permissionsRequired: BotCommandPermissions.admin, category: "Server")),
+    BotCommand.command("removemoduser", "Remove a user from mod.", (T context, User user) async {
+      if (context.guild == null || context.member == null) return context.respondWithError("No guild/member found.");
+      final settings = ServerSettings(store, context.guild!.id);
+      if (await context.assurePerms(BotCommandPermissions.admin, settings) == false) return;
+
+      final mods = settings.mods.get() ?? [];
+      bool found = false;
+
+      mods.removeWhere((x) {
+        final y = x["type"] == "user" && x["id"] == user.id.toString();
+        if (y) found = true;
+        return y;
+      });
+
+      if (found) {
+        settings.mods.set(mods);
+
+        Modlog.add(ModlogEvent(
+          "moduser.remove",
+          client: context.client,
+          guild: context.guild,
+          title: "Mod User Removed",
+          fields: {
+            "Who": "<@${user.id}>",
+            "Author": "<@${context.user.id}>",
+          },
+          settings: settings,
+        ));
+      }
+
+      context.respond(MessageBuilder(
+        content: found ? "Removed ${await userToString(user)} from mod." : "${await userToString(user)} is not currently an mod.",
+      ));
+    }, CommandAttributes(permissionsRequired: BotCommandPermissions.admin, category: "Server")),
+    BotCommand.command("removemodrole", "Remove a role from mod.", (T context, Role role) async {
+      if (context.guild == null || context.member == null) return context.respondWithError("No guild/member found.");
+      final settings = ServerSettings(store, context.guild!.id);
+      if (await context.assurePerms(BotCommandPermissions.admin, settings) == false) return;
+
+      final mods = settings.mods.get() ?? [];
+      bool found = false;
+
+      mods.removeWhere((x) {
+        final y = x["type"] == "role" && x["id"] == role.id.toString();
+        if (y) found = true;
+        return y;
+      });
+
+      if (found) {
+        settings.mods.set(mods);
+
+        Modlog.add(ModlogEvent(
+          "modrole.remove",
+          client: context.client,
+          guild: context.guild,
+          title: "Mod Role Removed",
+          fields: {
+            "Who": "<@${role.id}>",
+            "Author": "<@${context.user.id}>",
+          },
+          settings: settings,
+        ));
+      }
+
+      context.respond(MessageBuilder(
+        content: found ? "Removed role *${role.name}* from mod." : "Role *${role.name}* is not currently mod.",
+      ));
+    }, CommandAttributes(permissionsRequired: BotCommandPermissions.admin, category: "Server")),
+
     BotCommand.command("claim", "Claim yourself as king of the bot!", (T context) async {
       if (context.guild == null || context.member == null) return context.respondWithError("No guild/member found.");
       final settings = ServerSettings(store, context.guild!.id);
@@ -321,6 +453,7 @@ class AdminPlugin extends BotPlugin {
         if (true /* Was: settings != null */) {
           final mainAdmin = settings.mainAdmin.get();
           final admins = settings.admins.get();
+          final mods = settings.mods.get();
 
           if (m != null) {
             for (final a in admins ?? []) {
@@ -332,6 +465,20 @@ class AdminPlugin extends BotPlugin {
                 for (final x in m.roles) {
                   if (a["id"] == x.id.toString()) {
                     attributes.add("Admin (role: ${(await x.get()).name})");
+                  }
+                }
+              }
+            }
+
+            for (final a in mods ?? []) {
+              if (a["type"] == "user") {
+                if (a["id"] == m.id.toString()) {
+                  attributes.add("Moderator");
+                }
+              } else if (a["type"] == "role") {
+                for (final x in m.roles) {
+                  if (a["id"] == x.id.toString()) {
+                    attributes.add("Moderator (role: ${(await x.get()).name})");
                   }
                 }
               }
@@ -348,9 +495,11 @@ class AdminPlugin extends BotPlugin {
         attributes.add(["Owner", if (ignoreOwner) "(ignored)"].join(" "));
       }
 
-      final userSettings = UserSettings(store, u.id);
-      final warns = userSettings.warns.get() ?? [];
-      if (warns.isNotEmpty) attributes.add("${warns.length} warns (most recent: ${warns.first.timestamp.toDiscordTimestamp(DiscordTimestamp.shortDateTime)})");
+      if (context.guild != null) {
+        final userSettings = UserPerServerSettings(store, context.guild!.id, u.id);
+        final warns = userSettings.warns.get() ?? [];
+        if (warns.isNotEmpty) attributes.add("${warns.length} warns (most recent: ${warns.first.timestamp.toDiscordTimestamp(DiscordTimestamp.shortDateTime)})");
+      }
 
       if (context.guild != null) {
         Future<bool> isBanned() async {

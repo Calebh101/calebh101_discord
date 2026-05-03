@@ -174,9 +174,9 @@ void main(List<String> arguments) => onStart = () async {
         ));
       }, CommandAttributes(category: "Fun")),
 
-      BotCommand("github", "Util", "Send a GitHub repo.", (ChatContext context, GreedyString input) async {
-        final pieces = input.data.split(RegExp(r"[\/ ]")).map((x) => x.trim()).where((x) => x.isNotEmpty);
-        await context.respond(MessageBuilder(content: "https://gh.calebh101.net${pieces.map((x) => "/$x").join("")}"));
+      BotCommand("github", "Util", "Send a GitHub repo.", (ChatContext context, String arg1, [String? arg2, GreedyStringList? params]) async {
+        final p = params?.data ?? [];
+        await context.respond(MessageBuilder(content: "https://gh.calebh101.net${[arg1, ?arg2].map((x) => "/$x").join("")}${p.isNotEmpty ? "?${p.first}${p.sublist(1, p.length).map((x) => "&$x").join("")}" : ""}"));
       }, aliases: ["gh"]),
     ],
   );

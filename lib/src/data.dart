@@ -343,6 +343,7 @@ class ServerSettings extends EntitySettings {
   SettingsObjectNotNull<String> get prefix => SettingsObjectNotNull(this, "prefix", defaultFunction: () => defaultPrefix);
   SettingsObject<String> get mainAdmin => SettingsObject(this, "mainAdmin");
   SettingsObject<List> get admins => SettingsObject(this, "admins");
+  SettingsObject<List> get mods => SettingsObject(this, "mods");
   SettingsObject<int> get modlogChannel => SettingsObject(this, "modlogChannel");
   SettingsObject<List<String>> get modlog => SettingsObject(this, "modlogScopes", encodeFunction: (input) => input as List, decodeFunction: (input) => RecursiveCaster.cast<List<String>>(input));
   SettingsObject<bool> get selfReactAllowed => SettingsObject(this, "selfReactAllowed");
@@ -353,12 +354,13 @@ class ServerSettings extends EntitySettings {
 
 class UserSettings extends EntitySettings {
   UserSettings(super.store, Snowflake id) : super(id: id.toString(), scope: Scope.user);
-
-  SettingsObject<List<Warn>> get warns => SettingsObject(this, "warns", encodeFunction: (input) => input.map((x) => x.toJson()).toList(), decodeFunction: (input) => (input as List?)?.map((x) => Warn.fromJson(x)).toList()?..sort((a, b) => b.timestamp.compareTo(a.timestamp)));
 }
 
 class UserPerServerSettings extends EntitySettings {
   UserPerServerSettings(super.store, Snowflake server, Snowflake user) : super(id: getId(server, user), scope: Scope.userPerServer);
+
+  SettingsObject<List<Warn>> get warns => SettingsObject(this, "warns", encodeFunction: (input) => input.map((x) => x.toJson()).toList(), decodeFunction: (input) => (input as List?)?.map((x) => Warn.fromJson(x)).toList()?..sort((a, b) => b.timestamp.compareTo(a.timestamp)));
+  SettingsObjectNotNull<bool> get blocked => SettingsObjectNotNull(this, "blocked", defaultFunction: () => false);
 
   static String getId(Snowflake server, Snowflake user) {
     return [server, user].join(".");
@@ -451,7 +453,24 @@ Future<void> Function(CommandsException e)? onCommandError;
 
 bool isAdmin({required ServerSettings settings, required Member member}) {
   if (isOwner(id: member.id) || isClaimer(settings: settings, id: member.id)) return true;
-  if (settings.mainAdmin.get() == id.toString()) return true;
+
+  for (final x in settings.admins.get() ?? []) {
+    if (x["type"] == "user") {
+      if (x["id"] == member.id.toString()) {
+        return true;
+      }
+    } else if (x["type"] == "role") {
+      if (member.roleIds.any((y) => y.toString() == x["id"])) {
+        return true;
+      }
+    }
+  }
+
+  return false;
+}
+
+bool isMod({required ServerSettings settings, required Member member}) {
+  if (isOwner(id: member.id) || isClaimer(settings: settings, id: member.id) || isAdmin(settings: settings, member: member)) return true;
 
   for (final x in settings.admins.get() ?? []) {
     if (x["type"] == "user") {
