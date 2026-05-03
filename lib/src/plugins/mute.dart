@@ -37,12 +37,16 @@ class MutePlugin extends BotPlugin {
         }
 
         final channels = await context.guild!.fetchChannels();
-        final m = await context.respond(MessageBuilder(content: "Updating ${channels.length} channels..."));
+        final m = await context.respond(MessageBuilder(content: "Updating 0/${channels.length} channels..."));
 
         for (int i = 0; i < channels.length; i++) {
           final channel = channels[i];
           final ignored = ignore.contains(channel.id);
           Logger.print("Mute", "Syncing channel $i/${channels.length - 1} ${channel.id} (${channel.name})... (ignore: $ignored/${ignore.length})");
+
+          if (i % 10 == 0) {
+            await context.updateMessage(m, MessageUpdateBuilder(content: "Updating ${i + 1}/${channels.length} channels..."));
+          }
 
           await channel.updatePermissionOverwrite(PermissionOverwriteBuilder(id: role, type: PermissionOverwriteType.role, deny: ignored ? null :
             Permissions.addReactions | Permissions.sendMessages | Permissions.sendMessagesInThreads | Permissions.createPublicThreads | Permissions.createPrivateThreads | Permissions.speak | Permissions.requestToSpeak | Permissions.stream | Permissions.useSoundboard,
@@ -61,7 +65,7 @@ class MutePlugin extends BotPlugin {
         }
 
         settings.muteRole.set(role.id);
-        await context.respond(MessageBuilder(content: "Mute role set to ${await roleToString(role)}!"));
+        await context.respond(MessageBuilder(content: "Mute role set to ${await roleToString(role)}! Run `syncmute` to sync permissions."));
       }, needsGuild: true, permissionsRequired: .admin),
       BotCommand("setmuteignored", "Mute", "Set channels that are ignored from syncing the mute role.", (T context, [GreedyGuildTextChannelList? channels]) async {
         final settings = MuteServerSettings(store, context.guild!.id);
