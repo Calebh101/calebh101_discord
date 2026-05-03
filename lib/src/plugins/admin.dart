@@ -499,6 +499,9 @@ class AdminPlugin extends BotPlugin {
         final userSettings = UserPerServerSettings(store, context.guild!.id, u.id);
         final warns = userSettings.warns.get() ?? [];
         if (warns.isNotEmpty) attributes.add("${warns.length} warns (most recent: ${warns.first.timestamp.toDiscordTimestamp(DiscordTimestamp.shortDateTime)})");
+
+        final uSettings = UserPerServerSettings(store, context.guild!.id, u.id);
+        if (uSettings.blocked.get()) attributes.add("Blocked from rejoining *${context.guild?.name}*");
       }
 
       if (context.guild != null) {
