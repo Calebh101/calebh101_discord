@@ -17,7 +17,7 @@ class PrefixPlugin extends BotPlugin {
       if (settings == null) return context.respondWithError("Unable to load settings.");
 
       await context.respond(MessageBuilder(
-        content: "Prefix is currently set to `${settings.prefix.get() ?? defaultPrefix}`.",
+        content: "Prefix is currently set to `${settings.prefix.get()}`.",
       ));
     }, CommandAttributes(category: "Bot")),
     BotCommand.command("setprefix", "Set the bot's prefix.", (T context, String prefix) async {

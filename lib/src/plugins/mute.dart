@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:calebh101_discord/calebh101_discord.dart';
+import 'package:collection/collection.dart';
 import 'package:json_annotation/json_annotation.dart';
 
 part 'mute.g.dart';
@@ -116,45 +117,157 @@ class MutePlugin extends BotPlugin {
         ));
       }, needsGuild: true, permissionsRequired: BotCommandPermissions.admin, aliases: ["um"]),
       BotCommand("mute", "Mute", "Get the current mute role ignored channels..", (T context, Member member, Duration duration, [GreedyString? reason]) async {
-        final settings = MuteServerSettings(store, context.guild!.id);
-        final role = settings.muteRole.get();
-        if (role == null) return context.respondWithError("No mute role set.");
+        final results = await mute(member, duration, reason: reason?.data, store: store, guild: context.guild!, author: context.user, client: context.client);
 
-        final mutes = settings.mutes.get() ?? [];
-        final mute = Mute(reason: reason?.data, time: DateTime.now().toUtc().add(duration), id: settings.getNextMuteId(), user: member.id.value);
-        mutes.add(mute);
-        settings.mutes.set(mutes);
+        if (results.result == false) {
+          await context.respond(MessageBuilder(embeds: [
+            EmbedBuilder(
+              description: "## Unable to Mute ${member.toMention()} (${await memberToString(member, client: context.client, detailed: true)}\n\nAs a fallback, you can use Discord's timeout.",
+              color: await getColor(context.member),
+              fields: [
+                EmbedFieldBuilder(name: "Reason", value: results.reason ?? "No reason provided", isInline: false),
+              ],
+              footer: EmbedFooterBuilder(text: "All other mutes for this user have been removed."),
+            ),
+          ]));
+        } else {
+          final mute = results.mute!;
+          Logger.print("Mute", "Muted ${member.id}: ID=${mute.id}, new=${MuteServerSettings(store, context.guild!.id).mutes.get()?.length}");
 
-        final result = await tryCatchA(() async {
-          await member.addRole(role);
-          return true;
-        }) ?? false;
-
-        await context.respond(MessageBuilder(embeds: [
-          EmbedBuilder(
-            description: "## ${result ? "Muted" : "Unable to Mute"} ${member.toMention()} (${await memberToString(member, client: context.client, detailed: true)})",
-            color: await getColor(context.member),
-            fields: [
-              EmbedFieldBuilder(name: "ID", value: mute.id.toDiscordCodeBlock(), isInline: false),
-            ],
-          ),
-        ]));
-
-        Modlog.add(ModlogEvent(
-          "mod.mute",
-          title: "Muted User",
-          fields: {
-            "Target": member.toMention(),
-            "Author": context.user.toMention(),
-          },
-          guild: context.guild,
-          settings: ifGuild(store, context.guild?.id, (id) => ServerSettings(store, id)),
-          client: context.client,
-          severity: ModlogSeverity.warning,
-        ));
+          await context.respond(MessageBuilder(embeds: [
+            EmbedBuilder(
+              description: "## Muted ${member.toMention()} (${await memberToString(member, client: context.client, detailed: true)}",
+              color: await getColor(context.member),
+              fields: [
+                EmbedFieldBuilder(name: "Author", value: context.user.toMention(), isInline: false),
+                EmbedFieldBuilder(name: "Duration", value: "${mute.time.toDiscordTimestamp(DiscordTimestamp.shortDateTime)} (${mute.time.toDiscordTimestamp(DiscordTimestamp.relative)}) (`${duration.prettyDetailed()}`)", isInline: false),
+                EmbedFieldBuilder(name: "ID", value: mute.id.toDiscordCodeBlock(), isInline: false),
+              ],
+              footer: EmbedFooterBuilder(text: "All other mutes for this user have been removed."),
+            ),
+          ]));
+        }
       }, needsGuild: true, permissionsRequired: BotCommandPermissions.admin, aliases: ["m"]),
     ];
   }
+
+  @override
+  FutureOr<void> onClientLoad(BotContext context) {
+    Timer.periodic(Duration(seconds: 5), (timer) async {
+      final values = context.store.getAllForKey<List>(Scope.server, "mutes").map((k, v) => MapEntry(Snowflake.parse(k), v.map((x) => Mute.fromJson(x)).toList()));
+
+      for (final entry in values.entries) {
+        for (final mute in entry.value) {
+          Logger.print("Mute", "Scanning mute ${entry.key}${mute.id} (${mute.user})");
+
+          if (DateTime.now().toUtc().isAfter(mute.time)) {
+            Logger.print("Mute", "Auto-unmuting user ${mute.user} (ID=${mute.id})");
+
+            final client = context.clients.clients.values.firstWhereOrNull((x) => x.user.id.value == mute.client);
+            if (client == null) continue;
+            final guild = await tryCatchA(() async => await client.guilds.get(entry.key));
+            final member = await tryCatchA(() async => await guild!.members.get(Snowflake(mute.user)));
+            if (guild == null || member == null) continue;
+
+            final settings = MuteServerSettings(context.store, entry.key);
+            final mutes = settings.mutes.get() ?? [];
+            mutes.removeWhere((x) => x.user == mute.user);
+            settings.mutes.set(mutes);
+
+            final muteRole = settings.muteRole.get();
+            if (muteRole == null) continue;
+            final result = await tryCatchA<bool>(() => member.removeRole(muteRole).to(true)) ?? false;
+
+            if (result == false) {
+              Modlog.add(ModlogEvent(
+              "mod.unmute",
+              title: "Failed to Unmute User",
+              fields: {
+                "Target": mute.user.toMention(),
+                "Reason": "Could not add role `$muteRole`.",
+              },
+              guild: guild,
+              settings: ifGuild(context.store, guild.id, (id) => ServerSettings(context.store, id)),
+              client: client,
+              severity: ModlogSeverity.severe,
+            ));
+            }
+
+            Modlog.add(ModlogEvent(
+              "mod.unmute",
+              title: "Auto-Unmuted User",
+              fields: {
+                "Target": mute.user.toMention(),
+              },
+              guild: guild,
+              settings: ifGuild(context.store, guild.id, (id) => ServerSettings(context.store, id)),
+              client: client,
+              severity: ModlogSeverity.good,
+            ));
+          }
+        }
+      }
+    });
+
+    context.clients.run((client) {
+      client.onGuildMemberAdd.listen((event) async {
+        final settings = MuteServerSettings(context.store, event.guildId);
+        final mutes = settings.mutes.get() ?? [];
+        final mute = mutes.firstWhereOrNull((x) => x.user == event.member.id.value);
+
+        if (mute == null) return;
+        final duration = DateTime.now().toUtc().difference(mute.time);
+        if (mute.time.difference(DateTime.now().toUtc()) < Duration(seconds: 10)) return;
+        await MutePlugin.mute(event.member, duration, reason: "Auto-mute from join", store: context.store, client: client, guild: await event.guild.get());
+      });
+    });
+  }
+
+  static Future<MuteResults> mute(Member member, Duration duration, {required String? reason, required KVStore store, required NyxxGateway client, required Guild guild, User? author}) async {
+    final settings = MuteServerSettings(store, guild.id);
+    final role = settings.muteRole.get();
+    if (role == null) return MuteResults(false, reason: "No mute role set.");
+
+    final mutes = settings.mutes.get() ?? [];
+    final until = DateTime.now().toUtc().add(duration);
+    final mute = Mute(reason: reason, time: until, id: settings.getNextMuteId(), user: member.id.value, client: client.user.id.value);
+
+    mutes.removeWhere((x) => x.user == member.id.value);
+    mutes.add(mute);
+    settings.mutes.set(mutes);
+
+    final result = await tryCatchA(() async {
+      await member.addRole(role);
+      return true;
+    }) ?? false;
+
+    if (result == false) {
+      return MuteResults(false, reason: "Unable to add role");
+    }
+
+    Modlog.add(ModlogEvent(
+      "mod.mute",
+      title: "Muted User",
+      fields: {
+        "Target": member.toMention(),
+        "Author": author?.toMention() ?? "No author".toDiscordCodeBlock(),
+      },
+      guild: guild,
+      settings: ServerSettings(store, guild.id),
+      client: client,
+      severity: ModlogSeverity.warning,
+    ));
+
+    return MuteResults(result, mute: mute);
+  }
+}
+
+class MuteResults {
+  final bool result;
+  final String? reason;
+  final Mute? mute;
+
+  const MuteResults(this.result, {this.reason, this.mute});
 }
 
 class MuteServerSettings extends ServerSettings {
@@ -179,8 +292,9 @@ class Mute {
   final DateTime time;
   final int id;
   final int user;
+  final int client;
 
-  Mute({required this.reason, required this.time, required this.id, required this.user});
+  Mute({required this.reason, required this.time, required this.id, required this.user, required this.client});
   factory Mute.fromJson(Map input) => _$MuteFromJson(input);
   Map toJson() => _$MuteToJson(this);
 

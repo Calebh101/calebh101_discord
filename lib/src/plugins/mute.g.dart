@@ -11,6 +11,7 @@ Mute _$MuteFromJson(Map json) => Mute(
   time: DateTime.parse(json['time'] as String),
   id: (json['id'] as num).toInt(),
   user: (json['user'] as num).toInt(),
+  client: (json['client'] as num).toInt(),
 );
 
 Map<String, dynamic> _$MuteToJson(Mute instance) => <String, dynamic>{
@@ -18,4 +19,5 @@ Map<String, dynamic> _$MuteToJson(Mute instance) => <String, dynamic>{
   'time': instance.time.toIso8601String(),
   'id': instance.id,
   'user': instance.user,
+  'client': instance.client,
 };

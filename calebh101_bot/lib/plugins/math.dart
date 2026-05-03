@@ -15,14 +15,12 @@ class MathPlugin extends BotPlugin {
   MathPlugin() : super(id: "math", version: Version.parse("1.0.0A"));
 
   @override
-  Future<void> onRegister() {
+  FutureOr<void> onRegister() {
     // Register each math plugin with their IDs here.
 
     Math.register("addsubtract", fromJson: AddSubtractMath.fromJson);
     Math.register("multdiv", fromJson: MultDivMath.fromJson);
     Math.register("exponent", fromJson: ExponentMath.fromJson);
-
-    return super.onRegister();
   }
 
   @override

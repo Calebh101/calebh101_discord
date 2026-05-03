@@ -21,7 +21,7 @@ class PluginStore {
   }
 
   Future<void> load(BotContext context) async {
-    await Future.wait(plugins.map((x) => x.onClientLoad(context)));
+    await Future.wait(plugins.map((x) => x.onClientLoad(context).toFuture()));
   }
 
   Future<List<BotCommand>> commands<T extends ChatContext>(CommandsPlugin plugin, KVStore store) async {
@@ -46,8 +46,8 @@ abstract class BotPlugin {
     className = MirrorSystem.getName(reflect(this).type.simpleName);
   }
 
-  Future<void> onRegister() async {}
-  Future<void> onClientLoad(BotContext context) async {}
+  FutureOr<void> onRegister() async {}
+  FutureOr<void> onClientLoad(BotContext context) async {}
   FutureOr<List<BotCommand>> commands<T extends ChatContext>(CommandsPlugin plugin, KVStore store) => [];
   FutureOr<List<BotConverter>> converters(CommandsPlugin plugin, KVStore store) => [];
 

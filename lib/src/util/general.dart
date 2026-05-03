@@ -25,7 +25,7 @@ Future<String> Function(MessageCreateEvent) prefixFromServerSettings(ServerSetti
     final settings = getSettings.call(event.guild!);
     if (settings == null) return defaultPrefix;
 
-    final prefix = settings.prefix.get() ?? defaultPrefix;
+    final prefix = settings.prefix.get();
     return prefix;
   }(), if (dev) "d"].join("");
 };
@@ -103,6 +103,10 @@ class Catch<T extends Object, R> {
 }
 
 T? tryCatch<T>(T? Function() callback, {T? Function(Object e)? onCatch, List<Catch<Object, T>> onCatchTyped = const []}) {
+  if (<T>[] is List<Future>) {
+    throw Exception("tryCatch can not be used with a Future. Use tryCatchA instead. Received: $T");
+  }
+
   try {
     return callback.call();
   } catch (e) {

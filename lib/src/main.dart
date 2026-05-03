@@ -431,3 +431,7 @@ Future<String?> getStatus() async {
 Uri discordLink(Snowflake? guild, Snowflake channel, [Snowflake? message]) {
   return Uri.parse("https://discord.com/channels/${[guild ?? "@me", channel, ?message].join("/")}");
 }
+
+extension ToAnything on Object? {
+  T to<T>(T x) => x;
+}
