@@ -48,8 +48,8 @@ class MutePlugin extends BotPlugin {
             await context.updateMessage(m, MessageUpdateBuilder(content: "Updating ${i + 1}/${channels.length} channels..."));
           }
 
-          await channel.updatePermissionOverwrite(PermissionOverwriteBuilder(id: role, type: PermissionOverwriteType.role, deny: ignored ? null :
-            ((channel.permissionOverwrites.firstWhereOrNull((x) => x.id == role && x.type == PermissionOverwriteType.role)?.deny ?? Permissions(0)) | Permissions.addReactions | Permissions.sendMessages | Permissions.sendMessagesInThreads | Permissions.createPublicThreads | Permissions.createPrivateThreads | Permissions.speak | Permissions.requestToSpeak | Permissions.stream | Permissions.useSoundboard),
+          await channel.updatePermissionOverwrite(PermissionOverwriteBuilder(id: role, type: PermissionOverwriteType.role, deny:
+            ((channel.permissionOverwrites.firstWhereOrNull((x) => x.id == role && x.type == PermissionOverwriteType.role)?.deny ?? Permissions(0)) | (ignored ? Permissions(0) : Permissions.addReactions | Permissions.sendMessages | Permissions.sendMessagesInThreads | Permissions.createPublicThreads | Permissions.createPrivateThreads | Permissions.speak | Permissions.requestToSpeak | Permissions.stream | Permissions.useSoundboard)),
           allow: channel.permissionOverwrites.firstWhereOrNull((x) => x.id == role && x.type == PermissionOverwriteType.role)?.allow));
         }
 
