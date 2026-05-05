@@ -8,7 +8,7 @@ class StickyRoles extends BotPlugin {
   @override
   FutureOr<List<BotCommand<Function>>> commands<T extends ChatContext>(CommandsPlugin plugin, KVStore store) {
     return [
-      BotCommand("addrole", "Moderation", "Add a sticky role to someone.", (ChatContext context, Member member, Role role, [bool sticky = false]) async {
+      BotCommand("addrole", "Moderation", "Add a sticky role to someone.", (ChatContext context, Member member, Role role, [bool sticky = true]) async {
         if (await context.assureGuild() == false) return;
         final settings = StickyRolesSettings(store, context.guild!.id, member.id);
 
