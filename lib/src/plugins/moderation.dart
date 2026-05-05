@@ -472,12 +472,12 @@ class ModerationPlugin extends BotPlugin {
 
         if (arguments["after"] is DateTime) {
           final date = arguments["after"] as DateTime;
-          messages.removeWhere((x) => x.timestamp.toUtc().isAfter(date));
+          messages.removeWhere((x) => x.timestamp.toUtc().isBefore(date));
         }
 
         if (arguments["before"] is DateTime) {
           final date = arguments["before"] as DateTime;
-          messages.removeWhere((x) => x.timestamp.toUtc().isBefore(date));
+          messages.removeWhere((x) => x.timestamp.toUtc().isAfter(date));
         }
 
         if (arguments["limit"] is int) {

@@ -178,6 +178,30 @@ void main(List<String> arguments) => onStart = () async {
         final p = params?.data ?? [];
         await context.respond(MessageBuilder(content: "https://gh.calebh101.net${[arg1, ?arg2].map((x) => "/$x").join("")}${p.isNotEmpty ? "?${p.first}${p.sublist(1, p.length).map((x) => "&$x").join("")}" : ""}"));
       }, aliases: ["gh"]),
+
+      BotCommand("mock", "Fun", "Mock a message.", (ChatContext context, [GreedyString? input]) async {
+        String? data = input?.data;
+
+        if (input == null && context is MessageChatContext) {
+          final reply = context.message.referencedMessage;
+          data = reply?.content;
+        }
+
+        if (data == null) return context.respondWithError("No message or input found.");
+        List<String> parts = [];
+        bool uppercase = Random().nextInt(2) == 1;
+
+        for (final c in data.split("")) {
+          if (RegExp(r'[a-zA-Z]').hasMatch(c)) {
+            parts.add(uppercase ? c.toUpperCase() : c.toLowerCase());
+            uppercase = !uppercase;
+          } else {
+            parts.add(c);
+          }
+        }
+
+        await context.respond(MessageBuilder(content: parts.join("")));
+      }),
     ],
   );
 
