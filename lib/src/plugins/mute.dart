@@ -119,7 +119,7 @@ class MutePlugin extends BotPlugin {
           client: context.client,
           severity: ModlogSeverity.good,
         ));
-      }, needsGuild: true, permissionsRequired: BotCommandPermissions.admin, aliases: ["um"]),
+      }, needsGuild: true, permissionsRequired: BotCommandPermissions.mod, aliases: ["um"]),
       BotCommand("mute", "Mute", "Get the current mute role ignored channels..", (T context, Member member, [Duration? duration, GreedyString? reason]) async {
         final results = await mute(member, duration, reason: reason?.data, store: store, guild: context.guild!, author: context.user, client: context.client);
 
@@ -151,7 +151,7 @@ class MutePlugin extends BotPlugin {
             ),
           ]));
         }
-      }, needsGuild: true, permissionsRequired: BotCommandPermissions.admin, aliases: ["m"]),
+      }, needsGuild: true, permissionsRequired: BotCommandPermissions.mod, aliases: ["m"]),
     ];
   }
 

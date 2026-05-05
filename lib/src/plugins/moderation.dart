@@ -71,7 +71,7 @@ class ModerationPlugin extends BotPlugin {
             ].whereType<EmbedFieldBuilder>().toList(),
           ),
         ]));
-      }, permissionsRequired: BotCommandPermissions.admin, needsGuild: true, aliases: ["b"]),
+      }, permissionsRequired: BotCommandPermissions.mod, needsGuild: true, aliases: ["b"]),
       BotCommand("unblock", "Moderation", "Unblock a user.", (T context, Snowflake userId) async {
         final settings = UserPerServerSettings(store, context.guild!.id, userId);
         if (settings.blocked.get() == false) return context.respondWithError("User is already unblocked.");
@@ -100,7 +100,7 @@ class ModerationPlugin extends BotPlugin {
             ].whereType<EmbedFieldBuilder>().toList(),
           ),
         ]));
-      }, permissionsRequired: BotCommandPermissions.admin, needsGuild: true, aliases: ["ub"]),
+      }, permissionsRequired: BotCommandPermissions.mod, needsGuild: true, aliases: ["ub"]),
       BotCommand("ban", "Moderation", "Ban a user.", (T context, Member member, [GreedyString? reason]) async {
         try {
           if (await confirm(context, "ban ${await confirmstringify(member, context.client)}") == false) return;
@@ -146,7 +146,7 @@ class ModerationPlugin extends BotPlugin {
             ].whereType<EmbedFieldBuilder>().toList(),
           ),
         ]));
-      }, permissionsRequired: BotCommandPermissions.admin),
+      }, permissionsRequired: BotCommandPermissions.mod),
       BotCommand("kick", "Moderation", "Kick a user.", (T context, Member member, [GreedyString? reason]) async {
         try {
           if (await confirm(context, "kick ${await confirmstringify(member, context.client)}") == false) return;
@@ -239,7 +239,7 @@ class ModerationPlugin extends BotPlugin {
             ].whereType<EmbedFieldBuilder>().toList(),
           ),
         ]));
-      }, permissionsRequired: BotCommandPermissions.admin, aliases: ["sb"]),
+      }, permissionsRequired: BotCommandPermissions.mod, aliases: ["sb"]),
       BotCommand("unban", "Moderation", "Unban a user.", (T context, String userId) async {
         final userIdInt = int.tryParse(userId);
         final user = userIdInt != null ? Snowflake(userIdInt) : null;
@@ -283,7 +283,7 @@ class ModerationPlugin extends BotPlugin {
             ].whereType<EmbedFieldBuilder>().toList(),
           ),
         ]));
-      }, permissionsRequired: BotCommandPermissions.admin),
+      }, permissionsRequired: BotCommandPermissions.mod),
       BotCommand("timeout", "Moderation", "Time out a user.", (T context, Member member, Duration duration, [GreedyString? reason]) async {
         try {
           await member.update(MemberUpdateBuilder(communicationDisabledUntil: DateTime.now().add(duration).toUtc()), auditLogReason: "${context.user.username}: ${reason?.data ?? "No reason provided"}");
@@ -326,7 +326,7 @@ class ModerationPlugin extends BotPlugin {
             color: await getColor(context.member),
           ),
         ]));
-      }, permissionsRequired: BotCommandPermissions.admin, aliases: ["to"]),
+      }, permissionsRequired: BotCommandPermissions.mod, aliases: ["to"]),
       BotCommand("timein", "Moderation", "Remove timeout of a user.", (T context, Member member) async {
         try {
           await member.update(MemberUpdateBuilder(communicationDisabledUntil: null), auditLogReason: context.user.username);
@@ -366,7 +366,7 @@ class ModerationPlugin extends BotPlugin {
             ].whereType<EmbedFieldBuilder>().toList(),
           ),
         ]));
-      }, permissionsRequired: BotCommandPermissions.admin, aliases: ["untimeout", "remtimeout", "ti"]),
+      }, permissionsRequired: BotCommandPermissions.mod, aliases: ["untimeout", "remtimeout", "ti"]),
       BotCommand("warns", "Moderation", "See someone's warns.", (T context, Member member) async {
         final settings = UserPerServerSettings(store, context.guild!.id, member.id);
         final warns = settings.warns.get() ?? [];
@@ -378,7 +378,7 @@ class ModerationPlugin extends BotPlugin {
           pages: EmbedPage.generate(warns.mapIndexed((i, x) => EmbedFieldBuilder(name: "${i + 1}. ${x.timestamp.toDiscordTimestamp(DiscordTimestamp.longDateTime)}", value: x.reason ?? "No reason provided", isInline: false)).toList()),
           color: await getColor(context.member),
         ), settings: ifGuild(store, context.guild?.id, (id) => ServerSettings(store, id)));
-      }, permissionsRequired: BotCommandPermissions.admin, aliases: ["listwarns", "wl"]),
+      }, permissionsRequired: BotCommandPermissions.mod, aliases: ["listwarns", "wl"]),
       BotCommand("warn", "Moderation", "Warn someone.", (T context, Member member, [GreedyString? reason]) async {
         if (await confirm(context, "warn ${await confirmstringify(member, context.client)}") == false) return;
         final settings = UserPerServerSettings(store, context.guild!.id, member.id);
@@ -404,7 +404,7 @@ class ModerationPlugin extends BotPlugin {
         ));
 
         await context.respond(MessageBuilder(content: "Warned ${await memberToString(member, client: context.client)}. This is warn **#${warns.length}**.\n${reason ?? "No reason provided."}"));
-      }, permissionsRequired: BotCommandPermissions.admin, aliases: ["w"]),
+      }, permissionsRequired: BotCommandPermissions.mod, aliases: ["w"]),
       BotCommand("unwarn", "Moderation", "Remove a warn from someone", (T context, Member member, [int? index]) async {
         final settings = UserPerServerSettings(store, context.guild!.id, member.id);
         final warns = settings.warns.get() ?? [];
@@ -428,7 +428,7 @@ class ModerationPlugin extends BotPlugin {
         ));
 
         await context.respond(MessageBuilder(content: "Removed warn **#$index** for ${await memberToString(member, client: context.client)}."));
-      }, permissionsRequired: BotCommandPermissions.admin, aliases: ["remwarn"]),
+      }, permissionsRequired: BotCommandPermissions.mod, aliases: ["remwarn"]),
       BotCommand("summary", "Moderation", "Get a moderation summary of a user.", (T context, Member member) async {
         await context.respond(MessageBuilder(embeds: [
           EmbedBuilder(
@@ -440,7 +440,7 @@ class ModerationPlugin extends BotPlugin {
             color: await getColor(context.member),
           ),
         ]));
-      }, permissionsRequired: BotCommandPermissions.admin, aliases: ["s"]),
+      }, permissionsRequired: BotCommandPermissions.mod, aliases: ["s"]),
       BotCommand("purge", "Moderation", "Purge messages from a channel. Messages must be under 14 days old.", (T context, int amount, [GreedyString? args]) async {
         if (await context.assureGuild() == false) return;
         if (amount <= 2) return context.respondWithError("Too little messages. Must be greater than 2.");
@@ -581,7 +581,7 @@ class ModerationPlugin extends BotPlugin {
           client: context.client,
           severity: ModlogSeverity.severe,
         ));
-      }, permissionsRequired: BotCommandPermissions.admin, extendedDescription: "Usage: `purge <amount> <args>`\nArgs (`key=\"value\"`):\n\n${{
+      }, permissionsRequired: BotCommandPermissions.mod, extendedDescription: "Usage: `purge <amount> <args>`\nArgs (`key=\"value\"`):\n\n${{
         "limit": "Message limit. This is different from the amount fetched.",
         "userIds": "A comma-separated string of user IDs. Any messages sent by one of these IDs will be deleted.",
         "notUserIds": "A comma-separated string of user IDs. Any messages sent by none of these IDs will be deleted.",
@@ -600,26 +600,26 @@ class ModerationPlugin extends BotPlugin {
         "quiet": "Delete the bot's results messages too.",
         if (dev) "preview": "Include this argument to not actually purge messages, but just dry-run the command.",
       }.entries.map((x) => "- `${x.key}`: ${x.value}").join("\n")}"),
-      BotCommand("messagetypes", "Moderation", "See all message types and their values.", (T context) async {
+      BotCommand("messagetypes", "ModerationAdmin", "See all message types and their values.", (T context) async {
         await respondWithPagination(context, settings: ifGuild(store, context.guild?.id, (id) => ServerSettings(store, id)), PaginatedEmbedBuilder(
           pages: EmbedPage.generateFromItems(
             messageTypes.map((x) => "- `${x.value.toString().padRight(2)} ${x.name.padRight(30)} (deletable: ${"${x.deletable})".padRight(6)}`").toList(),
           ),
         ));
       }),
-      BotCommand("setbanmessageremoval", "Moderation", "Set the ban message removal period.", (T context, Duration duration) async {
+      BotCommand("setbanmessageremoval", "ModerationAdmin", "Set the ban message removal period.", (T context, Duration duration) async {
         if (await context.assureGuild() == false) return;
         final settings = ServerSettings(store, context.guild!.id);
         settings.banMessageRemovalSeconds.set(duration.inSeconds);
         await context.respond(MessageBuilder(content: "Set ban message removal period to **${duration.prettyDetailed()}**."));
       }, permissionsRequired: BotCommandPermissions.admin),
-      BotCommand("setsbmessageremoval", "Moderation", "Set the soft-ban message removal period.", (T context, Duration duration) async {
+      BotCommand("setsbmessageremoval", "ModerationAdmin", "Set the soft-ban message removal period.", (T context, Duration duration) async {
         if (await context.assureGuild() == false) return;
         final settings = ServerSettings(store, context.guild!.id);
         settings.kickMessageRemovalSeconds.set(duration.inSeconds);
         await context.respond(MessageBuilder(content: "Set soft-ban message removal period to **${duration.prettyDetailed()}**."));
       }, permissionsRequired: BotCommandPermissions.admin),
-      BotCommand("messageremoval", "Moderation", "Get the ban and soft-ban message removal period.", (T context) async {
+      BotCommand("messageremoval", "ModerationAdmin", "Get the ban and soft-ban message removal period.", (T context) async {
         if (await context.assureGuild() == false) return;
         final settings = ServerSettings(store, context.guild!.id);
 
