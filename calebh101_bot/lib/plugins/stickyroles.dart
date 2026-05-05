@@ -8,7 +8,7 @@ class StickyRoles extends BotPlugin {
   @override
   FutureOr<List<BotCommand<Function>>> commands<T extends ChatContext>(CommandsPlugin plugin, KVStore store) {
     return [
-      BotCommand("addrole", "StickyRole", "Add a sticky role to someone.", (ChatContext context, Member member, Role role) async {
+      BotCommand("addrole", "Moderation", "Add a sticky role to someone.", (ChatContext context, Member member, Role role, [bool sticky = false]) async {
         if (await context.assureGuild() == false) return;
         final settings = StickyRolesSettings(store, context.guild!.id, member.id);
 
@@ -19,13 +19,15 @@ class StickyRoles extends BotPlugin {
           return context.respondWithError("We couldn't add role ${await roleToString(role)} to user ${await memberToString(member, client: context.client)}.");
         }
 
-        final current = settings.stickyRoles.get() ?? [];
-        current.add(role.id.value);
-        settings.stickyRoles.set(current);
+        if (sticky) {
+          final current = settings.stickyRoles.get() ?? [];
+          current.add(role.id.value);
+          settings.stickyRoles.set(current);
+        }
 
-        await context.respond(MessageBuilder(content: "Added sticky role ${await roleToString(role)} to user ${await memberToString(member, client: context.client)}!"));
+        await context.respond(MessageBuilder(content: "Added ${sticky ? "sticky role" : "role"} ${await roleToString(role)} to user ${await memberToString(member, client: context.client)}!"));
       }, permissionsRequired: BotCommandPermissions.admin, aliases: ["r+"]),
-      BotCommand("remrole", "StickyRole", "Remove a role from someone.", (ChatContext context, Member member, Role role) async {
+      BotCommand("remrole", "Moderation", "Remove a role from someone.", (ChatContext context, Member member, Role role) async {
         if (await context.assureGuild() == false) return;
         final settings = StickyRolesSettings(store, context.guild!.id, member.id);
 

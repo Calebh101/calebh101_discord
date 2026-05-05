@@ -86,7 +86,7 @@ class MutePlugin extends BotPlugin {
           return "- ${x.value.toChannel()} (`$x`)";
         })}"));
       }, needsGuild: true),
-      BotCommand("unmute", "Mute", "Get the current mute role ignored channels..", (T context, Member member) async {
+      BotCommand("unmute", "Moderation", "Get the current mute role ignored channels..", (T context, Member member) async {
         final settings = MuteServerSettings(store, context.guild!.id);
         final role = settings.muteRole.get();
         if (role == null) return context.respondWithError("No mute role set.");
@@ -120,7 +120,7 @@ class MutePlugin extends BotPlugin {
           severity: ModlogSeverity.good,
         ));
       }, needsGuild: true, permissionsRequired: BotCommandPermissions.mod, aliases: ["um"]),
-      BotCommand("mute", "Mute", "Get the current mute role ignored channels..", (T context, Member member, [Duration? duration, GreedyString? reason]) async {
+      BotCommand("mute", "Moderation", "Get the current mute role ignored channels..", (T context, Member member, [Duration? duration, GreedyString? reason]) async {
         final results = await mute(member, duration, reason: reason?.data, store: store, guild: context.guild!, author: context.user, client: context.client);
 
         if (results.result == false) {
