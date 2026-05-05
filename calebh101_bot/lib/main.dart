@@ -3,6 +3,7 @@ import 'dart:math';
 
 import 'package:calebh101_bot/plugins/botchat.dart';
 import 'package:calebh101_bot/plugins/crosspost.dart';
+import 'package:calebh101_bot/plugins/github.dart';
 import 'package:calebh101_bot/plugins/math.dart';
 import 'package:calebh101_bot/plugins/memberrole.dart';
 import 'package:calebh101_bot/plugins/remind.dart';
@@ -58,6 +59,7 @@ void main(List<String> arguments) => onStart = () async {
     WelcomePlugin(),
     MutePlugin(),
     MemberRolePlugin(),
+    GitHubPlugin(),
   ]);
 
   final context = await load(
@@ -175,11 +177,6 @@ void main(List<String> arguments) => onStart = () async {
           content: List.generate(amount, (_) => ro(farts).call()).join("\n"),
         ));
       }, CommandAttributes(category: "Fun")),
-
-      BotCommand("github", "Util", "Send a GitHub repo.", (ChatContext context, String arg1, [String? arg2, GreedyStringList? params]) async {
-        final p = params?.data ?? [];
-        await context.respond(MessageBuilder(content: "https://gh.calebh101.net${[arg1, ?arg2].map((x) => "/$x").join("")}${p.isNotEmpty ? "?${p.first}${p.sublist(1, p.length).map((x) => "&$x").join("")}" : ""}"));
-      }, aliases: ["gh"]),
 
       BotCommand("mock", "Fun", "Mock a message.", (ChatContext context, [GreedyString? input]) async {
         String? data = input?.data;
