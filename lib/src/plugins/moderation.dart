@@ -456,18 +456,18 @@ class ModerationPlugin extends BotPlugin {
 
         if (arguments["userIds"] is List<Snowflake>) {
           final ids = arguments["userIds"] as List<Snowflake>;
-          messages.removeWhere((x) => ids.contains(x.author.id));
+          messages.removeWhere((x) => !ids.contains(x.author.id));
         }
 
         if (arguments["notUserIds"] is List<Snowflake>) {
           final ids = arguments["notUserIds"] as List<Snowflake>;
-          messages.removeWhere((x) => !ids.contains(x.author.id));
+          messages.removeWhere((x) => ids.contains(x.author.id));
         }
 
         if (arguments["inTheLast"] is Duration) {
           final duration = arguments["inTheLast"] as Duration;
           final after = DateTime.now().subtract(duration);
-          messages.removeWhere((x) => x.timestamp.toUtc().isAfter(after));
+          messages.removeWhere((x) => x.timestamp.toUtc().isBefore(after));
         }
 
         if (arguments["after"] is DateTime) {
@@ -486,27 +486,27 @@ class ModerationPlugin extends BotPlugin {
 
         if (arguments["types"] is List<int>) {
           final types = arguments["types"] as List<int>;
-          messages.removeWhere((x) => types.contains(x.type.value));
+          messages.removeWhere((x) => !types.contains(x.type.value));
         }
 
         if (arguments["notTypes"] is List<int>) {
           final types = arguments["notTypes"] as List<int>;
-          messages.removeWhere((x) => !types.contains(x.type.value));
+          messages.removeWhere((x) => types.contains(x.type.value));
         }
 
         if (arguments["pinned"] is bool) {
           final y = arguments["pinned"] as bool;
-          messages.removeWhere((x) => y ? x.isPinned : !x.isPinned);
+          messages.removeWhere((x) => y ? !x.isPinned : x.isPinned);
         }
 
         if (arguments["embed"] is bool) {
           final y = arguments["embed"] as bool;
-          messages.removeWhere((x) => y ? x.embeds.isNotEmpty : x.embeds.isEmpty);
+          messages.removeWhere((x) => y ? x.embeds.isEmpty : x.embeds.isNotEmpty);
         }
 
         if (arguments["attachment"] is bool) {
           final y = arguments["attachment"] as bool;
-          messages.removeWhere((x) => y ? x.attachments.isNotEmpty : x.attachments.isEmpty);
+          messages.removeWhere((x) => y ? x.attachments.isEmpty : x.attachments.isNotEmpty);
         }
 
         if (arguments["bot"] is bool) {
