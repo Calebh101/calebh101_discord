@@ -71,7 +71,7 @@ class ModerationPlugin extends BotPlugin {
             ].whereType<EmbedFieldBuilder>().toList(),
           ),
         ]));
-      }, permissionsRequired: BotCommandPermissions.mod, needsGuild: true, aliases: ["b"]),
+      }, permissionsRequired: BotCommandPermissions.mod, needsGuild: true),
       BotCommand("unblock", "Moderation", "Unblock a user.", (T context, Snowflake userId) async {
         final settings = UserPerServerSettings(store, context.guild!.id, userId);
         if (settings.blocked.get() == false) return context.respondWithError("User is already unblocked.");
@@ -100,7 +100,7 @@ class ModerationPlugin extends BotPlugin {
             ].whereType<EmbedFieldBuilder>().toList(),
           ),
         ]));
-      }, permissionsRequired: BotCommandPermissions.mod, needsGuild: true, aliases: ["ub"]),
+      }, permissionsRequired: BotCommandPermissions.mod, needsGuild: true),
       BotCommand("ban", "Moderation", "Ban a user.", (T context, Member member, [GreedyString? reason]) async {
         try {
           if (await confirm(context, "ban ${await confirmstringify(member, context.client)}") == false) return;
@@ -428,7 +428,7 @@ class ModerationPlugin extends BotPlugin {
         ));
 
         await context.respond(MessageBuilder(content: "Removed warn **#$index** for ${await memberToString(member, client: context.client)}."));
-      }, permissionsRequired: BotCommandPermissions.mod, aliases: ["remwarn"]),
+      }, permissionsRequired: BotCommandPermissions.mod, aliases: ["remwarn", "uw"]),
       BotCommand("summary", "Moderation", "Get a moderation summary of a user.", (T context, Member member) async {
         await context.respond(MessageBuilder(embeds: [
           EmbedBuilder(

@@ -257,13 +257,15 @@ BotCommand defaultCheck(KVStore store) => BotCommand.check((plugin) {
     if (!pass) {
       if (context is MessageChatContext) await context.message.react(ReactionBuilder(name: "🚫", id: null));
       if (context is InteractionChatContext) await context.respond(MessageBuilder(content: "Command is disabled."), level: ResponseLevel.hint);
+      return false;
     }
 
     if (command.needsGuild) {
       if (await context.assureGuild() == false) return false;
     }
 
-    return pass;
+    await context.channel.triggerTyping();
+    return true;
   });
 });
 

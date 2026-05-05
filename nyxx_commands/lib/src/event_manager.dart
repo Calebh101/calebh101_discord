@@ -155,8 +155,6 @@ class EventManager {
 
       logger.fine('Invoking command ${context.command.name} from message $message');
 
-      await context.channel.triggerTyping();
-
       await context.command.invoke(context);
 
       return context.command;

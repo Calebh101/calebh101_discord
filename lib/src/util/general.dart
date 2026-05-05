@@ -19,6 +19,12 @@ extension ToFuture<T> on FutureOr<T> {
   }
 }
 
+extension ToFutureOr<T> on Future<T> {
+  FutureOr<T> toFutureOr() async {
+    return this;
+  }
+}
+
 Future<String> Function(MessageCreateEvent) prefixFromServerSettings(ServerSettings? Function(PartialGuild guild) getSettings) => (MessageCreateEvent event) async {
   return [() {
     if (event.guild == null) return defaultPrefix;

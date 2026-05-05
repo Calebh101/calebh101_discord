@@ -4,6 +4,7 @@ import 'dart:math';
 import 'package:calebh101_bot/plugins/botchat.dart';
 import 'package:calebh101_bot/plugins/crosspost.dart';
 import 'package:calebh101_bot/plugins/math.dart';
+import 'package:calebh101_bot/plugins/memberrole.dart';
 import 'package:calebh101_bot/plugins/remind.dart';
 import 'package:calebh101_bot/plugins/rules.dart';
 import 'package:calebh101_bot/plugins/selfreact.dart';
@@ -56,6 +57,7 @@ void main(List<String> arguments) => onStart = () async {
     BotChatPlugin(),
     WelcomePlugin(),
     MutePlugin(),
+    MemberRolePlugin(),
   ]);
 
   final context = await load(

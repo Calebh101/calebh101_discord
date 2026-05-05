@@ -166,6 +166,33 @@ class GreedyRoleList extends ConverterType {
   }
 }
 
+class GreedyMemberList extends ConverterType {
+  final List<Member> input;
+  const GreedyMemberList(this.input);
+
+  @override
+  String get name => "Greedy list of members";
+
+  @override
+  String get info => "List of members.";
+
+  static BotConverter converter() {
+    return BotConverter("GreedyMemberList", (plugin) => Converter<GreedyMemberList>((value, context) async {
+      List<Member> results = [];
+
+      while (value.remaining.trim().isNotEmpty) {
+        try {
+          final id = int.parse(value.getQuotedWord());
+          final user = await context.guild!.members.get(Snowflake(id));
+          results.add(user);
+        } catch (_) {}
+      }
+
+      return GreedyMemberList(results);
+    }));
+  }
+}
+
 class GreedyGuildTextChannelList extends ConverterType {
   final List<GuildTextChannel> input;
   const GreedyGuildTextChannelList(this.input);
@@ -177,7 +204,7 @@ class GreedyGuildTextChannelList extends ConverterType {
   String get info => "List of channels.";
 
   static BotConverter converter() {
-    return BotConverter("GreedyRoleList", (plugin) => Converter<GreedyGuildTextChannelList>((value, context) async {
+    return BotConverter("GreedyGuildTextChannelList", (plugin) => Converter<GreedyGuildTextChannelList>((value, context) async {
       if (value.remaining.trim() == "allInGuild" && context.guild != null) {
         value.index = value.end;
         return GreedyGuildTextChannelList((await context.guild!.fetchChannels()).whereType<GuildTextChannel>().toList());
