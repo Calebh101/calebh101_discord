@@ -209,3 +209,7 @@ Future<void> alertOwners(NyxxGateway client, EmbedBuilder embed) async {
 extension IfNull on String {
   String? get nullIfEmpty => isEmpty ? null : this;
 }
+
+extension IfIs on Object? {
+  T? ifIs<T>() => this is T ? this as T : null;
+}

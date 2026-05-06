@@ -151,13 +151,13 @@ class GreedyRoleList extends ConverterType {
 
   static BotConverter converter() {
     return BotConverter("GreedyRoleList", (plugin) => Converter<GreedyRoleList>((value, context) async {
+      final converter = plugin.getConverter(RuntimeType<Role>())!;
       List<Role> results = [];
 
       while (value.remaining.trim().isNotEmpty) {
         try {
-          final id = int.parse(value.getQuotedWord());
-          final role = await context.guild!.roles.get(Snowflake(id));
-          results.add(role);
+          final role = await converter.convert.call(value, context);
+          results.add(role!);
         } catch (_) {}
       }
 
@@ -178,13 +178,13 @@ class GreedyMemberList extends ConverterType {
 
   static BotConverter converter() {
     return BotConverter("GreedyMemberList", (plugin) => Converter<GreedyMemberList>((value, context) async {
+      final converter = plugin.getConverter(RuntimeType<Member>())!;
       List<Member> results = [];
 
       while (value.remaining.trim().isNotEmpty) {
         try {
-          final id = int.parse(value.getQuotedWord());
-          final user = await context.guild!.members.get(Snowflake(id));
-          results.add(user);
+          final user = await converter.convert.call(value, context);
+          results.add(user!);
         } catch (_) {}
       }
 
@@ -210,13 +210,13 @@ class GreedyGuildTextChannelList extends ConverterType {
         return GreedyGuildTextChannelList((await context.guild!.fetchChannels()).whereType<GuildTextChannel>().toList());
       }
 
+      final converter = plugin.getConverter(RuntimeType<GuildTextChannel>())!;
       List<GuildTextChannel> results = [];
 
       while (value.remaining.trim().isNotEmpty) {
         try {
-          final id = int.parse(value.getQuotedWord().replaceAll(RegExp(r'[<#>]'), ''));
-          final channel = await context.client.channels.get(Snowflake(id));
-          results.add(channel as GuildTextChannel);
+          final channel = await converter.convert.call(value, context);
+          results.add(channel!);
         } catch (_) {}
       }
 
@@ -238,4 +238,34 @@ BotConverter dateTimeConverter() {
     final text = value.getQuotedWord();
     return parseDateTime(text);
   }));
+}
+
+class Or<A, B> extends ConverterType {
+  final A? $1;
+  final B? $2;
+
+  const Or(this.$1, this.$2);
+
+  @override
+  String get info => "$A or $B";
+
+  @override
+  String get name => "$A or $B";
+
+  static BotConverter converter<A, B>() {
+    return BotConverter("Or<$A, $B>", (plugin) => Converter<Or<A, B>>((value, context) async {
+      A? a;
+      B? b;
+
+      final ca = plugin.getConverter(RuntimeType<A>());
+      if (ca != null) a = await ca.convert.call(value, context);
+
+      if (a == null) {
+        final cb = plugin.getConverter(RuntimeType<B>());
+        if (cb != null) b = await cb.convert.call(value, context);
+      }
+
+      return a != null || b != null ? Or<A, B>(a, b) : null;
+    }));
+  }
 }

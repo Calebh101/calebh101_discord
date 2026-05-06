@@ -13,7 +13,7 @@ class ModerationPlugin extends BotPlugin {
 
   @override
   FutureOr<List<BotConverter>> converters(CommandsPlugin plugin, KVStore store) {
-    return [durationConverter()];
+    return [durationConverter(), Or.converter<Member, Snowflake>()];
   }
 
   Future<String> confirmstringify(Member member, NyxxGateway client) async {
@@ -27,7 +27,28 @@ class ModerationPlugin extends BotPlugin {
       ].join(" ");
     } catch (e) {
       Logger.print("confirmstringify", "$e (member=${member.runtimeType}, user=${member.user.runtimeType}, nick=${member.nick}, id=${member.id}");
-      return await userToString(user) ?? "undefined";
+      return await userToString(user, detailed: true) ?? "undefined";
+    }
+  }
+
+  Future<String> confirmstringifyorid(Snowflake? id, Member? member, NyxxGateway client) async {
+    if (member != null) {
+      final user = member.user ?? await client.users[member.id].get();
+
+      try {
+        return [
+          (member.nick ?? user.globalName ?? user.username),
+          "(${user.username})",
+          "(${member.id})",
+        ].join(" ");
+      } catch (e) {
+        Logger.print("confirmstringify", "$e (member=${member.runtimeType}, user=${member.user.runtimeType}, nick=${member.nick}, id=${member.id}");
+        return await userToString(user, detailed: true) ?? "undefined";
+      }
+    } else if (id != null) {
+      return id.toDiscordCodeString();
+    } else {
+      return "*No data*";
     }
   }
 
@@ -101,20 +122,22 @@ class ModerationPlugin extends BotPlugin {
           ),
         ]));
       }, permissionsRequired: BotCommandPermissions.mod, needsGuild: true),
-      BotCommand("ban", "Moderation", "Ban a user.", (T context, Member member, [GreedyString? reason]) async {
+      BotCommand("ban", "Moderation", "Ban a user.", (T context, Or<Member, Snowflake> input, [GreedyString? reason]) async {
+        final id = input.$1?.id ?? input.$2!;
+
         try {
-          if (await confirm(context, "ban ${await confirmstringify(member, context.client)}") == false) return;
+          if (await confirm(context, "ban ${await confirmstringifyorid(id, input.$1, context.client)}") == false) return;
           final settings = ifGuild(store, context.guild?.id, (id) => ServerSettings(store, id));
           var deleteMessagesSeconds = settings?.banMessageRemovalSeconds.get();
           if (deleteMessagesSeconds == null || deleteMessagesSeconds <= 0) deleteMessagesSeconds = null;
-          await member.ban(auditLogReason: "${context.user.username}: ${reason?.data ?? "No reason provided"}", deleteMessages: deleteMessagesSeconds != null ? Duration(seconds: deleteMessagesSeconds) : null);
+          await context.guild!.createBan(id, auditLogReason: "${context.user.username}: ${reason?.data ?? "No reason provided"}", deleteMessages: deleteMessagesSeconds != null ? Duration(seconds: deleteMessagesSeconds) : null);
         } on HttpResponseError catch (e) {
-          Logger.warn("Ban", "Unable to ban ${member.id}: $e");
+          Logger.warn("Ban", "Unable to ban $id: $e");
           final fail = e.message;
 
           await context.respond(MessageBuilder(embeds: [
             EmbedBuilder(
-              description: "## Unable to Ban ${member.toMention()}\n${await memberToString(member, client: context.client, detailed: true)}\n${reason?.toDiscordCodeBlock() ?? "No reason provided"}\n\n${fail.toDiscordCodeBlock()}",
+              description: "## Unable to Ban ${id.value.toMention()}\n${await memberToString(input.$1, client: context.client, detailed: true) ?? id.toDiscordCodeString()}\n${reason?.toDiscordCodeBlock() ?? "No reason provided"}\n\n${fail.toDiscordCodeBlock()}",
               color: await getColor(context.member),
             ),
           ]));
@@ -126,7 +149,7 @@ class ModerationPlugin extends BotPlugin {
           "mod.ban",
           title: "Banned User",
           fields: {
-            "Target": member.toMention(),
+            "Target": id.value.toMention(),
             "Author": context.user.toMention(),
             "Reason": reason?.data.toDiscordCodeBlock() ?? "No reason provided",
           },
@@ -138,10 +161,10 @@ class ModerationPlugin extends BotPlugin {
 
         await context.respond(MessageBuilder(embeds: [
           EmbedBuilder(
-            description: "## Banned ${member.toMention()}\n${await memberToString(member, client: context.client, detailed: true)}",
+            description: "## Banned ${id.value.toMention()}\n${await memberToString(input.$1, client: context.client, detailed: true)}",
             color: await getColor(context.member),
             fields: [
-              warnsToField(store, member.id, guild: context.guild!),
+              warnsToField(store, id, guild: context.guild!),
               EmbedFieldBuilder(name: "Reason", value: reason?.data ?? "No reason provided.", isInline: false),
             ].whereType<EmbedFieldBuilder>().toList(),
           ),
