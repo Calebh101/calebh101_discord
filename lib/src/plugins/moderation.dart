@@ -161,7 +161,7 @@ class ModerationPlugin extends BotPlugin {
 
         await context.respond(MessageBuilder(embeds: [
           EmbedBuilder(
-            description: "## Banned ${id.value.toMention()}\n${await memberToString(input.$1, client: context.client, detailed: true)}",
+            description: "## Banned ${id.value.toMention()}\n${await memberToString(input.$1, client: context.client, detailed: true) ?? id.toDiscordCodeString()}",
             color: await getColor(context.member),
             fields: [
               warnsToField(store, id, guild: context.guild!),
