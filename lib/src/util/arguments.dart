@@ -257,10 +257,12 @@ class Or<A, B> extends ConverterType {
       A? a;
       B? b;
 
+      final indexBefore = value.index;
       final ca = plugin.getConverter(RuntimeType<A>());
       if (ca != null) a = await ca.convert.call(value, context);
 
       if (a == null) {
+        value.index = indexBefore;
         final cb = plugin.getConverter(RuntimeType<B>());
         if (cb != null) b = await cb.convert.call(value, context);
       }

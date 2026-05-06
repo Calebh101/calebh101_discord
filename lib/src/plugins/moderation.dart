@@ -46,7 +46,7 @@ class ModerationPlugin extends BotPlugin {
         return await userToString(user, detailed: true) ?? "undefined";
       }
     } else if (id != null) {
-      return id.toDiscordCodeString();
+      return id.toString();
     } else {
       return "*No data*";
     }
@@ -137,7 +137,7 @@ class ModerationPlugin extends BotPlugin {
 
           await context.respond(MessageBuilder(embeds: [
             EmbedBuilder(
-              description: "## Unable to Ban ${id.value.toMention()}\n${await memberToString(input.$1, client: context.client, detailed: true) ?? id.toDiscordCodeString()}\n${reason?.toDiscordCodeBlock() ?? "No reason provided"}\n\n${fail.toDiscordCodeBlock()}",
+              description: "## Unable to Ban ${id.value.toMention()}\n${await memberToString(input.$1, client: context.client, detailed: true) ?? id}\n${reason?.toDiscordCodeBlock() ?? "No reason provided"}\n\n${fail.toDiscordCodeBlock()}",
               color: await getColor(context.member),
             ),
           ]));
