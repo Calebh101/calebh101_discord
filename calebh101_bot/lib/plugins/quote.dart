@@ -43,9 +43,11 @@ class QuotePlugin extends BotPlugin {
         })));
 
         final reaction = reactions.entries.firstWhereOrNull((x) => x.key.id == emoji.id && x.key.name == emoji.name);
-        Logger.print("Quote", "Reactions: ${reaction?.value.length} (from ${reactions.length} entries and ${message.reactions.length} reactions)");
+        Logger.print("Quote", "Reactions: ${reaction?.value.length} (from ${reactions.length} entries and ${message.reactions.length} reactions): ${reactions.entries.map((x) => "(${x.key.name}, ${x.key.id}, ${x.key.name == emoji.name}, ${x.key.id == emoji.id})")}");
 
-        if (reaction?.value.any((x) => x.id == client.user.id) ?? false) {} else {
+        if (reaction?.value.any((x) => x.id == client.user.id) ?? false) {
+          await message.deleteOwnReaction(ReactionBuilder.fromEmoji(emoji));
+        } else {
           final users = reaction?.value.where((x) => !x.isBot && !x.isSystem && x.id != event.userId) ?? [];
           if (isMod(settings: settings, member: event.member!) && settings.quoteAdminImmediate.get()) {} else if (users.length < count) return;
         }
@@ -113,7 +115,6 @@ class QuotePlugin extends BotPlugin {
 
         if (message == null) return context.respondWithError("No message found.");
         await message.react(ReactionBuilder.fromEmoji(emoji));
-        await message.deleteOwnReaction(ReactionBuilder.fromEmoji(emoji));
         await context.respond(MessageBuilder(content: "Message `${message.id}` quoted."), level: ResponseLevel.hint);
       }, needsGuild: true, permissionsRequired: BotCommandPermissions.mod, aliases: ["q"]),
       BotCommand("setquoteemoji", "Quote", "Set the emoji used to quote.", (T context, [GreedyString? input]) async {
