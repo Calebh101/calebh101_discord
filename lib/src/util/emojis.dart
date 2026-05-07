@@ -116,3 +116,17 @@ Future<Emoji?> emojiFromJson(Map input, {required NyxxGateway client, required G
 
   return null;
 }
+
+String? emojiToString(Emoji emoji) {
+  if (emoji.id.value > 0) {
+    return "<:${emoji.name}:${emoji.id}>";
+  } else {
+    return emoji.name;
+  }
+}
+
+extension EmojiToString on Emoji {
+  String? toDiscordString() {
+    return emojiToString(this);
+  }
+}
