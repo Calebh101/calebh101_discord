@@ -219,6 +219,13 @@ void main(List<String> arguments) => onStart = () async {
         final emoji = await parseEmoji(data, client: context.client, guild: context.guild);
         await context.respond(MessageBuilder(content: emoji == null ? "No emoji found.\nInput: `$data`" : "Found emoji: `${emoji.runtimeType}`\nName: `${emoji.name}`, ID: `${emoji.id}`\nInput: `$data`", allowedMentions: AllowedMentions(repliedUser: true)));
       }),
+
+      BotCommand("react", "Debug", "React to a message.", (MessageChatContext context, GreedyString input) async {
+        final target = context.message.referencedMessage ?? context.message;
+        final emoji = await parseEmoji(input.data, client: context.client, guild: context.guild) ?? context.client.getTextEmoji("🚫");
+
+        await target.react(ReactionBuilder.fromEmoji(emoji));
+      }, permissionsRequired: BotCommandPermissions.owner),
     ],
   );
 
