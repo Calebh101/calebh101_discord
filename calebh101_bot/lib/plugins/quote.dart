@@ -44,6 +44,7 @@ class QuotePlugin extends BotPlugin {
 
         final reaction = reactions.entries.firstWhereOrNull((x) => x.key.id == emoji.id && x.key.name == emoji.name);
         Logger.print("Quote", "Reactions: ${reaction?.value.length} (from ${reactions.length} entries and ${message.reactions.length} reactions): ${reactions.entries.map((x) => "(${x.key.name}, ${x.key.id}, ${x.key.name == emoji.name}, ${x.key.id == emoji.id})")}");
+        final author = message.author;
 
         if (reaction?.value.any((x) => x.id == client.user.id) ?? false) {
           await message.deleteOwnReaction(ReactionBuilder.fromEmoji(emoji));
@@ -53,10 +54,10 @@ class QuotePlugin extends BotPlugin {
         }
 
         await channel.sendMessage(MessageBuilder(embeds: [EmbedBuilder(
-          description: "## Quote by ${message.author.id.value.toMention()}\n\n${message.content}",
+          author: author is User ? EmbedAuthorBuilder(name: author.username, iconUrl: author.avatar.url) : null,
+          description: "## Quote by ${message.author.id.value.toMention()}\n\n${message.content}\n\nLink: ${discordLink(event.guildId, message.channelId, message.id)}-# This message was sent by a random user, and is not property of this bot.",
           timestamp: DateTime.now().toUtc(),
           color: await getColor(await tryCatchA<Member?>(() async => await userToMember(message.author as User, guild: guild))),
-          footer: EmbedFooterBuilder(text: "This message was sent by a random user, and is not property of this bot."),
         ), ...message.embeds.map((e) => EmbedBuilder(
           title: e.title,
           description: e.description,
