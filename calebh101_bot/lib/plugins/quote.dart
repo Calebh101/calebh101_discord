@@ -55,7 +55,7 @@ class QuotePlugin extends BotPlugin {
 
         await channel.sendMessage(MessageBuilder(embeds: [EmbedBuilder(
           author: author is User ? EmbedAuthorBuilder(name: author.username, iconUrl: author.avatar.url) : null,
-          description: "## Quote by ${message.author.id.value.toMention()}\n\n${message.content}\n\nLink: ${discordLink(event.guildId, message.channelId, message.id)}-# This message was sent by a random user, and is not property of this bot.",
+          description: "## Quote by ${message.author.id.value.toMention()}\n\n${message.content}\n\nLink: ${discordLink(event.guildId, message.channelId, message.id)}\n-# This message was sent by a random user, and is not property of this bot.",
           timestamp: DateTime.now().toUtc(),
           color: await getColor(await tryCatchA<Member?>(() async => await userToMember(message.author as User, guild: guild))),
         ), ...message.embeds.map((e) => EmbedBuilder(
