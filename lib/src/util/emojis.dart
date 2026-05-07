@@ -111,7 +111,7 @@ Future<Emoji?> emojiFromJson(Map input, {required NyxxGateway client, required G
     case 0:
       return client.getTextEmoji(input["name"]);
     case 1:
-      return await guild?.emojis.get(input["id"]);
+      return await guild?.emojis.get(Snowflake(input["id"]));
   }
 
   return null;
