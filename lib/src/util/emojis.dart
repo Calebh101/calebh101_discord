@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:async/async.dart';
 import 'package:calebh101_discord/calebh101_discord.dart';
+import 'package:unicode/blocks.dart';
 
 class EmojiListDetails {
   final List<Emoji> emojis;
@@ -71,4 +72,47 @@ Future<EmojiListDetails?> askForEmojis(ChatContext context, [int? required]) asy
     Logger.warn("Emojis", "Error: $e");
     return null;
   }
+}
+
+final emojiBlocks = [UnicodeBlock.miscellaneousSymbols, UnicodeBlock.dingbats, UnicodeBlock.miscellaneousSymbolsandArrows, UnicodeBlock.enclosedAlphanumerics, UnicodeBlock.miscellaneousSymbolsandPictographs, UnicodeBlock.emoticons, UnicodeBlock.ornamentalDingbats, UnicodeBlock.transportandMapSymbols, UnicodeBlock.alchemicalSymbols, UnicodeBlock.geometricShapesExtended, UnicodeBlock.supplementalArrowsC, UnicodeBlock.supplementalSymbolsandPictographs, UnicodeBlock.chessSymbols, UnicodeBlock.symbolsandPictographsExtendedA, UnicodeBlock.symbolsforLegacyComputing, UnicodeBlock.enclosedAlphanumericSupplement, UnicodeBlock.enclosedIdeographicSupplement, UnicodeBlock.mahjongTiles, UnicodeBlock.dominoTiles, UnicodeBlock.playingCards];
+
+Future<Emoji?> parseEmoji(String input, {required NyxxGateway client, required Guild? guild}) async {
+  input = input.trim();
+
+  if (input.runes.length == 1) {
+    if (emojiBlocks.contains(getUnicodeBlock(input.runes.first))) {
+      return client.getTextEmoji(input);
+    }
+  } else if (input.isNotEmpty) {
+    final regex = RegExp(r'<:([^<>:]+):(\d+)>');
+    final match = regex.firstMatch(input);
+
+    if (match != null) {
+      final name = match.group(1)!;
+      final id = Snowflake(int.parse(match.group(2)!));
+
+      return await guild?.emojis.fetch(id);
+    }
+  }
+
+  return null;
+}
+
+Map emojiToJson(Emoji emoji) {
+  return {
+    "type": emoji is TextEmoji ? 0 : emoji is GuildEmoji ? 1 : null,
+    "id": emoji.id.value,
+    "name": emoji.name,
+  };
+}
+
+Future<Emoji?> emojiFromJson(Map input, {required NyxxGateway client, required Guild? guild}) async {
+  switch (input["type"]) {
+    case 0:
+      return client.getTextEmoji(input["name"]);
+    case 1:
+      return await guild?.emojis.get(input["id"]);
+  }
+
+  return null;
 }

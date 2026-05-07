@@ -6,6 +6,7 @@ import 'package:calebh101_bot/plugins/crosspost.dart';
 import 'package:calebh101_bot/plugins/github.dart';
 import 'package:calebh101_bot/plugins/math.dart';
 import 'package:calebh101_bot/plugins/memberrole.dart';
+import 'package:calebh101_bot/plugins/quote.dart';
 import 'package:calebh101_bot/plugins/remind.dart';
 import 'package:calebh101_bot/plugins/rules.dart';
 import 'package:calebh101_bot/plugins/selfreact.dart';
@@ -17,6 +18,7 @@ import 'package:calebh101_discord/calebh101_discord.dart';
 import 'package:calebh101_discord/recursive_caster.g.dart';
 import 'package:collection/collection.dart';
 import 'package:quick_listener/quick_listener.dart';
+import 'package:unicode/blocks.dart';
 
 final double maxXpPerHour = 1;
 final double xpPerReaction = 0.01;
@@ -60,6 +62,7 @@ void main(List<String> arguments) => onStart = () async {
     MutePlugin(),
     MemberRolePlugin(),
     GitHubPlugin(),
+    QuotePlugin(),
   ]);
 
   final context = await load(
@@ -200,6 +203,21 @@ void main(List<String> arguments) => onStart = () async {
         }
 
         await context.respond(MessageBuilder(content: parts.join("")));
+      }),
+
+      BotCommand("scan", "Debug", "Scan a string.", (ChatContext context, GreedyString input) async {
+        await context.respond(MessageBuilder(content: [
+          input.data.toDiscordCodeBlock(),
+          input.data.runes.map((r) {
+            return "-# - `U+${r.toRadixString(16).toUpperCase().padLeft(4, "0")}` `${getUnicodeBlock(r).name}` `${getUnicodeName(r) ?? "UNKNOWN"}`";
+          }).join("\n"),
+        ].join("\n\n"), allowedMentions: AllowedMentions(repliedUser: true)));
+      }),
+
+      BotCommand("emoji", "Debug", "Get an emoji.", (ChatContext context, GreedyString input) async {
+        final data = input.data.trim();
+        final emoji = await parseEmoji(data, client: context.client, guild: context.guild);
+        await context.respond(MessageBuilder(content: emoji == null ? "No emoji found.\nInput: `$data`" : "Found emoji: `${emoji.runtimeType}`\nName: `${emoji.name}`, ID: `${emoji.id}`\nInput: `$data`", allowedMentions: AllowedMentions(repliedUser: true)));
       }),
     ],
   );

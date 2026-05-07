@@ -13,6 +13,7 @@
 
 analyzer:
   errors:
+    curly_braces_in_flow_control_structures: ignore
     prefer_function_declarations_over_variables: ignore
 include: package:lints/recommended.yaml
 

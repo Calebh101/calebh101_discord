@@ -1,5 +1,6 @@
 library;
 
+export 'unicode_names.dart';
 export 'src/main.dart';
 export 'src/data.dart';
 export 'src/commands.dart';
@@ -31,4 +32,5 @@ export 'src/plugins/mute.dart';
 
 export 'package:nyxx/nyxx.dart' hide Logger;
 export 'package:nyxx_commands/nyxx_commands.dart';
+export 'package:nyxx_extensions/nyxx_extensions.dart';
 export 'package:localpkg/localpkg.dart';

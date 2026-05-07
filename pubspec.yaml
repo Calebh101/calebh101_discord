@@ -32,6 +32,8 @@ dependencies:
 
   nyxx_commands:
     path: nyxx_commands
+  unicode: ^1.1.9
+  nyxx_extensions: ^4.4.0
 
 dev_dependencies:
   lints: ^6.0.0

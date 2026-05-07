@@ -660,6 +660,32 @@ class ModerationPlugin extends BotPlugin {
           "Soft-ban message removal: **${sbDuration?.prettyDetailed() ?? "Not set"}**",
         ].join("\n")));
       }),
+      BotCommand("delete", "Moderation", "Mock a message.", (ChatContext context, [Snowflake? id]) async {
+        Message? message;
+
+        if (id == null && context is MessageChatContext) {
+          final reply = context.message.referencedMessage;
+          message = reply;
+        }
+
+        if (id != null) {
+          try {
+            final channel = context.channel;
+            message = await channel.messages.get(id);
+          } catch (_) {}
+        }
+
+        if (message == null) return context.respondWithError("No message or input found.");
+        await message.delete();
+
+        if (context is MessageChatContext) {
+          final m = await context.channel.sendMessage(MessageBuilder(content: "Deleting message `${message.id}`..."));
+          await context.message.delete();
+          await m.delete();
+        } else if (context is InteractionChatContext) {
+          await context.respond(MessageBuilder(content: "Message `${message.id}` deleted."), level: ResponseLevel.hint);
+        }
+      }, permissionsRequired: BotCommandPermissions.mod, aliases: ["d"]),
     ];
   }
 

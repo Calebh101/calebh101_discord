@@ -121,6 +121,12 @@ class EventManager {
         commands.contextManager.createButtonComponentContext,
       );
 
+  Map<Snowflake, DateTime> recentCommands = {};
+
+  void filterRecentCommands() {
+    recentCommands.removeWhere((k, v) => DateTime.now().difference(v).inMilliseconds > 1000);
+  }
+
   /// The handler for select menu [MessageComponentInteraction]s.
   ///
   /// Attach to [NyxxGateway.onMessageComponentInteraction] where the component is a select menu.
@@ -154,6 +160,10 @@ class EventManager {
       }
 
       logger.fine('Invoking command ${context.command.name} from message $message');
+
+      filterRecentCommands();
+      if (recentCommands.containsKey(event.message.author.id)) return null;
+      recentCommands[event.message.author.id] = DateTime.now();
 
       await context.command.invoke(context);
 
