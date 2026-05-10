@@ -12,12 +12,10 @@ class PrefixPlugin extends BotPluginLegacy {
 
   List<BotCommand> prefixCommands<T extends ChatContext>(ServerSettings? Function(Guild guild) getSettings) => [
     BotCommand.command("prefix", "Get the bot's prefix.", (T context) async {
-      if (context.guild == null || context.member == null) return context.respondWithError("No guild/member found.");
-      final settings = getSettings.call(context.guild!);
-      if (settings == null) return context.respondWithError("Unable to load settings.");
+      final prefix = (context.guild != null ? getSettings.call(context.guild!)?.prefix.get() : null) ?? defaultPrefix;
 
       await context.respond(MessageBuilder(
-        content: "Prefix is currently set to `${settings.prefix.get()}`.",
+        content: "Prefix is currently set to `$prefix`.",
       ));
     }, CommandAttributes(category: "Bot")),
     BotCommand.command("setprefix", "Set the bot's prefix.", (T context, String prefix) async {
