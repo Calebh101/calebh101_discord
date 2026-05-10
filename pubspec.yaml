@@ -10,7 +10,7 @@ environment:
 dependencies:
   localpkg:
     git:
-      url: https://github.com/Calebh101/localpkg-dart.git
+      url: https://github.com/Calebh101/localpkg-dart
       ref: main
 
   dotenv: ^4.2.0

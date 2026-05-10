@@ -3,7 +3,6 @@ import 'dart:math';
 
 import 'package:calebh101_discord/calebh101_discord.dart';
 import 'package:chrono_dart/chrono_dart.dart';
-import 'package:collection/collection.dart';
 
 Future<DiscordColor> getColor(Member? member) async {
   return await getPrimaryColor(member) ?? primaryBotColor;
@@ -95,41 +94,6 @@ extension GetMessages on MessageManager {
   }
 }
 
-class Catch<T extends Object, R> {
-  final R? Function(T e) callback;
-  const Catch(this.callback);
-
-  bool checkType(dynamic input) {
-    return input is T;
-  }
-
-  factory Catch.rethrower() {
-    return Catch((e) => throw e);
-  }
-}
-
-T? tryCatch<T>(T? Function() callback, {T? Function(Object e)? onCatch, List<Catch<Object, T>> onCatchTyped = const []}) {
-  if (<T>[] is List<Future>) {
-    throw Exception("tryCatch can not be used with a Future. Use tryCatchA instead. Received: $T");
-  }
-
-  try {
-    return callback.call();
-  } catch (e) {
-    final catchF = onCatchTyped.firstWhereOrNull((x) => x.checkType(e));
-    return catchF?.callback.call(e) ?? onCatch?.call(e);
-  }
-}
-
-Future<T?> tryCatchA<T>(FutureOr<T>? Function() callback, {FutureOr<T?> Function(Object e)? onCatch, List<Catch<Object, Future<T>>> onCatchTyped = const []}) async {
-  try {
-    return await callback.call();
-  } catch (e) {
-    final catchF = onCatchTyped.firstWhereOrNull((x) => x.checkType(e));
-    return await (catchF?.callback.call(e) ?? onCatch?.call(e));
-  }
-}
-
 Duration? parseDuration(String text) {
   final regex = RegExp(
     r'(?:(\d+)y)?(?:(\d+)mo)?(?:(\d+)w)?(?:(\d+)d)?(?:(\d+)h)?(?:(\d+)m)?(?:(\d+)s)?',
@@ -204,10 +168,6 @@ Future<void> alertOwners(NyxxGateway client, EmbedBuilder embed) async {
       Logger.warn("AlertOwner", "Error: $e");
     }
   }
-}
-
-extension IfNull on String {
-  String? get nullIfEmpty => isEmpty ? null : this;
 }
 
 extension IfIs on Object? {
