@@ -7,7 +7,7 @@ import 'package:collection/collection.dart';
 
 Map<Snowflake, int> rTrain = {};
 
-class HelpPlugin extends BotPlugin {
+class HelpPlugin extends BotPluginLegacy {
   HelpPlugin() : super(id: "help", version: Version.parse("1.0.0A"));
 
   @override
@@ -26,6 +26,18 @@ class HelpPlugin extends BotPlugin {
           ),
           settings: context.guild != null ? ServerSettings(store, context.guild!.id) : null,
         );
+      }),
+      BotCommand("plugin", "Commands", "Find a plugin by its ID.", (T context, String id) async {
+        final plugin = pluginStore.plugins.firstWhereOrNull((x) => x.id == id.trim());
+        if (plugin == null) return context.respondWithError("Invalid plugin ID: `$id`\nRun `plugins` to view all plugins.");
+
+        await context.respond(MessageBuilder(embeds: [
+          EmbedBuilder(
+            title: "Plugin Found",
+            description: "ID: `${plugin.id}`\nVersion: ${plugin.version}\nIdentifier: `${plugin.className}`\n\n${plugin.description}",
+            color: await getColor(context.member),
+          ),
+        ]));
       }),
       BotCommand("categories", "Commands", "List all categories.", (T context) async {
         final categories = BotCommand.getAllCategories().entries.sorted((a, b) => a.key.compareTo(b.key));

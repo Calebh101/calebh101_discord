@@ -3,7 +3,7 @@ import 'dart:math';
 
 import 'package:calebh101_discord/calebh101_discord.dart';
 
-class MessagesPlugin extends BotPlugin {
+class MessagesPlugin extends BotPluginLegacy {
   MessagesPlugin() : super(id: "messages", version: Version.parse("1.0.0A"));
 
   @override

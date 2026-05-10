@@ -4,7 +4,7 @@ import 'dart:io';
 import 'package:calebh101_discord/calebh101_discord.dart';
 import 'package:system_info2/system_info2.dart';
 
-class StatsPlugin extends BotPlugin {
+class StatsPlugin extends BotPluginLegacy {
   StatsPlugin() : super(id: "stats", version: Version.parse("1.0.0A"));
 
   @override

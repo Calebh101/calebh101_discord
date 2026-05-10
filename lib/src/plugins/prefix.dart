@@ -2,7 +2,7 @@ import 'dart:async';
 
 import 'package:calebh101_discord/calebh101_discord.dart';
 
-class PrefixPlugin extends BotPlugin {
+class PrefixPlugin extends BotPluginLegacy {
   PrefixPlugin() : super(id: "prefix", version: Version.parse("1.0.0A"));
 
   @override

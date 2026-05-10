@@ -24,7 +24,7 @@ Future<Map<int, String>> parseRules(String text, KVStore store) async {
   return rules;
 }
 
-class RulesPlugin extends BotPlugin {
+class RulesPlugin extends BotPluginLegacy {
   RulesPlugin() : super(id: "rules", version: Version.parse("1.0.0A"));
 
   @override

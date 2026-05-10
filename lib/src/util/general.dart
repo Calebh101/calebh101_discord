@@ -5,7 +5,7 @@ import 'package:calebh101_discord/calebh101_discord.dart';
 import 'package:chrono_dart/chrono_dart.dart';
 import 'package:collection/collection.dart';
 
-Future<DiscordColor> getColor([Member? member]) async {
+Future<DiscordColor> getColor(Member? member) async {
   return await getPrimaryColor(member) ?? primaryBotColor;
 }
 

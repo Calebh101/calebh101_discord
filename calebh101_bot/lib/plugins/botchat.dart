@@ -12,7 +12,7 @@ class GuildCarrier {
   const GuildCarrier(this.guild);
 }
 
-class BotChatPlugin extends BotPlugin {
+class BotChatPlugin extends BotPluginLegacy {
   BotChatPlugin() : super(id: "botchat", version: Version.parse("1.0.0A"));
 
   MarkovChain newChain(dynamic context) {

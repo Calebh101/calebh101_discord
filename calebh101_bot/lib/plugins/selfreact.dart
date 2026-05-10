@@ -2,7 +2,7 @@ import 'dart:async';
 
 import 'package:calebh101_discord/calebh101_discord.dart';
 
-class SelfReactPlugin extends BotPlugin {
+class SelfReactPlugin extends BotPluginLegacy {
   SelfReactPlugin() : super(id: "selfreact", version: Version.parse("1.0.0A"));
 
   @override

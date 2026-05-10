@@ -2,7 +2,7 @@ import 'dart:async';
 
 import 'package:calebh101_discord/calebh101_discord.dart';
 
-class IgnorePlugin extends BotPlugin {
+class IgnorePlugin extends BotPluginLegacy {
   IgnorePlugin() : super(id: "ignore", version: Version.parse("1.0.0A"));
 
   @override

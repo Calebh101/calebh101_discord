@@ -5,7 +5,7 @@ import 'package:calebh101_discord/calebh101_discord.dart';
 import 'package:calebh101_discord/recursive_caster.g.dart';
 import 'package:collection/collection.dart';
 
-class TagsPlugin extends BotPlugin {
+class TagsPlugin extends BotPluginLegacy {
   TagsPlugin() : super(id: "tags", version: Version.parse("1.0.0A"));
 
   @override

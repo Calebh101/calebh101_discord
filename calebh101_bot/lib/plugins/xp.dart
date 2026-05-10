@@ -7,7 +7,7 @@ import 'package:json_annotation/json_annotation.dart';
 
 part 'xp.g.dart';
 
-class XPPlugin extends BotPlugin {
+class XPPlugin extends BotPluginLegacy {
   XPPlugin() : super(id: "xp", version: Version.parse("1.0.0A"));
 
   @override

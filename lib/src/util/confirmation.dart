@@ -93,7 +93,7 @@ Future<ConfirmationDetails> confirmation(String action, ChatContext context, {Us
   }
 }
 
-BotCommand? confirmationTest() => dev ? BotCommand("confirmationtest", "Debug", "Test confirmation.", (ChatContext context, [bool dms = false, bool code = true, bool deleteOriginalOnReturn = true]) async {
+BotCommand confirmationTest() => BotCommand("confirmationtest", "Debug", "Test confirmation.", (ChatContext context, [bool dms = false, bool code = true, bool deleteOriginalOnReturn = true]) async {
   final result = await confirmation("test", context, inDms: dms, useCode: code, deleteOriginalOnReturn: deleteOriginalOnReturn);
   await context.respond(MessageBuilder(embeds: [result.toEmbed()]));
-}, permissionsRequired: BotCommandPermissions.owner) : null;
+}, permissionsRequired: BotCommandPermissions.owner);

@@ -7,7 +7,7 @@ const Duration window = Duration(seconds: 10);
 
 final Map<Snowflake, List<({String content, Snowflake channelId, DateTime timestamp})>> messages = {};
 
-class CrosspostPlugin extends BotPlugin {
+class CrosspostPlugin extends BotPluginLegacy {
   CrosspostPlugin() : super(id: "crosspost", version: Version.parse("1.0.0A"));
 
   @override

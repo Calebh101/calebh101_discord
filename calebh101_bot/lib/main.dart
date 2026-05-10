@@ -17,8 +17,6 @@ import 'package:calebh101_bot/plugins/xp.dart';
 import 'package:calebh101_discord/calebh101_discord.dart';
 import 'package:calebh101_discord/recursive_caster.g.dart';
 import 'package:collection/collection.dart';
-import 'package:quick_listener/quick_listener.dart';
-import 'package:unicode/blocks.dart';
 
 final double maxXpPerHour = 1;
 final double xpPerReaction = 0.01;
@@ -63,6 +61,7 @@ void main(List<String> arguments) => onStart = () async {
     MemberRolePlugin(),
     GitHubPlugin(),
     QuotePlugin(),
+    DebugPlugin(),
   ]);
 
   final context = await load(
@@ -94,57 +93,7 @@ void main(List<String> arguments) => onStart = () async {
       BotCommand.converter((plugin) => plugin.getConverter(RuntimeType<GuildTextChannel>(), logWarn: false)),
       defaultCheck(store),
 
-      BotCommand("printemojis", "Debug", "Emojis.", (ChatContext context, [int? required]) async {
-        final results = await askForEmojis(context, required);
-        final m = await context.respond(MessageBuilder(content: results != null ? "Found **${results.emojis.length}** emojis." : "No emojis found."));
-
-        for (final Emoji emoji in results?.emojis ?? []) {
-          try {
-            await m.react(ReactionBuilder.fromEmoji(emoji));
-          } catch (_) {}
-        }
-      }),
-
-      BotCommand("stoptyping", "Debug", "Stop typing.", (ChatContext context) async {
-        QuickListener("typing").broadcast();
-        await context.respond(MessageBuilder(content: "Stopped typing."));
-      }),
-
-      BotCommand("typing", "Debug", "Keep typing.", (ChatContext context, [int? seconds, GreedyGuildTextChannelList? targets]) async {
-        List<GuildTextChannel> channels = targets?.input ?? [if (context.channel is GuildTextChannel) context.channel as GuildTextChannel];
-        if (channels.isEmpty) return context.respondWithError("No channel found.");
-        if (seconds == null || seconds <= 0) seconds = null;
-
-        void trigger() async {
-          for (final x in channels) {
-            try {
-              await x.triggerTyping();
-            } catch (_) {}
-          }
-        }
-
-        await context.respond(MessageBuilder(content: "Typing ${seconds != null ? "for **$seconds** seconds" : "**forever**"} in ${channels.map((x) => x.toMention()).join(", ")}."));
-        int elapsed = 0;
-        bool stop = false;
-        trigger();
-
-        final listener = QuickListener("typing").listen((_, _) => stop = true);
-
-        Timer.periodic(Duration(seconds: 5), (timer) async {
-          elapsed += 5;
-          trigger();
-
-          if (seconds != null && elapsed >= seconds - 5) {
-            stop = true;
-          }
-
-          if (stop) {
-            timer.cancel();
-            listener.dispose();
-            Logger.print("Typing", "Done");
-          }
-        });
-      }, permissionsRequired: BotCommandPermissions.owner),
+      //
 
       BotCommand.command("fart", "Fart.", (T context, [int amount = 1]) async {
         if (amount != 1 && !isOwner(id: context.user.id)) return context.respondWithError("You cannot control the amount.");
@@ -204,28 +153,6 @@ void main(List<String> arguments) => onStart = () async {
 
         await context.respond(MessageBuilder(content: parts.join("")));
       }),
-
-      BotCommand("scan", "Debug", "Scan a string.", (ChatContext context, GreedyString input) async {
-        await context.respond(MessageBuilder(content: [
-          input.data.toDiscordCodeBlock(),
-          input.data.runes.map((r) {
-            return "-# - `U+${r.toRadixString(16).toUpperCase().padLeft(4, "0")}` `${getUnicodeBlock(r).name}` `${getUnicodeName(r) ?? "UNKNOWN"}`";
-          }).join("\n"),
-        ].join("\n\n"), allowedMentions: AllowedMentions(repliedUser: true)));
-      }),
-
-      BotCommand("emoji", "Debug", "Get an emoji.", (ChatContext context, GreedyString input) async {
-        final data = input.data.trim();
-        final emoji = await parseEmoji(data, client: context.client, guild: context.guild);
-        await context.respond(MessageBuilder(content: emoji == null ? "No emoji found.\nInput: `$data`" : "Found emoji: `${emoji.runtimeType}`\nName: `${emoji.name}`, ID: `${emoji.id}`\nInput: `$data`", allowedMentions: AllowedMentions(repliedUser: true)));
-      }),
-
-      BotCommand("react", "Debug", "React to a message.", (MessageChatContext context, GreedyString input) async {
-        final target = context.message.referencedMessage ?? context.message;
-        final emoji = await parseEmoji(input.data, client: context.client, guild: context.guild) ?? context.client.getTextEmoji("🚫");
-
-        await target.react(ReactionBuilder.fromEmoji(emoji));
-      }, permissionsRequired: BotCommandPermissions.owner),
     ],
   );
 

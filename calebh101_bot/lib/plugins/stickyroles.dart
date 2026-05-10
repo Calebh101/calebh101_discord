@@ -2,7 +2,7 @@ import 'dart:async';
 
 import 'package:calebh101_discord/calebh101_discord.dart';
 
-class StickyRoles extends BotPlugin {
+class StickyRoles extends BotPluginLegacy {
   StickyRoles() : super(id: "stickyroles", version: Version.parse("1.0.0A"));
 
   @override

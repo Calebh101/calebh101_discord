@@ -8,7 +8,7 @@ import 'package:json_annotation/json_annotation.dart';
 
 part 'moderation.g.dart';
 
-class ModerationPlugin extends BotPlugin {
+class ModerationPlugin extends BotPluginLegacy {
   ModerationPlugin() : super(id: "moderation", version: Version.parse("1.0.0A"));
 
   @override

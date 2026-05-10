@@ -35,21 +35,44 @@ class PluginStore {
   }
 }
 
-abstract class BotPlugin {
+class BotPluginInfo {
   final String id;
-  final String? name;
+  final String description;
   final Version version;
+
+  const BotPluginInfo({required this.id, required this.version, required this.description});
+}
+
+@Deprecated("Use BotPlugin and define getInfo.")
+abstract class BotPluginLegacy extends BotPlugin {
+  final String _id;
+  final Version _version;
+
+  BotPluginLegacy({required String id, required Version version}) : _id = id, _version = version;
+
+  @override
+  get info {
+    return BotPluginInfo(id: _id, version: _version, description: "A bot plugin (legacy mode).");
+  }
+}
+
+abstract class BotPlugin {
   late String className;
   late PluginStore pluginStore;
 
-  BotPlugin({required this.id, this.name, required this.version}) {
+  BotPlugin() {
     className = MirrorSystem.getName(reflect(this).type.simpleName);
   }
 
+  BotPluginInfo get info;
   FutureOr<void> onRegister() async {}
   FutureOr<void> onClientLoad(BotContext context) async {}
   FutureOr<List<BotCommand>> commands<T extends ChatContext>(CommandsPlugin plugin, KVStore store) => [];
   FutureOr<List<BotConverter>> converters(CommandsPlugin plugin, KVStore store) => [];
+
+  String get id => info.id;
+  Version get version => info.version;
+  String get description => info.description;
 
   /// Template:
   ///
@@ -65,6 +88,6 @@ abstract class BotPlugin {
 
   @override
   String toString() {
-    return "Plugin(id: $id, name: $name, version: $version)";
+    return "Plugin(id: $id, version: $version)";
   }
 }

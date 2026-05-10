@@ -3,7 +3,7 @@ import 'dart:async';
 import 'package:calebh101_bot/main.dart';
 import 'package:calebh101_discord/calebh101_discord.dart';
 
-class WelcomePlugin extends BotPlugin {
+class WelcomePlugin extends BotPluginLegacy {
   WelcomePlugin() : super(id: "welcome", version: Version.parse("1.0.0A"));
 
   @override

@@ -24,11 +24,12 @@ export 'src/plugins/prefix.dart';
 export 'src/plugins/ignore.dart';
 export 'src/plugins/stats.dart';
 export 'src/plugins/admin.dart';
-export 'src/plugins/help.dart';
+export 'src/plugins/commands.dart';
 export 'src/plugins/botmanage.dart';
 export 'src/plugins/moderation.dart';
 export 'src/plugins/restriction.dart';
 export 'src/plugins/mute.dart';
+export 'src/plugins/debug.dart';
 
 export 'package:nyxx/nyxx.dart' hide Logger;
 export 'package:nyxx_commands/nyxx_commands.dart';

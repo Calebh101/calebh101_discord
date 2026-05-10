@@ -34,5 +34,15 @@
 			"})",
 		],
 		"description": "New BotCommand"
+	},
+
+	"New Plugin": {
+		"prefix": "plugin",
+		"body": [
+			"class $1 extends BotPlugin {",
+			"  @override get info => BotPluginInfo(id: \"$2\", version: Version.parse(\"$3\"), description: \"$4\");",
+			"}",
+		],
+		"description": "New BotPlugin"
 	}
 }

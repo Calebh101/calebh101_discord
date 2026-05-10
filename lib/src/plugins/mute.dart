@@ -6,7 +6,7 @@ import 'package:json_annotation/json_annotation.dart';
 
 part 'mute.g.dart';
 
-class MutePlugin extends BotPlugin {
+class MutePlugin extends BotPluginLegacy {
   MutePlugin() : super(id: "mute", version: Version.parse("1.0.0A"));
 
   @override

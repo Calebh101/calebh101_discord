@@ -11,7 +11,7 @@ double getCurrentStreakScale(int streak) {
   return min(1, streak / 500);
 }
 
-class MathPlugin extends BotPlugin {
+class MathPlugin extends BotPluginLegacy {
   MathPlugin() : super(id: "math", version: Version.parse("1.0.0A"));
 
   @override

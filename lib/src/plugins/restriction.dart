@@ -8,7 +8,7 @@ import 'package:json_annotation/json_annotation.dart';
 
 part 'restriction.g.dart';
 
-class RestrictCommandsPlugin extends BotPlugin {
+class RestrictCommandsPlugin extends BotPluginLegacy {
   RestrictCommandsPlugin() : super(id: "restrict", version: Version.parse("1.0.0A"));
   static bool enabled = false;
 

@@ -6,7 +6,7 @@ import 'package:json_annotation/json_annotation.dart';
 
 part 'remind.g.dart';
 
-class RemindPlugin extends BotPlugin {
+class RemindPlugin extends BotPluginLegacy {
   RemindPlugin() : super(id: "remind", version: Version.parse("1.0.0A"));
 
   @override

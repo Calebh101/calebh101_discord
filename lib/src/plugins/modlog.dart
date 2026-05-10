@@ -2,7 +2,7 @@ import 'dart:async';
 
 import 'package:calebh101_discord/calebh101_discord.dart';
 
-class ModlogPlugin extends BotPlugin {
+class ModlogPlugin extends BotPluginLegacy {
   ModlogPlugin() : super(id: "modlog", version: Version.parse("1.0.0A"));
 
   @override

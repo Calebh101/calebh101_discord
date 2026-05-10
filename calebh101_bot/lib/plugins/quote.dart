@@ -4,7 +4,7 @@ import 'package:calebh101_discord/calebh101_discord.dart';
 import 'package:collection/collection.dart';
 import 'package:http/http.dart' as http;
 
-class QuotePlugin extends BotPlugin {
+class QuotePlugin extends BotPluginLegacy {
   QuotePlugin() : super(id: "quote", version: Version.parse("1.0.0A"));
 
   @override

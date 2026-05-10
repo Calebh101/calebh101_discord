@@ -4,7 +4,7 @@ import 'dart:io';
 import 'package:calebh101_discord/calebh101_discord.dart';
 import 'package:collection/collection.dart';
 
-class BotManagePlugin extends BotPlugin {
+class BotManagePlugin extends BotPluginLegacy {
   BotManagePlugin() : super(id: "botmanage", version: Version.parse("1.0.0A"));
 
   @override
@@ -42,26 +42,10 @@ class BotManagePlugin extends BotPlugin {
     return [
       restartCommand<T>(store),
       killCommand<T>(),
-      echoDebugCommand<T>(store),
-      ?confirmationTest(),
 
       BotCommand("test", "Bot", "Run tests with the bot.", (T context) async {
         await context.respond(MessageBuilder(content: "This command has not been implemented yet."));
       }, permissionsRequired: BotCommandPermissions.admin),
-      BotCommand("wait", "Debug", "Wait X amount of seconds before responding.", (ChatContext context, int seconds) async {
-        await Future.delayed(Duration(seconds: seconds));
-        await context.respond(MessageBuilder(content: "Waited **$seconds** seconds."), level: ResponseLevel.hint);
-      }, permissionsRequired: BotCommandPermissions.owner),
-      BotCommand("throw", "Debug", "Throw an exception.", (ChatContext context, [int type = 0, GreedyString? message]) {
-        switch (type) {
-          case 0:
-            throw CommandsException("${context.user.id}: ${message?.data}");
-          case 1:
-            throw Exception("${context.user.id}: ${message?.data}");
-          default:
-            return context.respondWithError("Invalid type: $type");
-        }
-      }, permissionsRequired: BotCommandPermissions.owner),
       BotCommand("update", "Bot", "Update the bot's code. A restart will be required to apply.", (T context, [bool reset = false]) async {
         final int pubGets = 2;
         final directory = Directory.current;
@@ -156,6 +140,17 @@ class BotManagePlugin extends BotPlugin {
           await context.respond(MessageBuilder(content: "Unable to leave guild ${guild.id.toDiscordCodeString()}.\n${e.runtimeType.toDiscordCodeBlock()}"));
         }
       }, permissionsRequired: BotCommandPermissions.owner),
+      BotCommand("listguilds", "Bot", "List all guilds the bot is in.", (T context) async {
+        final guilds = await Future.wait(context.client.guilds.cache.values.map((x) async => (guild: await x.fetch(withCounts: true), owner: await tryCatchA(() => x.owner.get()))));
+
+        await respondWithPagination(context, PaginatedEmbedBuilder(pages:
+          EmbedPage.generateFromItems(guilds.map((x) {
+            return "- `${x.guild.id}`: ${x.guild.name} (${x.guild.approximateMemberCount} members, owned by user `${x.guild.ownerId}` (${x.owner?.username ?? "<User not found>"}))";
+          }).toList()),
+          color: await getColor(context.member),
+          title: "${guilds.length} Guilds",
+        ), settings: ifGuild(store, context.guild?.id, (id) => ServerSettings(store, id)));
+      }),
     ];
   }
 
@@ -179,15 +174,4 @@ class BotManagePlugin extends BotPlugin {
     Logger.print("Commands.Kill", "User ${context.user.id} requested my death.");
     close.call();
   }, CommandAttributes(permissionsRequired: BotCommandPermissions.owner, category: "Bot"));
-
-  BotCommand echoDebugCommand<T extends ChatContext>(KVStore store) => BotCommand.command("echo", "Echo the input text from the bot.", (T context, String text, [int count = 1]) async {
-    if (text.length * count > 5000) return context.respondWithError("Response would've been too long.\nLength: ${text.length * count} characters");
-    if (context.guild == null || context.member == null) return context.respondWithError("No guild/member found.");
-    final settings = ServerSettings(store, context.guild!.id);
-    if (await context.assurePerms(BotCommandPermissions.owner, settings) == false) return;
-
-    await context.respond(MessageBuilder(
-      content: text * count,
-    ));
-  }, CommandAttributes(permissionsRequired: BotCommandPermissions.owner, category: "Debug"));
 }

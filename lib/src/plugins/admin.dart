@@ -3,7 +3,7 @@ import 'dart:async';
 import 'package:calebh101_discord/calebh101_discord.dart';
 import 'package:collection/collection.dart';
 
-class AdminPlugin extends BotPlugin {
+class AdminPlugin extends BotPluginLegacy {
   AdminPlugin() : super(id: "admin", version: Version.parse("1.0.0A"));
 
   @override
@@ -539,11 +539,6 @@ class AdminPlugin extends BotPlugin {
         Logger.warn("Commands.Status", e);
       }
     }, CommandAttributes(category: "User")),
-    BotCommand.command("ignoreowner", "Ignore the bot owner's status temporarily.", (T context) async {
-      if (!isOwner(id: context.user.id, overrideIgnoreOwner: true)) return context.respondWithError("You are not the owner of me.");
-      ignoreOwner = !ignoreOwner;
-      await context.respond(MessageBuilder(content: "Owner is now **${ignoreOwner ? "temporarily ignored": "unignored"}**."));
-    }, CommandAttributes(category: "Debug", permissionsRequired: BotCommandPermissions.owner)),
     BotCommand.command("allsettings", "List all settings for this server. Admin only.", (T context) async {
       if (context.guild == null || context.member == null) return context.respondWithError("No guild/member found.");
       final settings = ServerSettings(store, context.guild!.id);
