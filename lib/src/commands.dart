@@ -272,3 +272,30 @@ BotCommand defaultCheck(KVStore store) => BotCommand.check((plugin) {
 bool isIgnored(KVStore store, Snowflake id) {
   return (BotSettings(store).ignored.get() ?? []).any((x) => x == id);
 }
+
+List<BotCommand> botSettingToCommands<T>(SettingsObject<T> setting, {required String name, required String category, required String description, String Function(T? input)? toReadable, bool requiresOwnerForGet = true}) {
+  return [
+    BotCommand("set$name", category, "Set setting $name: $description", (ChatContext context, GreedyString input) async {
+      final converter = context.commands.getConverter(RuntimeType<T>());
+      final value = await converter?.convert(StringView(input.data), context);
+
+      if (value == null) {
+        await context.respond(MessageBuilder(content: "No converter found or converting failed for type `$T`.\n```${converter.runtimeType.toDiscordCodeBlock()}"));
+        return;
+      }
+
+      setting.set(value);
+      await context.respond(MessageBuilder(content: "Set setting `$name`."));
+    }, permissionsRequired: BotCommandPermissions.owner),
+    BotCommand("get$name", category, "Get setting $name: $description", (ChatContext context) async {
+      final value = setting.get();
+      final hasPerms = !requiresOwnerForGet || isOwner(id: context.user.id);
+
+      toReadable ??= (input) {
+        return input?.toDiscordCodeBlock() ?? "Not set.";
+      };
+
+      await context.respond(MessageBuilder(content: "**Bot Setting `$name`**:\n$description${hasPerms ? "\n\n${toReadable!.call(value)}" : ""}"));
+    }),
+  ];
+}

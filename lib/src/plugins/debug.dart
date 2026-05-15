@@ -116,6 +116,7 @@ class DebugPlugin extends BotPlugin {
         ignoreOwner = !ignoreOwner;
         await context.respond(MessageBuilder(content: "Owner is now **${ignoreOwner ? "temporarily ignored": "unignored"}**."));
       }, CommandAttributes(category: "Debug", permissionsRequired: BotCommandPermissions.owner)),
+      ...botSettingToCommands(BotSettings(store).randomSettingsObjectForTestingIdk, name: "randomsetting", category: "Debug", description: description, requiresOwnerForGet: false),
     ];
   }
 }
