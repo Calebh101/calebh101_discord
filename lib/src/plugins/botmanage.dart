@@ -9,27 +9,53 @@ class BotManagePlugin extends BotPluginLegacy {
 
   @override
   Future<void> onClientLoad(BotContext context) async {
-    final settings = BotSettings(context.store);
-    final data = settings.whoRestartedMe.get();
-    settings.whoRestartedMe.delete();
+    Logger.print("BotManage", "Client loaded (dev=$dev)");
 
-    if (data == null) return;
-    final client = context.clients.clients.values.firstWhereOrNull((x) => x.user.id == data.$1);
-    if (client == null) return;
-    late TextChannel channel;
+    () async {
+      final settings = BotSettings(context.store);
+      final data = settings.whoRestartedMe.get();
+      settings.whoRestartedMe.delete();
 
-    try {
-      channel = await client.channels.get(data.$2) as TextChannel;
-    } catch (e) {
-      Logger.warn("BotManage", "Unable to get channel ${data.$2} for client ${data.$1}: $e");
-      return;
-    }
+      if (data == null) return;
+      final client = context.clients.clients.values.firstWhereOrNull((x) => x.user.id == data.$1);
+      if (client == null) return;
+      late TextChannel channel;
 
-    try {
-      await channel.sendMessage(MessageBuilder(content: "I'm back, ${data.$3.value.toMention()}!\n-# Client ID: `${data.$1}`"));
-    } catch (e) {
-      Logger.warn("BotManage", "Unable to send message in channel ${channel.id} for client ${data.$1} to user ${data.$3}: $e");
-    }
+      try {
+        channel = await client.channels.get(data.$2) as TextChannel;
+      } catch (e) {
+        Logger.warn("BotManage", "Unable to get channel ${data.$2} for client ${data.$1}: $e");
+        return;
+      }
+
+      try {
+        await channel.sendMessage(MessageBuilder(content: "I'm back, ${data.$3.value.toMention()}!"));
+      } catch (e) {
+        Logger.warn("BotManage", "Unable to send message in channel ${channel.id} for client ${data.$1} to user ${data.$3}: $e");
+      }
+    }();
+
+    context.clients.run((client) {
+      if (dev) client.onMessageCreate.listen((event) async {
+        Logger.print("Restart", "Found message");
+        if (!isOwner(id: event.message.author.id)) return;
+        Logger.print("Restart", "Found message again: ${event.message.content}");
+        if (event.message.content.trim().toLowerCase() != "rst") return;
+
+        final settings = BotSettings(context.store);
+        settings.whoRestartedMe.set((client.user.id, event.message.channel.id, event.message.author.id));
+
+        try {
+          await event.message.channel.sendMessage(MessageBuilder(content: "Restarting...", referencedMessage: MessageReferenceBuilder.reply(messageId: event.message.id)));
+        } catch (e) {
+          Logger.warn("Restart", "Unable to reply to message ${event.message.id}: $e");
+          return;
+        }
+
+        Logger.print("Restart", "User ${event.message.author.id} requested my restart.");
+        await close.call(ExitCode.restart);
+      });
+    });
   }
 
   @override
