@@ -16,10 +16,10 @@ class BotManagePlugin extends BotPluginLegacy {
     if (data == null) return;
     final client = context.clients.clients.values.firstWhereOrNull((x) => x.user.id == data.$1);
     if (client == null) return;
-    late GuildTextChannel channel;
+    late TextChannel channel;
 
     try {
-      channel = await client.channels.get(data.$2) as GuildTextChannel;
+      channel = await client.channels.get(data.$2) as TextChannel;
     } catch (e) {
       Logger.warn("BotManage", "Unable to get channel ${data.$2} for client ${data.$1}: $e");
       return;

@@ -350,6 +350,56 @@ class ModerationPlugin extends BotPluginLegacy {
           ),
         ]));
       }, permissionsRequired: BotCommandPermissions.mod, aliases: ["to"]),
+      BotCommand("quicktimeout", "Moderation", "Time out a user.", (T context, [Member? member]) async {
+        final duration = Duration(minutes: 5);
+
+        if (member == null && context is MessageChatContext) {
+          final reply = context.message.referencedMessage;
+          final author = reply?.author is User ? reply!.author as User : null;
+          member = await tryCatchA<Member?>(() => userToMember(author, guild: context.guild));
+        }
+
+        if (member == null) {
+          return context.respondWithError("No member found.");
+        }
+
+        try {
+          await member.update(MemberUpdateBuilder(communicationDisabledUntil: DateTime.now().add(duration).toUtc()), auditLogReason: "${context.user.username}: Quick timeout");
+        } on HttpResponseError catch (e) {
+          Logger.warn("QuickTimeout", "Unable to quick time out ${member.id}: $e");
+          final fail = e.message;
+
+          await context.respond(MessageBuilder(embeds: [
+            EmbedBuilder(
+              description: "## Unable to quick-time out ${member.toMention()}\n${await memberToString(member, client: context.client, detailed: true)}\n\n${fail.toDiscordCodeBlock()}",
+              color: await getColor(context.member),
+            ),
+          ]));
+
+          return;
+        }
+
+        Modlog.add(ModlogEvent(
+          "mod.timeout",
+          title: "Quick Timed Out User",
+          fields: {
+            "Target": member.toMention(),
+            "Author": context.user.toMention(),
+            "Duration": duration.toString().toDiscordCodeBlock(),
+          },
+          guild: context.guild,
+          settings: ifGuild(store, context.guild?.id, (id) => ServerSettings(store, id)),
+          client: context.client,
+          severity: ModlogSeverity.warning,
+        ));
+
+        await context.respond(MessageBuilder(embeds: [
+          EmbedBuilder(
+            description: "## Quick-timed out ${member.toMention()} for ${duration.pretty()}\n${await memberToString(member, client: context.client, detailed: true)}",
+            color: await getColor(context.member),
+          ),
+        ]));
+      }, permissionsRequired: BotCommandPermissions.mod, aliases: ["tq", "qt", "qto", "toq", "quickto"]),
       BotCommand("timein", "Moderation", "Remove timeout of a user.", (T context, Member member) async {
         try {
           await member.update(MemberUpdateBuilder(communicationDisabledUntil: null), auditLogReason: context.user.username);
