@@ -37,9 +37,7 @@ class BotManagePlugin extends BotPluginLegacy {
 
     context.clients.run((client) {
       if (dev) client.onMessageCreate.listen((event) async {
-        Logger.print("Restart", "Found message");
         if (!isOwner(id: event.message.author.id)) return;
-        Logger.print("Restart", "Found message again: ${event.message.content}");
         if (event.message.content.trim().toLowerCase() != "rst") return;
 
         final settings = BotSettings(context.store);

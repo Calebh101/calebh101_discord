@@ -328,12 +328,29 @@ Future<BotContext?> load({required BotSettings settings, required FutureOr<Patte
     if (isIgnored(store, event.message.author.id)) return;
     final u = await user(event.gateway.client);
 
-    if (u != null && event.message.content.trim() == "<@${u.id}>") {
+    final userWhoSentThisMessage = event.message.author is User ? event.message.author as User : null;
+    final isValidUser = userWhoSentThisMessage != null && !userWhoSentThisMessage.isBot && !userWhoSentThisMessage.isSystem;
+    final isSimplePing = u != null && event.message.content.trim() == "<@${u.id}>";
+
+    final prefix = ifGuild(store, event.guildId, (id) => ServerSettings(store, id))?.prefix.get() ?? defaultPrefix;
+    final isValidContent = u != null && !event.message.content.startsWith(prefix) && !event.message.content.startsWith("<@${u.id}>") && event.message.content.contains("<@${u.id}>");
+
+    if (isValidUser && isSimplePing) {
       final latency = client.httpHandler.latency;
       final realLatency = client.httpHandler.realLatency;
       final message = randomPingPhrase(pingPhrases, event);
 
-      event.message.channel.sendMessage(MessageBuilder(referencedMessage: MessageReferenceBuilder(type: MessageReferenceType.defaultType, messageId: event.message.id), content: "$message\n-# Latency: ${formatLatency(latency)} (Real: ${formatLatency(realLatency)})"));
+      try {
+        await event.message.channel.sendMessage(MessageBuilder(referencedMessage: MessageReferenceBuilder(type: MessageReferenceType.defaultType, messageId: event.message.id), content: "$message\n-# Latency: ${formatLatency(latency)} (Real: ${formatLatency(realLatency)})"));
+      } catch (e) {
+        Logger.warn("load", "Error responding to message ${event.message.id} by ${userWhoSentThisMessage.id}: $e");
+      }
+    } else if (isValidUser && isValidContent) {
+      try {
+        await event.message.react(ReactionBuilder(name: "👍", id: null));
+      } catch (e) {
+        Logger.warn("load", "Error reacting to message ${event.message.id} by ${userWhoSentThisMessage.id}: $e");
+      }
     }
   }));
 
