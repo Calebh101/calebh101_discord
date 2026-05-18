@@ -26,7 +26,7 @@ class StickyRoles extends BotPluginLegacy {
         }
 
         await context.respond(MessageBuilder(content: "Added ${sticky ? "sticky role" : "role"} ${await roleToString(role)} to user ${await memberToString(member, client: context.client)}!"));
-      }, permissionsRequired: BotCommandPermissions.admin, aliases: ["r+"]),
+      }, permissionsRequired: BotCommandPermissions.mod, aliases: ["r+"]),
       BotCommand("remrole", "Moderation", "Remove a role from someone.", (ChatContext context, Member member, Role role) async {
         if (await context.assureGuild() == false) return;
         final settings = StickyRolesSettings(store, context.guild!.id, member.id);
@@ -60,7 +60,7 @@ class StickyRoles extends BotPluginLegacy {
 
           return "- ${role != null ? "${await roleToString(role)}" : "`<no role found>`"} (${x.toDiscordCodeString()})";
         }))).join("\n")}"));
-      }, permissionsRequired: BotCommandPermissions.admin),
+      }, permissionsRequired: BotCommandPermissions.mod),
       BotCommand("evalstickyroles", "StickyRole", "List someone's current sticky roles.", (ChatContext context, Member member) async {
         if (await context.assureGuild() == false) return;
         final results = await eval(store: store, guild: context.guild!, member: member, client: context.client, author: context.user);

@@ -48,7 +48,7 @@ class DebugPlugin extends BotPlugin {
       BotCommand("stoptyping", "Debug", "Stop typing.", (ChatContext context) async {
         QuickListener("typing").broadcast();
         await context.respond(MessageBuilder(content: "Stopped typing."));
-      }),
+      }, permissionsRequired: BotCommandPermissions.owner),
       BotCommand("typing", "Debug", "Keep typing.", (ChatContext context, [int? seconds, GreedyGuildTextChannelList? targets]) async {
         List<GuildTextChannel> channels = targets?.input ?? [if (context.channel is GuildTextChannel) context.channel as GuildTextChannel];
         if (channels.isEmpty) return context.respondWithError("No channel found.");
@@ -76,6 +76,30 @@ class DebugPlugin extends BotPlugin {
           if (seconds != null && elapsed >= seconds - 5) {
             stop = true;
           }
+
+          if (stop) {
+            timer.cancel();
+            listener.dispose();
+            Logger.print("Typing", "Done");
+          }
+        });
+      }, permissionsRequired: BotCommandPermissions.owner),
+      BotCommand("stopspamming", "Debug", "Stop spamming.", (ChatContext context) async {
+        QuickListener("spamming").broadcast();
+        await context.respond(MessageBuilder(content: "Stopped spamming."));
+      }, permissionsRequired: BotCommandPermissions.owner),
+      BotCommand("spam", "Debug", "Spam something.", (ChatContext context, GreedyString input) async {
+        void trigger() async {
+          await context.channel.sendMessage(MessageBuilder(content: input.data));
+        }
+
+        await context.respond(MessageBuilder(content: "Now spamming."));
+        bool stop = false;
+        trigger();
+        final listener = QuickListener("spamming").listen((_, _) => stop = true);
+
+        Timer.periodic(Duration(milliseconds: 2000), (timer) async {
+          trigger();
 
           if (stop) {
             timer.cancel();
