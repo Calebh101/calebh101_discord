@@ -88,7 +88,7 @@ class DebugPlugin extends BotPlugin {
         QuickListener("spamming").broadcast();
         await context.respond(MessageBuilder(content: "Stopped spamming."));
       }, permissionsRequired: BotCommandPermissions.owner),
-      BotCommand("spam", "Debug", "Spam something.", (ChatContext context, GreedyString input) async {
+      BotCommand("spam", "Debug", "Spam something.", (ChatContext context, Duration interval, GreedyString input) async {
         void trigger() async {
           await context.channel.sendMessage(MessageBuilder(content: input.data));
         }
@@ -98,13 +98,13 @@ class DebugPlugin extends BotPlugin {
         trigger();
         final listener = QuickListener("spamming").listen((_, _) => stop = true);
 
-        Timer.periodic(Duration(milliseconds: 2000), (timer) async {
+        Timer.periodic(interval, (timer) async {
           trigger();
 
           if (stop) {
             timer.cancel();
             listener.dispose();
-            Logger.print("Typing", "Done");
+            Logger.print("Spamming", "Done");
           }
         });
       }, permissionsRequired: BotCommandPermissions.owner),
