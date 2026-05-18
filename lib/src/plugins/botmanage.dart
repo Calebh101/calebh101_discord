@@ -36,6 +36,46 @@ class BotManagePlugin extends BotPluginLegacy {
     }();
 
     context.clients.run((client) {
+      final Set<Snowflake> knownGuilds = {};
+
+      client.onReady.listen((ReadyEvent event) {
+        for (final guild in event.guilds) {
+          knownGuilds.add(guild.id);
+        }
+      });
+
+      client.onGuildCreate.listen((event) async {
+        Logger.print("Bot", "Joined guild ${event.guild.id}");
+        if (knownGuilds.contains(event.guild.id)) return;
+        final guild = await event.guild.fetch(withCounts: true);
+
+        await alertOwners(client, EmbedBuilder(
+          title: "Guild Joined",
+          fields: [
+            EmbedFieldBuilder(name: "Name", value: guild.name, isInline: true),
+            EmbedFieldBuilder(name: "ID", value: guild.id.toDiscordCodeString(), isInline: true),
+            EmbedFieldBuilder(name: "Owner", value: "${guild.ownerId.value.toMention()} (`${guild.ownerId}`)", isInline: false),
+            EmbedFieldBuilder(name: "Members", value: guild.approximateMemberCount.toDiscordCodeString(), isInline: true),
+          ],
+        ));
+      });
+
+      client.onGuildDelete.listen((event) async {
+        Logger.print("Bot", "Left guild ${event.deletedGuild?.id},${event.guild.id}");
+        final guild = event.deletedGuild;
+
+        await alertOwners(client, EmbedBuilder(
+          title: "Guild Left",
+          fields: [
+            if (guild != null) EmbedFieldBuilder(name: "Name", value: guild.name, isInline: true),
+            EmbedFieldBuilder(name: "ID", value: event.guild.id.toDiscordCodeString(), isInline: true),
+            if (guild != null) EmbedFieldBuilder(name: "Owner", value: "${guild.ownerId.value.toMention()} (`${guild.ownerId}`)", isInline: false),
+            if (guild != null) EmbedFieldBuilder(name: "Members", value: guild.approximateMemberCount.toDiscordCodeString(), isInline: true),
+            if (guild != null) EmbedFieldBuilder(name: "Source", value: event.deletedGuild != null ? "`deletedGuild`" : "`guild`", isInline: true),
+          ],
+        ));
+      });
+
       if (dev) client.onMessageCreate.listen((event) async {
         if (!isOwner(id: event.message.author.id)) return;
         if (event.message.content.trim().toLowerCase() != "rst") return;
@@ -66,6 +106,7 @@ class BotManagePlugin extends BotPluginLegacy {
     return [
       restartCommand<T>(store),
       killCommand<T>(),
+      ...botSettingToCommands(BotSettings(store).inviteLink, name: "botinvite", category: "Bot", description: "Invite link to add this bot to a guild/server.", private: true),
 
       BotCommand("test", "Bot", "Run tests with the bot.", (T context) async {
         await context.respond(MessageBuilder(content: "This command has not been implemented yet."));

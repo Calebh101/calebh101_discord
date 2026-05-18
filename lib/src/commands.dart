@@ -273,7 +273,7 @@ bool isIgnored(KVStore store, Snowflake id) {
   return (BotSettings(store).ignored.get() ?? []).any((x) => x == id);
 }
 
-List<BotCommand> botSettingToCommands<T>(SettingsObject<T> setting, {required String name, required String category, required String description, String Function(T? input)? toReadable, bool requiresOwnerForGet = true}) {
+List<BotCommand> botSettingToCommands<T>(SettingsObject<T> setting, {required String name, required String category, required String description, String Function(T? input)? toReadable, bool requiresOwnerForGet = true, bool private = false}) {
   return [
     BotCommand("set$name", category, "Set setting $name: $description", (ChatContext context, GreedyString input) async {
       final converter = context.commands.getConverter(RuntimeType<T>());
@@ -295,7 +295,7 @@ List<BotCommand> botSettingToCommands<T>(SettingsObject<T> setting, {required St
         return input?.toDiscordCodeBlock() ?? "Not set.";
       };
 
-      await context.respond(MessageBuilder(content: "**Bot Setting `$name`**:\n$description${hasPerms ? "\n\n${toReadable!.call(value)}" : ""}"));
+      await context.respond(MessageBuilder(content: "**Bot Setting `$name`**:\n$description${hasPerms ? "\n\n${toReadable!.call(value)}" : ""}"), level: private ? ResponseLevel.private : ResponseLevel.public);
     }),
   ];
 }
