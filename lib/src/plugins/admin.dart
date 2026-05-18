@@ -52,7 +52,7 @@ class AdminPlugin extends BotPluginLegacy {
       context.respond(MessageBuilder(
         content: "Added ${await userToString(user)} as an admin!",
       ));
-    }, CommandAttributes(permissionsRequired: BotCommandPermissions.admin, category: "Server")),
+    }, CommandAttributes(permissionsRequired: BotCommandPermissions.admin, category: "Admin")),
     BotCommand.command("addadminrole", "Add a role as admin.", (T context, Role role) async {
       if (context.guild == null || context.member == null) return context.respondWithError("No guild/member found.");
       final settings = ServerSettings(store, context.guild!.id);
@@ -83,7 +83,7 @@ class AdminPlugin extends BotPluginLegacy {
       context.respond(MessageBuilder(
         content: "Added role *${role.name}* as admin!",
       ));
-    }, CommandAttributes(permissionsRequired: BotCommandPermissions.admin, category: "Server")),
+    }, CommandAttributes(permissionsRequired: BotCommandPermissions.admin, category: "Admin")),
     BotCommand.command("removeadminuser", "Remove a user from admin.", (T context, User user) async {
       if (context.guild == null || context.member == null) return context.respondWithError("No guild/member found.");
       final settings = ServerSettings(store, context.guild!.id);
@@ -117,7 +117,7 @@ class AdminPlugin extends BotPluginLegacy {
       context.respond(MessageBuilder(
         content: found ? "Removed ${await userToString(user)} from admin." : "${await userToString(user)} is not currently an admin.",
       ));
-    }, CommandAttributes(permissionsRequired: BotCommandPermissions.admin, category: "Server")),
+    }, CommandAttributes(permissionsRequired: BotCommandPermissions.admin, category: "Admin")),
     BotCommand.command("removeadminrole", "Remove a role from admin.", (T context, Role role) async {
       if (context.guild == null || context.member == null) return context.respondWithError("No guild/member found.");
       final settings = ServerSettings(store, context.guild!.id);
@@ -151,7 +151,7 @@ class AdminPlugin extends BotPluginLegacy {
       context.respond(MessageBuilder(
         content: found ? "Removed role *${role.name}* from admin." : "Role *${role.name}* is not currently admin.",
       ));
-    }, CommandAttributes(permissionsRequired: BotCommandPermissions.admin, category: "Server")),
+    }, CommandAttributes(permissionsRequired: BotCommandPermissions.admin, category: "Admin")),
 
     BotCommand.command("addmoduser", "Add an admin user.", (T context, User user) async {
       if (context.guild == null || context.member == null) return context.respondWithError("No guild/member found.");
@@ -183,7 +183,7 @@ class AdminPlugin extends BotPluginLegacy {
       context.respond(MessageBuilder(
         content: "Added ${await userToString(user)} as a moderator!",
       ));
-    }, CommandAttributes(permissionsRequired: BotCommandPermissions.admin, category: "Server")),
+    }, CommandAttributes(permissionsRequired: BotCommandPermissions.admin, category: "Admin")),
     BotCommand.command("addmodrole", "Add a role as mod.", (T context, Role role) async {
       if (context.guild == null || context.member == null) return context.respondWithError("No guild/member found.");
       final settings = ServerSettings(store, context.guild!.id);
@@ -214,7 +214,7 @@ class AdminPlugin extends BotPluginLegacy {
       context.respond(MessageBuilder(
         content: "Added role *${role.name}* as moderator!",
       ));
-    }, CommandAttributes(permissionsRequired: BotCommandPermissions.admin, category: "Server")),
+    }, CommandAttributes(permissionsRequired: BotCommandPermissions.admin, category: "Admin")),
     BotCommand.command("removemoduser", "Remove a user from mod.", (T context, User user) async {
       if (context.guild == null || context.member == null) return context.respondWithError("No guild/member found.");
       final settings = ServerSettings(store, context.guild!.id);
@@ -248,7 +248,7 @@ class AdminPlugin extends BotPluginLegacy {
       context.respond(MessageBuilder(
         content: found ? "Removed ${await userToString(user)} from mod." : "${await userToString(user)} is not currently an mod.",
       ));
-    }, CommandAttributes(permissionsRequired: BotCommandPermissions.admin, category: "Server")),
+    }, CommandAttributes(permissionsRequired: BotCommandPermissions.admin, category: "Admin")),
     BotCommand.command("removemodrole", "Remove a role from mod.", (T context, Role role) async {
       if (context.guild == null || context.member == null) return context.respondWithError("No guild/member found.");
       final settings = ServerSettings(store, context.guild!.id);
@@ -282,7 +282,7 @@ class AdminPlugin extends BotPluginLegacy {
       context.respond(MessageBuilder(
         content: found ? "Removed role *${role.name}* from mod." : "Role *${role.name}* is not currently mod.",
       ));
-    }, CommandAttributes(permissionsRequired: BotCommandPermissions.admin, category: "Server")),
+    }, CommandAttributes(permissionsRequired: BotCommandPermissions.admin, category: "Admin")),
 
     BotCommand.command("claim", "Claim yourself as king of the bot!", (T context) async {
       if (context.guild == null || context.member == null) return context.respondWithError("No guild/member found.");
@@ -548,7 +548,7 @@ class AdminPlugin extends BotPluginLegacy {
       context.respond(MessageBuilder(
         content: "All settings for *${context.guild?.name}*:\n${all.map((x) => "- `${x.key}`: `${x.value}`").join("\n")}",
       ), level: ResponseLevel.private);
-    }, CommandAttributes(permissionsRequired: BotCommandPermissions.admin, category: "Server")),
+    }, CommandAttributes(permissionsRequired: BotCommandPermissions.admin, category: "Admin")),
     BotCommand("listadmin", "Admin", "List all admin roles/users.", (T context) async {
       if (await context.assureGuild() == false) return;
       final settings = ServerSettings(store, context.guild!.id);
