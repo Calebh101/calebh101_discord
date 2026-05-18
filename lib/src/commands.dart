@@ -285,7 +285,7 @@ List<BotCommand> botSettingToCommands<T>(SettingsObject<T> setting, {required St
       }
 
       setting.set(value);
-      await context.respond(MessageBuilder(content: "Set setting `$name`."));
+      await context.respond(MessageBuilder(content: "Set setting `$name`."), level: private ? ResponseLevel.hint : ResponseLevel.public);
     }, permissionsRequired: BotCommandPermissions.owner),
     BotCommand("get$name", category, "Get setting $name: $description", (ChatContext context) async {
       final value = setting.get();
