@@ -252,6 +252,12 @@ class Or<A, B> extends ConverterType {
   @override
   String get name => "$A or $B";
 
+  T? getForEach<T>(T Function(A input) a, T Function(B input) b) {
+    if ($1 != null) return a($1!);
+    if ($2 != null) return b($2!);
+    return null;
+  }
+
   static BotConverter converter<A, B>() {
     return BotConverter("Or<$A, $B>", (plugin) => Converter<Or<A, B>>((value, context) async {
       A? a;

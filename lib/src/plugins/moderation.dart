@@ -350,7 +350,7 @@ class ModerationPlugin extends BotPluginLegacy {
           ),
         ]));
       }, permissionsRequired: BotCommandPermissions.mod, aliases: ["to"]),
-      BotCommand("quicktimeout", "Moderation", "Time out a user.", (T context, [Member? member]) async {
+      BotCommand("quicktimeout", "Moderation", "Quickly time out a user, by either passing them to this function or replying to a message of theirs.", (T context, [Member? member]) async {
         final duration = Duration(minutes: 5);
 
         if (member == null && context is MessageChatContext) {
@@ -399,7 +399,7 @@ class ModerationPlugin extends BotPluginLegacy {
             color: await getColor(context.member),
           ),
         ]));
-      }, permissionsRequired: BotCommandPermissions.mod, aliases: ["tq", "qt", "qto", "toq", "quickto"]),
+      }, permissionsRequired: BotCommandPermissions.mod, aliases: ["tq", "qt", "qto", "toq", "quickto"], extendedDescription: "This command times someone out for 5 minutes. You can use this command in 2 ways:\n\n- Passing the user you're targeting as the only argument to the command.\n- Replying to a message by the user you're targeting."),
       BotCommand("timein", "Moderation", "Remove timeout of a user.", (T context, Member member) async {
         try {
           await member.update(MemberUpdateBuilder(communicationDisabledUntil: null), auditLogReason: context.user.username);

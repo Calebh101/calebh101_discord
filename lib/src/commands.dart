@@ -292,7 +292,7 @@ List<BotCommand> botSettingToCommands<T>(SettingsObject<T> setting, {required St
       final hasPerms = !requiresOwnerForGet || isOwner(id: context.user.id);
 
       toReadable ??= (input) {
-        return input?.toDiscordCodeBlock() ?? "Not set.";
+        return input?.toString() ?? "Not set.";
       };
 
       await context.respond(MessageBuilder(content: "**Bot Setting `$name`**:\n$description${hasPerms ? "\n\n${toReadable!.call(value)}" : ""}"), level: private ? ResponseLevel.private : ResponseLevel.public);
