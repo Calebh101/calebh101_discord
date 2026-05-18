@@ -49,6 +49,10 @@ class BotManagePlugin extends BotPluginLegacy {
         if (knownGuilds.contains(event.guild.id)) return;
         final guild = await event.guild.fetch(withCounts: true);
 
+        final settings = BotSettings(context.store);
+        final blocked = settings.blockedGuilds.get().contains(event.guild.id);
+        final blockedOwner = settings.blockedGuildOwners.get().contains(guild.ownerId);
+
         await alertOwners(client, EmbedBuilder(
           title: "Guild Joined",
           fields: [
@@ -56,8 +60,17 @@ class BotManagePlugin extends BotPluginLegacy {
             EmbedFieldBuilder(name: "ID", value: guild.id.toDiscordCodeString(), isInline: true),
             EmbedFieldBuilder(name: "Owner", value: "${guild.ownerId.value.toMention()} (`${guild.ownerId}`)", isInline: false),
             EmbedFieldBuilder(name: "Members", value: guild.approximateMemberCount.toDiscordCodeString(), isInline: true),
+            EmbedFieldBuilder(name: "Blocked", value: [
+              if (blocked) "Guild",
+              if (blockedOwner) "Owner",
+            ].nullIfEmpty?.join(", ") ?? "Not blocked", isInline: true),
           ],
         ));
+
+        if (blocked || blockedOwner) {
+          Logger.warn("Bot", "Blocked: ${blocked ? "guild" : "0"}, ${blockedOwner ? "owner" : "0"} (owner: ${guild.ownerId})");
+          await guild.leave();
+        }
       });
 
       client.onGuildDelete.listen((event) async {
@@ -107,6 +120,48 @@ class BotManagePlugin extends BotPluginLegacy {
       restartCommand<T>(store),
       killCommand<T>(),
       ...botSettingToCommands(BotSettings(store).inviteLink, name: "botinvite", category: "Bot", description: "Invite link to add this bot to a guild/server.", private: true),
+
+      BotCommand("blockguild", "Bot", "Block the bot from joining a guild.", (ChatContext context, Snowflake id) async {
+        final settings = BotSettings(store);
+        final current = settings.blockedGuilds.get();
+        current.add(id);
+        settings.blockedGuilds.set(current);
+        await context.respond(MessageBuilder(content: "Blocked guild `$id`."));
+      }, permissionsRequired: BotCommandPermissions.owner),
+
+      BotCommand("blockowner", "Bot", "Block the bot from joining any guild owned by someone.", (ChatContext context, Snowflake id) async {
+        final settings = BotSettings(store);
+        final current = settings.blockedGuildOwners.get();
+        current.add(id);
+        settings.blockedGuildOwners.set(current);
+        await context.respond(MessageBuilder(content: "Blocked owner `$id` (${id.value.toMention()})."));
+      }, permissionsRequired: BotCommandPermissions.owner),
+
+      BotCommand("unblockguild", "Bot", "Allow the bot to join a guild.", (ChatContext context, Snowflake id) async {
+        final settings = BotSettings(store);
+        final current = settings.blockedGuilds.get();
+
+        if (!current.contains(id)) {
+          return context.respondWithError("This guild is not blocked.");
+        }
+
+        current.remove(id);
+        settings.blockedGuilds.set(current);
+        await context.respond(MessageBuilder(content: "Unblocked guild `$id`."));
+      }, permissionsRequired: BotCommandPermissions.owner),
+
+      BotCommand("unblockowner", "Bot", "Allow the bot to join ant guild owned by someone.", (ChatContext context, Snowflake id) async {
+        final settings = BotSettings(store);
+        final current = settings.blockedGuildOwners.get();
+
+        if (!current.contains(id)) {
+          return context.respondWithError("This owner is not blocked.");
+        }
+
+        current.remove(id);
+        settings.blockedGuildOwners.set(current);
+        await context.respond(MessageBuilder(content: "Unblocked owner `$id`."));
+      }, permissionsRequired: BotCommandPermissions.owner),
 
       BotCommand("test", "Bot", "Run tests with the bot.", (T context) async {
         await context.respond(MessageBuilder(content: "This command has not been implemented yet."));

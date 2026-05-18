@@ -136,6 +136,24 @@ Future<BotContext?> load({required BotSettings settings, required FutureOr<Patte
     return userId == null || !isIgnored(store, userId);
   }));
 
+  Precheck.addPrecheck(Precheck((event) async {
+    final settings = BotSettings(store);
+    final ids = event.getData((x) => (x.guildId, x.user?.id ?? x.member?.id), (x) => (x.guildId, x.message.author.id), (x) => (x.guildId, x.user?.id ?? x.member?.id), (x) => (x.guildId, x.user?.id ?? x.member?.id));
+
+    final blocked = settings.blockedGuilds.get().contains(ids.$1);
+    final blockedOwner = settings.blockedGuildOwners.get().contains(ids.$2);
+
+    if (blocked || blockedOwner) {
+      Logger.warn("Bot", "Blocked: ${blocked ? "guild" : "0"}, ${blockedOwner ? "owner" : "0"} (ids: $ids)");
+      final guild = await event.getData((x) => x.guild?.get(), (x) => x.guild?.get(), (x) => x.guild?.get(), (x) => x.guild?.get());
+      if (guild == null) throw Exception("No guild.");
+      await guild.leave();
+      return false;
+    }
+
+    return true;
+  }));
+
   R cr<R>(R Function<T extends ChatContext>() callback) => switch (commandType.internalType) {
     == MessageChatContext => callback.call<MessageChatContext>(),
     == InteractionChatContext => callback.call<InteractionChatContext>(),

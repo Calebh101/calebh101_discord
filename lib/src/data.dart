@@ -197,14 +197,14 @@ class SettingsObject<T> {
 
   SettingsObject(this.obj, this.key, {this.decodeFunction, this.encodeFunction});
 
-  static SettingsObject<List<T>> list<T>(EntitySettings obj, String key, {T Function(dynamic input)? decodeFunction, dynamic Function(List<T>)? encodeFunction}) {
-    return SettingsObject(obj, key, encodeFunction: encodeFunction, decodeFunction: (input) => (input as List?)?.map((x) {
+  static SettingsObjectNotNull<List<T>> list<T>(EntitySettings obj, String key, {T Function(dynamic input)? decodeFunction, dynamic Function(List<T>)? encodeFunction}) {
+    return SettingsObjectNotNull(obj, key, encodeFunction: encodeFunction, decodeFunction: (input) => (input as List?)?.map((x) {
       if (decodeFunction != null) return decodeFunction.call(x);
       return x as T;
-    }).toList());
+    }).toList(), defaultFunction: () => []);
   }
 
-  static SettingsObject<List<Snowflake>> listSnowflake<T>(EntitySettings obj, String key) {
+  static SettingsObjectNotNull<List<Snowflake>> listSnowflake<T>(EntitySettings obj, String key) {
     return list<Snowflake>(obj, key, encodeFunction: (input) => input.map((x) => x.value).toList(), decodeFunction: (input) => input != null ? Snowflake(input) : input);
   }
 
@@ -325,6 +325,9 @@ class BotSettings extends EntitySettings {
   SettingsObject<(Snowflake client, Snowflake channel, Snowflake user)> get whoRestartedMe => SettingsObject(this, "whoRestartedMe", encodeFunction: (input) => [input.$1.value, input.$2.value, input.$3.value], decodeFunction: (input) => input is List ? (Snowflake(input[0]), Snowflake(input[1]), Snowflake(input[2])) : null);
   SettingsObject<bool> get randomSettingsObjectForTestingIdk => SettingsObject(this, "randomSetting");
   SettingsObject<String> get inviteLink => SettingsObject(this, "inviteLink");
+
+  SettingsObjectNotNull<List<Snowflake>> get blockedGuilds => SettingsObject.listSnowflake(this, "blockedGuilds");
+  SettingsObjectNotNull<List<Snowflake>> get blockedGuildOwners => SettingsObject.listSnowflake(this, "blockedGuildOwners");
 
   Future<bool> init() async {
     // Meant to be overridden
