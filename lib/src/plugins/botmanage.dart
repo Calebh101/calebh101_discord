@@ -14,19 +14,31 @@ class BotManagePlugin extends BotPluginLegacy {
     () async {
       final settings = BotSettings(context.store);
       final data = settings.whoRestartedMe.get();
-      settings.whoRestartedMe.delete();
 
-      if (data == null) return;
-      final client = context.clients.clients.values.firstWhereOrNull((x) => x.user.id == data.$1);
-      if (client == null) return;
-      late TextChannel channel;
+      final client = data == null ? null : context.clients.clients.values.firstWhereOrNull((x) => x.user.id == data.$1);
+      TextChannel? channel;
 
       try {
-        channel = await client.channels.get(data.$2) as TextChannel;
+        channel = await client!.channels.get(data!.$2) as TextChannel;
       } catch (e) {
-        Logger.warn("BotManage", "Unable to get channel ${data.$2} for client ${data.$1}: $e");
-        return;
+        Logger.warn("BotManage", "Unable to get channel ${data?.$2} for client ${data?.$1}: $e");
       }
+
+      for (final client in context.clients.clients.values) {
+        await alertOwners(client, EmbedBuilder(
+          title: "I'm back alive!",
+          description: data != null ? "See who killed me:" : null,
+          fields: [if (data != null) ...[
+            EmbedFieldBuilder(name: "Client ID", value: "${data.$1.toDiscordCodeString()} (${data.$1.value.toMention()})", isInline: false),
+            EmbedFieldBuilder(name: "Channel", value: "${data.$2.toDiscordCodeString()} (${channel is GuildTextChannel ? discordLink(channel.guildId, channel.id) : "No link available"}) (${channel.runtimeType.toDiscordCodeString()})", isInline: false),
+            EmbedFieldBuilder(name: "User", value: "${data.$3.toDiscordCodeString()} (${data.$3.value.toMention()})", isInline: false),
+          ]].nullIfEmpty?.toList(),
+          timestamp: DateTime.now().toUtc(),
+        ));
+      }
+
+      settings.whoRestartedMe.delete();
+      if (data == null || client == null || channel == null) return;
 
       try {
         await channel.sendMessage(MessageBuilder(content: "I'm back, ${data.$3.value.toMention()}!"));
@@ -118,7 +130,7 @@ class BotManagePlugin extends BotPluginLegacy {
   FutureOr<List<BotCommand>> commands<T extends ChatContext>(CommandsPlugin plugin, KVStore store) {
     return [
       restartCommand<T>(store),
-      killCommand<T>(),
+      killCommand<T>(store),
       ...botSettingToCommands(BotSettings(store).inviteLink, name: "botinvite", category: "Bot", description: "Invite link to add this bot to a guild/server.", private: true),
 
       BotCommand("blockguild", "Bot", "Block the bot from joining a guild.", (ChatContext context, Snowflake id) async {
@@ -284,11 +296,14 @@ class BotManagePlugin extends BotPluginLegacy {
     await close.call(ExitCode.restart);
   }, CommandAttributes(category: "Bot", permissionsRequired: BotCommandPermissions.owner));
 
-  BotCommand killCommand<T extends ChatContext>() => BotCommand.command("kill", "Kill the bot. He will be sad.", (T context) async {
+  BotCommand killCommand<T extends ChatContext>(KVStore store) => BotCommand.command("kill", "Kill the bot. He will be sad.", (T context) async {
     if (!isOwner(id: context.user.id)) {
       context.respondWithError("You are not the owner of me!");
       return;
     }
+
+    final settings = BotSettings(store);
+    settings.whoRestartedMe.set((context.client.user.id, context.channel.id, context.user.id));
 
     await context.respond(MessageBuilder(content: "I am now dead."));
     Logger.print("Commands.Kill", "User ${context.user.id} requested my death.");
