@@ -143,6 +143,9 @@ class DebugPlugin extends BotPlugin {
         await context.respond(MessageBuilder(content: "Owner is now **${ignoreOwner ? "temporarily ignored": "unignored"}**."));
       }, CommandAttributes(category: "Debug", permissionsRequired: BotCommandPermissions.owner)),
       ...botSettingToCommands(BotSettings(store).randomSettingsObjectForTestingIdk, name: "randomsetting", category: "Debug", description: description, requiresOwnerForGet: false),
+      ...BotCommandPermissions.values.map((perms) => BotCommand("checkperm${perms.name}", "Debug", "Check perm ${perms.name}.", (ChatContext context) async {
+        await context.respond(MessageBuilder(content: "✅"));
+      }, permissionsRequired: perms)),
     ];
   }
 }

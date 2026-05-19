@@ -475,20 +475,25 @@ bool isAdmin({required ServerSettings settings, required Member member}) {
 }
 
 bool isMod({required ServerSettings settings, required Member member}) {
+  Logger.print("isMod", "Started on member ${member.id}");
   if (isOwner(id: member.id) || isClaimer(settings: settings, id: member.id) || isAdmin(settings: settings, member: member)) return true;
+  Logger.print("isMod", "Continued on member ${member.id}");
 
-  for (final x in settings.admins.get() ?? []) {
+  for (final x in settings.mods.get() ?? []) {
     if (x["type"] == "user") {
       if (x["id"] == member.id.toString()) {
+        Logger.print("isMod", "User ID ${x["id"]} matched member ${member.id}");
         return true;
       }
     } else if (x["type"] == "role") {
       if (member.roleIds.any((y) => y.toString() == x["id"])) {
+        Logger.print("isMod", "Role ID ${x["id"]} matched member ${member.id} (${member.roleIds})");
         return true;
       }
     }
   }
 
+  Logger.print("isMod", "Failed on member ${member.id}");
   return false;
 }
 

@@ -240,12 +240,8 @@ BotCommand defaultCheck(KVStore store) => BotCommand.check((plugin) {
     if (command.enforcePermissions && override != null) {
       if (command.permissionsRequired == BotCommandPermissions.owner) {
         if (await context.assureOwner() == false) return false;
-      } else if (command.permissionsRequired == BotCommandPermissions.admin || command.permissionsRequired == BotCommandPermissions.claimer) {
-        if (context.guild == null) {
-          context.respondWithError("No guild found.");
-          return false;
-        }
-
+      } else if (command.permissionsRequired != BotCommandPermissions.any) {
+        if (await context.assureGuild() == false) return false;
         final settings = ServerSettings(store, context.guild!.id);
         if (await context.assurePerms(command.permissionsRequired, settings) == false) return false;
       }
@@ -256,7 +252,7 @@ BotCommand defaultCheck(KVStore store) => BotCommand.check((plugin) {
 
     if (!pass) {
       if (context is MessageChatContext) await context.message.react(ReactionBuilder(name: "🚫", id: null));
-      if (context is InteractionChatContext) await context.respond(MessageBuilder(content: "Command is disabled."), level: ResponseLevel.hint);
+      if (context is InteractionChatContext) await context.respond(MessageBuilder(content: "Command is disabled.\nRun `checkcommand \"${command.name}\"` to learn more."), level: ResponseLevel.hint);
       return false;
     }
 
