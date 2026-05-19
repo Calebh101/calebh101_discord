@@ -240,6 +240,10 @@ BotConverter dateTimeConverter() {
   }));
 }
 
+BotConverter numConverter() {
+  return BotConverter("num", (plugin) => plugin.getConverter(RuntimeType<num>()));
+}
+
 class Or<A, B> extends ConverterType {
   final A? $1;
   final B? $2;

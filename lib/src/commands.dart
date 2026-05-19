@@ -204,6 +204,10 @@ class BotConverter<T> {
     return BotCommand.converter(callback);
   }
 
+  static BotConverter fromConverter(String id, Converter converter) {
+    return BotConverter(id, (_) => converter);
+  }
+
   @override
   String toString() {
     return "BotConverter($id, $T)";

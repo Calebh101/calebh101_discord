@@ -12,6 +12,7 @@ class DebugPlugin extends BotPlugin {
   FutureOr<List<BotConverter<dynamic>>> converters(CommandsPlugin plugin, KVStore store) {
     return [
       GreedyQuotedList.converter(),
+      numConverter(),
     ];
   }
 
@@ -25,6 +26,11 @@ class DebugPlugin extends BotPlugin {
         await Future.delayed(Duration(seconds: seconds));
         await context.respond(MessageBuilder(content: "Waited **$seconds** seconds."), level: ResponseLevel.hint);
       }, permissionsRequired: BotCommandPermissions.owner),
+      BotCommand("number", "Debug", "Get an integer.", (T context, num input) async {
+        await context.respond(MessageBuilder(
+          content: "${input.toDiscordCodeBlock()}\nType: ${input.runtimeType.toDiscordCodeString()}\nState: ${(input > 0 ? "positive" : (input < 0 ? "negative" : "zero")).toUpperCase().toDiscordCodeString()}",
+        ));
+      }),
       BotCommand("throw", "Debug", "Throw an exception.", (ChatContext context, [int type = 0, GreedyString? message]) {
         switch (type) {
           case 0:
