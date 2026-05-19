@@ -52,8 +52,8 @@ class ModerationPlugin extends BotPluginLegacy {
     }
   }
 
-  Future<bool> confirm(ChatContext context, String action) async {
-    final result = await confirmation(action, context);
+  Future<bool> confirm(ChatContext context, String action, {bool deleteUserConfirmationInput = false}) async {
+    final result = await confirmation(action, context, deleteUserConfirmationInput: deleteUserConfirmationInput);
     if (result.result == true) return true;
     await context.respond(MessageBuilder(embeds: [result.toEmbed()]));
     return false;
@@ -545,12 +545,12 @@ class ModerationPlugin extends BotPluginLegacy {
 
         if (arguments["after"] is DateTime) {
           final date = arguments["after"] as DateTime;
-          messages.removeWhere((x) => x.timestamp.toUtc().isBefore(date));
+          messages.removeWhere((x) => !x.timestamp.toUtc().isAfter(date));
         }
 
         if (arguments["before"] is DateTime) {
           final date = arguments["before"] as DateTime;
-          messages.removeWhere((x) => x.timestamp.toUtc().isAfter(date));
+          messages.removeWhere((x) => !x.timestamp.toUtc().isBefore(date));
         }
 
         if (arguments["limit"] is int) {
@@ -614,8 +614,8 @@ class ModerationPlugin extends BotPluginLegacy {
         final automatic = messages.where((x) => DateTime.now().difference(x.timestamp) < Duration(days: 14)).toList();
         final manual = messages.where((x) => DateTime.now().difference(x.timestamp) >= Duration(days: 14)).toList();
 
-        await Future.wait(messages.map((x) => x.react(ReactionBuilder(name: "🎯", id: null))));
-        final confirmResult = await confirm(context, "purge ${messages.length} messages (${automatic.length} automatic, ${manual.length} manual)");
+        //await Future.wait(messages.map((x) => x.react(ReactionBuilder(name: "🎯", id: null))));
+        final confirmResult = await confirm(context, "purge ${messages.length} messages (${automatic.length} automatic, ${manual.length} manual)", deleteUserConfirmationInput: quiet);
 
         if (!confirmResult) {
           await Future.wait(messages.map((x) => x.deleteReaction(ReactionBuilder(name: "🎯", id: null), userId: context.client.user.id)));
