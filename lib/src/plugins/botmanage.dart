@@ -24,7 +24,7 @@ class BotManagePlugin extends BotPluginLegacy {
         Logger.warn("BotManage", "Unable to get channel ${data?.$2} for client ${data?.$1}: $e");
       }
 
-      for (final client in context.clients.clients.values) {
+      if (!dev) for (final client in context.clients.clients.values) {
         await alertOwners(client, EmbedBuilder(
           title: "I'm back alive!",
           description: data != null ? "See who killed me:" : null,
@@ -337,6 +337,35 @@ class BotManagePlugin extends BotPluginLegacy {
           title: "${guilds.length} Guilds",
         ), settings: ifGuild(store, context.guild?.id, (id) => ServerSettings(store, id)));
       }),
+      BotCommand("pause", "Bot", "Pause the bot's responding in this server.", (T context, [int? location]) async {
+        //  > 0: guild
+        // null: DMs
+
+        location ??= context.guild?.id.value;
+        if (location == null) return context.respondWithError("No location set.");
+
+        final settings = BotSettings(store);
+        final current = settings.pausedLocations.get();
+
+        current.add(location);
+        settings.pausedLocations.set(current);
+        await context.respond(MessageBuilder(content: "Ignored location: `$location`"));
+      }, permissionsRequired: BotCommandPermissions.owner, needsGuild: true),
+      BotCommand("unpause", "Bot", "Unpause the bot's responding in this server.", (T context, [int? location]) async {
+        // > 0: guild
+        // = 0: DMs
+
+        location ??= context.guild?.id.value;
+        if (location == null) return context.respondWithError("No location set.");
+
+        final settings = BotSettings(store);
+        final current = settings.pausedLocations.get();
+        final contained = current.contains(location);
+
+        current.remove(location);
+        settings.pausedLocations.set(current);
+        await context.respond(MessageBuilder(content: "Unignored location: `$location`\nThis location ${contained ? "**was**" : "was **not**"} ignored."));
+      }, permissionsRequired: BotCommandPermissions.owner, needsGuild: true),
     ];
   }
 

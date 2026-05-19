@@ -328,6 +328,7 @@ class BotSettings extends EntitySettings {
 
   SettingsObjectNotNull<List<Snowflake>> get blockedGuilds => SettingsObject.listSnowflake(this, "blockedGuilds");
   SettingsObjectNotNull<List<Snowflake>> get blockedGuildOwners => SettingsObject.listSnowflake(this, "blockedGuildOwners");
+  SettingsObjectNotNull<List<int>> get pausedLocations => SettingsObject.list(this, "paused");
 
   Future<bool> init() async {
     // Meant to be overridden

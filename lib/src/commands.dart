@@ -236,6 +236,13 @@ BotCommand defaultCheck(KVStore store) => BotCommand.check((plugin) {
       return false;
     }
 
+    if (command.name != "unpause" && !isOwner(id: context.user.id)) {
+      final location = context.guild?.id ?? 0;
+      final current = BotSettings(store).pausedLocations.get();
+      final paused = current.contains(location);
+      return false;
+    }
+
     final override = RestrictCommandsPlugin.getOverrideDefaultPermissions(store: store, command: command.name, guildId: context.guild?.id);
 
     if (command.enforcePermissions && override != null) {
