@@ -97,10 +97,11 @@ class BotCommand<T extends Function> {
   late final bool enforcePermissions;
   late final bool noGroup;
   late final bool needsGuild;
+  late final bool triggerTyping;
   late String group;
   String? extendedDescription;
 
-  BotCommand(this.name, this.category, this.description, this.execute, {this.permissionsRequired = BotCommandPermissions.any, this.extendedDescription, this.enforcePermissions = true, this.noGroup = false, this.aliases, BotCommandOptions? options, this.group = "", this.needsGuild = false}) {
+  BotCommand(this.name, this.category, this.description, this.execute, {this.permissionsRequired = BotCommandPermissions.any, this.extendedDescription, this.enforcePermissions = true, this.noGroup = false, this.aliases, BotCommandOptions? options, this.group = "", this.needsGuild = false, this.triggerTyping = true}) {
     final wrappedExecute = (MessageChatContext context, List<dynamic> args) async {
       await Function.apply(execute, [context, ...args]);
     };
@@ -260,7 +261,7 @@ BotCommand defaultCheck(KVStore store) => BotCommand.check((plugin) {
       if (await context.assureGuild() == false) return false;
     }
 
-    await context.channel.triggerTyping();
+    if (command.triggerTyping) await context.channel.triggerTyping();
     return true;
   });
 });
