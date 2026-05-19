@@ -117,7 +117,7 @@ class QuotePlugin extends BotPluginLegacy {
         if (message == null) return context.respondWithError("No message found.");
         await message.react(ReactionBuilder.fromEmoji(emoji));
         await context.respond(MessageBuilder(content: "Message `${message.id}` quoted."), level: ResponseLevel.hint);
-      }, needsGuild: true, permissionsRequired: BotCommandPermissions.mod, aliases: ["q"]),
+      }, needsGuild: true, permissionsRequired: BotCommandPermissions.admin, aliases: ["q"]),
       BotCommand("setquoteemoji", "Quote", "Set the emoji used to quote.", (T context, [GreedyString? input]) async {
         final settings = QuoteSettings(store, context.guild!.id);
         final emoji = await parseEmoji(input?.data ?? "", client: context.client, guild: context.guild);
