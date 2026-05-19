@@ -244,7 +244,7 @@ BotCommand defaultCheck(KVStore store) => BotCommand.check((plugin) {
       final location = context.guild?.id ?? 0;
       final current = BotSettings(store).pausedLocations.get();
       final paused = current.contains(location);
-      return false;
+      if (paused) return false;
     }
 
     final override = RestrictCommandsPlugin.getOverrideDefaultPermissions(store: store, command: command.name, guildId: context.guild?.id);
