@@ -178,6 +178,7 @@ class BotManagePlugin extends BotPluginLegacy {
       BotCommand("test", "Bot", "Run tests with the bot.", (T context) async {
         await context.respond(MessageBuilder(content: "This command has not been implemented yet."));
       }, permissionsRequired: BotCommandPermissions.admin),
+
       BotCommand("update", "Bot", "Update the bot's code. A restart will be required to apply.", (T context, [bool reset = false]) async {
         final int pubGets = 2;
         final directory = Directory.current;
@@ -259,6 +260,59 @@ class BotManagePlugin extends BotPluginLegacy {
         "git reset --hard": "Reset all local changes, only if `reset` is true.",
         "git pull": "Pull Git changes.",
         "dart pub get": "Download dependencies.",
+      }.entries.map((x) => "- `${x.key}`: ${x.value}").join("\n")}"),
+      BotCommand("gitreset", "Bot", "Run get reset --hard.", (T context) async {
+        if (dev) return context.respondWithError("The bot is in dev mode. You cannot run this in dev mode.");
+        final directory = Directory.current;
+
+        Future<bool> dmResult(String name, ProcessResult process) async {
+          try {
+            final channel = await context.client.users.createDm(context.user.id);
+
+            await channel.sendMessage(MessageBuilder(embeds: [
+              EmbedBuilder(
+                title: "Process $name",
+                timestamp: DateTime.now().toUtc(),
+                fields: [
+                  EmbedFieldBuilder(name: "PID", value: process.pid.toDiscordCodeString(), isInline: true),
+                  EmbedFieldBuilder(name: "Exit Code", value: process.exitCode.toDiscordCodeString(), isInline: true),
+                  EmbedFieldBuilder(name: "stdout", value: process.stdout.toString().toDiscordCodeBlock(), isInline: false),
+                  EmbedFieldBuilder(name: "stderr", value: process.stderr.toString().toDiscordCodeBlock(), isInline: false),
+                ],
+                color: DiscordColor.parseHexString(process.exitCode == 0 ? "#90EE90" : "#FF7F7F"),
+              ),
+            ]));
+
+            return true;
+          } catch (e) {
+            Logger.warn("Update", "Unable to send DM for process $name: $e");
+            return false;
+          }
+        }
+
+        bool failed(ProcessResult p) => p.exitCode != 0;
+        final m = await context.respond(MessageBuilder(content: "Running..."));
+
+        Future<void> fail() async {
+          await context.updateMessage(m, MessageUpdateBuilder(content: "Run failed."));
+        }
+
+        try {
+          Logger.print("GitReset", "Running command: git reset --hard");
+          final p = await Process.run("git", ["reset", "--hard"], workingDirectory: directory.path);
+          if (p.stdout.toString().isNotEmpty) Logger.print("Update", "Command results (code ${p.exitCode}, pid ${p.pid}) stdout:\n${p.stdout}");
+          if (p.stderr.toString().isNotEmpty) Logger.print("Update", "Command results (code ${p.exitCode}, pid ${p.pid}) stderr:\n${p.stderr}");
+          await dmResult("git reset", p);
+          if (failed(p)) return await fail();
+        } catch (e) {
+          Logger.warn("GitReset", "Unable to run command git reset");
+          return await fail();
+        }
+
+
+        await context.updateMessage(m, MessageUpdateBuilder(content: "Reset."));
+      }, permissionsRequired: BotCommandPermissions.owner, extendedDescription: "The commands that will be run:\n${{
+        "git reset --hard": "Reset all local changes.",
       }.entries.map((x) => "- `${x.key}`: ${x.value}").join("\n")}"),
       BotCommand("leave", "Bot", "Leave a server.", (T context, [Guild? target]) async {
         final guild = target ?? context.guild;
