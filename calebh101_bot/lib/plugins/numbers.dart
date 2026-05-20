@@ -96,20 +96,7 @@ class NumbersPlugin extends BotPlugin {
           }
         } catch (e) {
           return context.respondWithError(
-            "Invalid formula.\n"
-            '```\n${e.toString().replaceAll('`', 'back tick')}\n```\n'
-            'This function uses [`math_expressions`](https://pub.dev/packages/math_expressions).\n\n'
-            '**Additional syntax supported**\n${[
-              'Newlines or semicolons (`;`) separate lines passed to the parser',
-              '`0x` or `#` prefixes denote hexadecimal values',
-              '`&` for bitwise AND',
-              '`|` for bitwise OR',
-              '`^` for bitwise XOR',
-              '`~` for bitwise NOT',
-              '`<<` bit shift left',
-              '`>>` bit shift right',
-              '`sqrt()` square root',
-            ].map((x) => "- $x").join("\n")}'
+            "Invalid formula.\n```\n${e.toString().replaceAll('`', 'back tick')}\n```",
           );
         }
 
@@ -122,16 +109,36 @@ class NumbersPlugin extends BotPlugin {
         }
 
         await context.respond(MessageBuilder(content: '```\n$output\n```'));
-      }, aliases: ["calc", "calculate"]),
+      }, aliases: ["calc", "calculate"], extendedDescription: 'This function uses [`math_expressions`](https://pub.dev/packages/math_expressions).\n\n'
+        '**Additional syntax supported**\n${[
+          'Newlines or semicolons (`;`) separate lines passed to the parser',
+          '`0x` or `#` prefixes denote hexadecimal values',
+          '`&` for bitwise AND',
+          '`|` for bitwise OR',
+          '`^` for bitwise XOR',
+          '`~` for bitwise NOT',
+          '`<<` bit shift left',
+          '`>>` bit shift right',
+          '`sqrt()` square root',
+        ].map((x) => "- $x").join("\n")}'),
 
       BotCommand("var", "Numbers", "Set a variable.", (T context, String name, num input) async {
         name = name.trim();
         final isAlpha = RegExp(r'^[a-zA-Z]+$').hasMatch(name);
         if (name.isEmpty || !isAlpha) return context.respondWithError("Invalid variable name.");
 
-        model.bindVariable(Variable(name), Number(input));
+        model.bindVariableName(name, Number(input));
         await context.respond(MessageBuilder(content: "$name = $input (${input.runtimeType})".toDiscordCodeBlock()));
       }, aliases: ["setvar"]),
+
+      BotCommand("resetvar", "Numbers", "Reaet a variable.", (T context, String name) async {
+        name = name.trim();
+        final isAlpha = RegExp(r'^[a-zA-Z]+$').hasMatch(name);
+        if (name.isEmpty || !isAlpha) return context.respondWithError("Invalid variable name.");
+
+        model.unbindVariableName(name);
+        await context.respond(MessageBuilder(content: "$name = null".toDiscordCodeBlock()));
+      }),
     ];
   }
 }
