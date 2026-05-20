@@ -1,10 +1,12 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:math';
 
 import 'package:calebh101_discord/calebh101_discord.dart';
 import 'package:nyxx_commands/src/mirror_utils/function_data.dart';
 import 'package:collection/collection.dart';
 
+const isRPublic = false;
 Map<Snowflake, int> rTrain = {};
 
 class HelpPlugin extends BotPluginLegacy {
@@ -15,7 +17,7 @@ class HelpPlugin extends BotPluginLegacy {
     return [
       helpCommand<T>(store, plugin),
       BotCommand("plugins", "Commands", "List all plugins.", (T context) async {
-        final plugins = pluginStore.plugins;
+        final plugins = pluginStore.plugins.sorted((a, b) => a.id.compareTo(b.id));
 
         await respondWithPagination(
           context, PaginatedEmbedBuilder(
@@ -85,8 +87,64 @@ class HelpPlugin extends BotPluginLegacy {
           ),
         ]));
       }),
-      BotCommand("dumphelp", "Commands", "Dump all help as markdown.", (T context) {
-        context.respondWithError("This command is not implemented yet.");
+      BotCommand("dumphelp", "Commands", "Dump all help as markdown.", (T context) async {
+        final m = await context.respond(MessageBuilder(content: "Dumping file..."));
+
+        final commands = BotCommand.commandRegistry.values.sorted((a, b) {
+          int result = a.category.compareTo(b.category);
+          if (result != 0) return result;
+          return a.name.compareTo(b.name);
+        });
+
+        final title = "All Commands for $globalBotName";
+        String markdown = "# $title\n\n";
+        List<String> usedCategories = [];
+
+        String getDescription(BotCommand command) {
+          return command.description;
+        }
+
+        String? getPerms(BotCommand command) {
+          return command.permissionsRequired == BotCommandPermissions.any ? null : command.permissionsRequired.name;
+        }
+
+        String aliases(BotCommand command) {
+          return "(AKA ${command.aliases!.join(", ")})";
+        }
+
+        String getName(BotCommand command) {
+          return [if (!command.noGroup && BotCommand.useGroups) command.group, command.name, if (command.aliases != null) aliases(command)].join(" ");
+        }
+
+        String argumentToString(ParameterData arg) {
+          final converter = plugin.getConverter(arg.type);
+
+          if (converter != null && converter.choices != null && converter.choices!.isNotEmpty) {
+            final choices = converter.choices!.map((x) => x.name);
+            return "${arg.name} [${choices.join(", ")}]";
+          } else {
+            return "${arg.name}${arg.isOptional ? "?" : ""} (${arg.type.internalType})";
+          }
+        }
+
+        for (final command in commands) {
+          final c = command;
+
+          markdown += "${!usedCategories.contains(command.category) ? () {
+            usedCategories.add(command.category);
+            return "## ${command.category}\n\n";
+          }() : ""}### ${getName(command)}\n\n${[
+            "${"${[if (!c.noGroup && BotCommand.useGroups) c.group, c.name].join(" ")} ${(c.command as ChatCommand).arguments.map((x) => argumentToString(x)).join(" ")}".toDiscordCodeBlock()}\n",
+            if (getPerms(c) != null) "- Requires perms: `${getPerms(c)}`",
+            "- ${getDescription(c)}",
+            if (c.extendedDescription != null) "\n${c.extendedDescription}",
+          ].join("\n")}\n\n";
+        }
+
+        await context.updateMessage(m, MessageUpdateBuilder(
+          content: "Dumped file:\n**$title**",
+          attachments: [AttachmentBuilder(data: utf8.encode(markdown.trim()), fileName: "commands-$globalBotName.md".toLowerCase())],
+        ));
       }),
       BotCommand("r", "Commands", "Get your last message, and try to use it to run a command.", (MessageChatContext context) async {
         late List<Message> allMessages;
@@ -101,7 +159,7 @@ class HelpPlugin extends BotPluginLegacy {
         final message = allMessages.sorted((a, b) => b.timestamp.compareTo(a.timestamp)).firstWhereOrNull((x) => x.author.id == context.user.id);
         Logger.print("Commands.r", "Received message ${message?.id} from user ${context.user.id}:\n${message?.content.trim()}");
         if (message == null) return context.respondWithError("Couldn't find a recent message from you.");
-        if (message.content.trim() == context.message.content.trim()) return context.respondWithError("You can't train repeats.");
+        if (isRPublic && message.content.trim() == context.message.content.trim()) return context.respondWithError("You can't train repeats.");
 
         final event = MessageCreateEvent(gateway: context.client.gateway, guildId: context.guild?.id, member: context.member, mentions: [], message: message);
         final x = await plugin.eventManager.processMessageCreateEvent(event);
@@ -109,7 +167,7 @@ class HelpPlugin extends BotPluginLegacy {
         if (x == null) {
           await context.respond(MessageBuilder(content: "Couldn't process your latest message: ${context.createDiscordLink(message.id)}"));
         }
-      }, options: BotCommandOptions(type: CommandType.textOnly)),
+      }, options: BotCommandOptions(type: CommandType.textOnly), permissionsRequired: false ? BotCommandPermissions.any : BotCommandPermissions.owner),
       BotCommand("eval", "Bot", "Evaluate commands.", (MessageChatContext context, GreedyQuotedList input) async {
         int success = 0;
 

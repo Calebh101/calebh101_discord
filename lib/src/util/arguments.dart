@@ -226,21 +226,21 @@ class GreedyGuildTextChannelList extends ConverterType {
   }
 }
 
-BotConverter durationConverter() {
+BotConverter<Duration> durationConverter() {
   return BotConverter("duration", (_) => Converter<Duration>((value, context) {
     final text = value.getQuotedWord();
     return parseDuration(text);
   }));
 }
 
-BotConverter dateTimeConverter() {
+BotConverter<DateTime> dateTimeConverter() {
   return BotConverter("datetime", (_) => Converter<DateTime>((value, context) {
     final text = value.getQuotedWord();
     return parseDateTime(text);
   }));
 }
 
-BotConverter numConverter() {
+BotConverter<num> numConverter() {
   return BotConverter("num", (plugin) => plugin.getConverter(RuntimeType<num>()));
 }
 

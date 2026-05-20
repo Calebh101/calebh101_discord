@@ -6,6 +6,7 @@ import 'package:calebh101_bot/plugins/crosspost.dart';
 import 'package:calebh101_bot/plugins/github.dart';
 import 'package:calebh101_bot/plugins/math.dart';
 import 'package:calebh101_bot/plugins/memberrole.dart';
+import 'package:calebh101_bot/plugins/numbers.dart';
 import 'package:calebh101_bot/plugins/quote.dart';
 import 'package:calebh101_bot/plugins/remind.dart';
 import 'package:calebh101_bot/plugins/rules.dart';
@@ -62,6 +63,7 @@ void main(List<String> arguments) => onStart = () async {
     GitHubPlugin(),
     QuotePlugin(),
     DebugPlugin(),
+    NumbersPlugin(),
   ]);
 
   final context = await load(

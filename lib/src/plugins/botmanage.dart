@@ -175,10 +175,6 @@ class BotManagePlugin extends BotPluginLegacy {
         await context.respond(MessageBuilder(content: "Unblocked owner `$id`."));
       }, permissionsRequired: BotCommandPermissions.owner),
 
-      BotCommand("test", "Bot", "Run tests with the bot.", (T context) async {
-        await context.respond(MessageBuilder(content: "This command has not been implemented yet."));
-      }, permissionsRequired: BotCommandPermissions.admin),
-
       BotCommand("update", "Bot", "Update the bot's code. A restart will be required to apply.", (T context, [bool reset = false]) async {
         final int pubGets = 2;
         final directory = Directory.current;
