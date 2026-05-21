@@ -31,7 +31,7 @@ class BotChatPlugin extends BotPluginLegacy {
         final results = await Future(() => chain.generate(input?.data)).timeout(Duration(seconds: 10));
 
         await context.respond(MessageBuilder(
-          content: results.join(" ").nullIfEmpty ?? "No message returned.",
+          content: results.join(" ").toLowerCase().nullIfEmptyTrimmed ?? "No message returned.",
           allowedMentions: AllowedMentions(),
         ));
       }, needsGuild: true),
@@ -104,7 +104,7 @@ class BotChatPlugin extends BotPluginLegacy {
           final results = await Future(() => chain.generate(event.message.content)).timeout(Duration(seconds: 10));
 
           await event.message.channel.sendMessage(MessageBuilder(
-            content: results.isNotEmpty ? results.join(" ") : "No message sent.",
+            content: results.isNotEmpty ? results.join(" ").toLowerCase() : "No message sent.",
             allowedMentions: AllowedMentions(),
             referencedMessage: MessageReferenceBuilder.reply(messageId: event.message.id),
           ));

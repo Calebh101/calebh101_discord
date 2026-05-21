@@ -13,7 +13,7 @@ class ModerationPlugin extends BotPluginLegacy {
 
   @override
   FutureOr<List<BotConverter>> converters(CommandsPlugin plugin, KVStore store) {
-    return [durationConverter(), Or.converter<Member, Snowflake>()];
+    return [durationConverter(), Or.converter<Member, Snowflake>(), GreedyRoleList.converter()];
   }
 
   Future<String> confirmstringify(Member member, NyxxGateway client) async {
@@ -736,6 +736,108 @@ class ModerationPlugin extends BotPluginLegacy {
           await context.respond(MessageBuilder(content: "Message `${message.id}` deleted."), level: ResponseLevel.hint);
         }
       }, permissionsRequired: BotCommandPermissions.mod, aliases: ["d"]),
+      BotCommand("lock", "Moderation", "Disable certain permissions for @everyone.", (T context, [GuildTextChannel? channel]) async {
+        final settings = ServerSettings(store, context.guild!.id);
+        final roles = settings.lockAllow.get();
+
+        final thisChannel = channel == null;
+        channel ??= context.channel as GuildTextChannel;
+        final role = context.guild!.id;
+        final ignored = false;
+
+        final existingOverwrite = channel.permissionOverwrites.firstWhereOrNull(
+          (x) => x.id == role && x.type == PermissionOverwriteType.role,
+        );
+
+        final lockPermissions = Permissions.addReactions |
+          Permissions.sendMessages |
+          Permissions.sendMessagesInThreads |
+          Permissions.createPublicThreads |
+          Permissions.createPrivateThreads |
+          Permissions.speak |
+          Permissions.requestToSpeak |
+          Permissions.stream |
+          Permissions.useSoundboard;
+
+        await channel.updatePermissionOverwrite(
+          PermissionOverwriteBuilder(
+            id: role,
+            type: PermissionOverwriteType.role,
+            deny: (existingOverwrite?.deny ?? Permissions(0)) | (ignored ? Permissions(0) : lockPermissions),
+            allow: existingOverwrite?.allow,
+          ),
+        );
+
+        for (final role in roles) {
+          final existingOverwrite = channel.permissionOverwrites.firstWhereOrNull(
+            (x) => x.id == role && x.type == PermissionOverwriteType.role,
+          );
+
+          final currentDeny = existingOverwrite?.deny ?? Permissions(0);
+          final currentAllow = existingOverwrite?.allow ?? Permissions(0);
+          final toAllow = ignored ? Permissions(0) : Permissions(lockPermissions.value & ~currentDeny.value);
+
+          await channel.updatePermissionOverwrite(
+            PermissionOverwriteBuilder(
+              id: role,
+              type: PermissionOverwriteType.role,
+              deny: currentDeny,
+              allow: Permissions(currentAllow.value | toAllow.value),
+            ),
+          );
+        }
+
+        await context.respond(MessageBuilder(content: "${thisChannel ? "Channel" : channel.toMention()} locked.\n-# Allowed ${roles.length} roles."));
+      }, permissionsRequired: BotCommandPermissions.mod, needsGuild: true, extendedDescription: "The following permissions will be disabled for `@everyone`:\n${[
+        "Send messages (including in threads)",
+        "Create public/private threads",
+        "Add reactions",
+        "Speak/request to speak",
+        "Stream",
+        "Use soundboard",
+      ].map((x) => "- $x").join("\n")}"),
+      BotCommand("unlock", "Moderation", "Re-enable certain permissions for @everyone.", (T context, [GuildTextChannel? channel]) async {
+        final thisChannel = channel == null;
+        channel ??= context.channel as GuildTextChannel;
+        final role = context.guild!.id;
+
+        final existingOverwrite = channel.permissionOverwrites.firstWhereOrNull(
+          (x) => x.id == role && x.type == PermissionOverwriteType.role,
+        );
+
+        final permissionsToUnlock = Permissions.addReactions |
+          Permissions.sendMessages |
+          Permissions.sendMessagesInThreads |
+          Permissions.createPublicThreads |
+          Permissions.createPrivateThreads |
+          Permissions.speak |
+          Permissions.requestToSpeak |
+          Permissions.stream |
+          Permissions.useSoundboard;
+
+        await channel.updatePermissionOverwrite(
+          PermissionOverwriteBuilder(
+            id: role,
+            type: PermissionOverwriteType.role,
+            deny: Permissions((existingOverwrite?.deny ?? Permissions(0)).value & ~permissionsToUnlock.value),
+            allow: existingOverwrite?.allow,
+          ),
+        );
+
+        await context.respond(MessageBuilder(content: "${thisChannel ? "Channel" : channel.toMention()} unlocked."));
+      }, permissionsRequired: BotCommandPermissions.mod, needsGuild: true, extendedDescription: "The following permissions will be re-enabled for `@everyone`:\n${[
+        "Send messages (including in threads)",
+        "Create public/private threads",
+        "Add reactions",
+        "Speak/request to speak",
+        "Stream",
+        "Use soundboard",
+      ].map((x) => "- $x").join("\n")}"),
+      BotCommand("setlockallow", "ModerationAdmin", "Set roles to always allow to speak when locking a channel.", (ChatContext context, GreedyRoleList roles) async {
+        final settings = ServerSettings(store, context.guild!.id);
+        settings.lockAllow.set(roles.input.map((x) => x.id).toList());
+        await context.respond(MessageBuilder(content: "Set lock override roles!\n${roles.input.map((x) => x.name).join(", ").toDiscordCodeBlock()}"));
+      }, permissionsRequired: BotCommandPermissions.admin, needsGuild: true),
     ];
   }
 
@@ -755,7 +857,7 @@ class ModerationPlugin extends BotPluginLegacy {
     return [
       {
         ModlogGroup.all: (levelBelow) => {...levelBelow, "mod.timein", "mod.unwarn", "message.send", "audit", ...memberUpdateProperties.keys.where((x) => x != "timeout").map((x) => "member.update.$x")},
-        ModlogGroup.normal: (levelBelow) => {...levelBelow, "mod.ban", "mod.unban", "mod.timeout", "mod.kick", "mod.warn", "mod.purge", "mod.softban", "message.delete", "message.edit", "member.add", "member.remove", "member.ban", "member.unban", "message.bulkdelete", "invite.create", "invite.delete", "member.update.timeout", "mod.block.set", "mod.block.catch"},
+        ModlogGroup.normal: (levelBelow) => {...levelBelow, "mod.ban", "mod.unban", "mod.timeout", "mod.kick", "mod.warn", "mod.purge", "mod.softban", "message.delete", "message.edit", "member.add", "member.remove", "member.ban", "member.unban", "message.bulkdelete", "invite.create", "invite.delete", "member.update.timeout", "mod.block.set", "mod.block.catch", "channel.lock", "channel.unlock", "channel.slowmode"},
         ModlogGroup.quiet: (levelBelow) => {...levelBelow},
         ModlogGroup.off: (_) => {},
       },
@@ -1060,6 +1162,26 @@ class ModerationPlugin extends BotPluginLegacy {
           },
           guild: guild,
           settings: ServerSettings(context.store, guild.id),
+          client: client,
+        ));
+      });
+
+      client.onChannelUpdate.listen((event) async {
+        if (event.channel is! GuildTextChannel || event.oldChannel is! GuildTextChannel) return;
+        final channel = event.channel as GuildTextChannel;
+        final oldChannel = event.oldChannel as GuildTextChannel;
+        if (channel.rateLimitPerUser == oldChannel.rateLimitPerUser) return;
+
+        Modlog.add(ModlogEvent(
+          "channel.slowmode",
+          title: "Channel Slowmode Updated",
+          fields: {
+            "From": "${oldChannel.rateLimitPerUser} (${oldChannel.rateLimitPerUser?.prettyDetailed()})".toDiscordCodeBlock(),
+            "To": "${(channel.rateLimitPerUser).toDiscordCodeString()} (${channel.rateLimitPerUser?.prettyDetailed()})".toDiscordCodeBlock(),
+            "Channel": channel.toMention(),
+          },
+          guild: await tryCatchA(() => channel.guild.get()),
+          settings: ServerSettings(context.store, channel.guildId),
           client: client,
         ));
       });

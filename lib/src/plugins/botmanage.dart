@@ -41,7 +41,7 @@ class BotManagePlugin extends BotPluginLegacy {
       if (data == null || client == null || channel == null) return;
 
       try {
-        await channel.sendMessage(MessageBuilder(content: "I'm back, ${data.$3.value.toMention()}!"));
+        if (!dev) await channel.sendMessage(MessageBuilder(content: "I'm back, ${data.$3.value.toMention()}!"));
       } catch (e) {
         Logger.warn("BotManage", "Unable to send message in channel ${channel.id} for client ${data.$1} to user ${data.$3}: $e");
       }
