@@ -24,7 +24,10 @@ class BotChatPlugin extends BotPluginLegacy {
   FutureOr<List<BotCommand<Function>>> commands<T extends ChatContext>(CommandsPlugin plugin, KVStore store) {
     return [
       BotCommand("chat", "Chat", "Chat with the bot!", (ChatContext context, [GreedyString? input]) async {
-        final chain = BotChatServerSettings(store, context.guild!.id).chain.get() ?? newChain(context);
+        final settings = BotChatServerSettings(store, context.guild!.id);
+        final chain = settings.chain.get() ?? newChain(context);
+        final messages = await getAllMessages(context.channel, limit: settings.botChatContextTraining.get());
+        chain.train(messages.map((x) => x.content.split(" ")).flatten().toList());
         final results = await Future(() => chain.generate(input?.data)).timeout(Duration(seconds: 10));
 
         await context.respond(MessageBuilder(
@@ -44,7 +47,7 @@ class BotChatPlugin extends BotPluginLegacy {
         final settings = BotChatServerSettings(store, context.guild!.id);
         final chain = settings.chain.get() ?? newChain(context);
         final total = chain.chain.entries.map((x) => x.key.length + x.value.map((x) => x.length).sum).sum;
-        await context.respond(MessageBuilder(content: "There are **${chain.chain.length}** total entries (**$total** total characters).\nOrder: **${chain.order}**"));
+        await context.respond(MessageBuilder(content: "There are **${chain.chain.length}** total entries (**$total** total characters).\n\nOrder: **${chain.order}**\nContext window: **${settings.botChatContextTraining.get()}**"));
       }, needsGuild: true),
       BotCommand("prunetrained", "Chat", "Remove random entries that the bot has trained on.", (ChatContext context, int entries) async {
         final settings = BotChatServerSettings(store, context.guild!.id);
@@ -67,6 +70,13 @@ class BotChatPlugin extends BotPluginLegacy {
         settings.botchatChannel.set(channel.id);
         await context.respond(MessageBuilder(content: "Bot chat channel set to ${channel.toMention()}."));
       }, permissionsRequired: BotCommandPermissions.admin, needsGuild: true),
+      BotCommand("setbotchatcontext", "Chat", "Bot chat context window.", (T context, int? value) async {
+        final settings = BotChatServerSettings(store, context.guild!.id);
+        settings.botChatContextTraining.set(value);
+        final result = settings.botChatContextTraining.get();
+
+        await context.respond(MessageBuilder(content: "Botchat context set to **$result**!"));
+      }, permissionsRequired: BotCommandPermissions.admin, needsGuild: true, extendedDescription: "Each time someone chats with the bot, the Markov chain will be temporarily trained with the last X messages in the current channel. This training data will not be saved after the response."),
     ];
   }
 
@@ -88,6 +98,9 @@ class BotChatPlugin extends BotPluginLegacy {
         final chain = BotChatServerSettings(store, event.guildId!).chain.get() ?? newChain(GuildCarrier(await event.guild!.get()));
 
         try {
+          final channel = await event.message.channel.get() as TextChannel;
+          final messages = await getAllMessages(channel, limit: settings.botChatContextTraining.get());
+          chain.train(messages.map((x) => x.content.split(" ")).flatten().toList());
           final results = await Future(() => chain.generate(event.message.content)).timeout(Duration(seconds: 10));
 
           await event.message.channel.sendMessage(MessageBuilder(
@@ -108,6 +121,7 @@ class BotChatServerSettings extends Calebh101BotServerSettings {
 
   SettingsObject<Snowflake> get botchatChannel => SettingsObject.snowflake(this, "botchatChannel");
   SettingsObject<int> get botchatOrder => SettingsObject(this, "botchatOrder");
+  SettingsObjectNotNull<int> get botChatContextTraining => SettingsObjectNotNull(this, "context", defaultFunction: () => 10);
   SettingsObject<MarkovChain> get chain => SettingsObject(this, "markovChain", encodeFunction: (input) => jsonEncode(input.toJson()), decodeFunction: (input) => input != null ? MarkovChain.fromJson(jsonDecode(input)) : null);
 }
 

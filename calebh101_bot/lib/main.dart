@@ -236,6 +236,7 @@ class Calebh101BotUserPerServerSettings extends UserPerServerSettings {
 }
 
 Future<List<Message>> getAllMessages(TextChannel channel, {required int limit, int limitPer = 100}) async {
+  if (limit <= 0 || limitPer <= 0) return [];
   List<Message> result = [];
 
   while (true) {
