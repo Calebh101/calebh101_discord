@@ -187,7 +187,8 @@ List<BotCommand> modLogCommandsX<T extends ChatContext>(KVStore store) => [
     final id = settings.modlogChannel.get();
     await context.respond(MessageBuilder(content: "Modlog channel is currently ${id != null ? "set to ${id.toChannel()}" : "**not set**"}."));
   }),
-  BotCommand.command("modlogscopes", "Select scopes to log.", (T context, [String? input]) async {
+  BotCommand.command("modlogscopes", "Select scopes to log.", (T context, [GreedyString? data]) async {
+    final input = data?.data;
     if (Modlog.events.isEmpty) return context.respondWithError("Modlog is not enabled.\n-# No events allowed. Did you forget to call `Modlog()`?");
     if (context.guild == null || context.member == null) return context.respondWithError("No guild/member found.");
     final settings = context.guild != null ? ServerSettings(store, context.guild!.id) : null;
@@ -210,11 +211,14 @@ List<BotCommand> modLogCommandsX<T extends ChatContext>(KVStore store) => [
     final enabled = <String>[];
     final invalid = <String>[];
 
-    final group = ModlogGroup.values.firstWhereOrNull((x) => x.name == input.trim());
-    final Set<String> items = group != null ? Modlog.getGroup(group) : input.split(',').map((s) => s.trim()).where((x) => x.isNotEmpty).toSet();
+    final Set<String> items = input.split(',').map((s) => s.trim()).where((x) => x.isNotEmpty).toSet();
 
     for (final x in items) {
-      if (Modlog.events.contains(x)) {
+      final group = ModlogGroup.values.firstWhereOrNull((y) => y.name == x.trim());
+
+      if (group != null) {
+        enabled.addAll(Modlog.getGroup(group));
+      } else if (Modlog.events.contains(x)) {
         enabled.add(x);
       } else {
         invalid.add(x);
@@ -226,7 +230,6 @@ List<BotCommand> modLogCommandsX<T extends ChatContext>(KVStore store) => [
     await context.respond(MessageBuilder(
       content: [
         "**${enabled.length}** ${Word.fromCount(enabled.length, singular: Word("scope"))} enabled: ${enabled.isNotEmpty ? enabled.map((x) => "`$x`").join(", ") : ""}",
-        if (group != null) "From group: `${group.name}`",
         if (invalid.isNotEmpty) "-# **${invalid.length}** ${Word.fromCount(invalid.length, singular: Word("scope"))} are invalid: ${invalid.map((x) => "`$x`").join(", ")}",
         "-# **${Modlog.events.length}** ${Word.fromCount(Modlog.events.length, singular: Word("scope"))} available: ${Modlog.events.map((x) => "`$x`").join(", ")}",
       ].join("\n"),
