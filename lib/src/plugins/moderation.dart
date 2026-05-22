@@ -836,7 +836,7 @@ class ModerationPlugin extends BotPluginLegacy {
       BotCommand("lockallow", "ModerationAdmin", "Roles to always allow to speak when locking a channel.", (ChatContext context) async {
         final settings = ServerSettings(store, context.guild!.id);
         final roles = settings.lockAllow.get();
-        final ignore = settings.lockAllow.get();
+        final ignore = settings.lockAllowIgnore.get();
 
         await context.respond(MessageBuilder(content: "Lock allow roles:\n${roles.isNotEmpty ? (await Future.wait(roles.map((x) async => (x, await tryCatchA(() => context.guild!.roles.get(x)))))).map((x) => "${x.$1} (${x.$2?.name ?? "<Not Found>"})").join(", ").toDiscordCodeBlock() : "None set"}\n\nChannels to ignore lock allow in:\n${ignore.isNotEmpty ? ignore.map((x) => x.value.toChannel()).join(", ") : "None set"}"));
       }, permissionsRequired: BotCommandPermissions.admin, needsGuild: true),
