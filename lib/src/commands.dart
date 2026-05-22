@@ -307,3 +307,36 @@ List<BotCommand> botSettingToCommands<T>(SettingsObject<T> setting, {required St
     }),
   ];
 }
+
+List<BotCommand> settingToCommands<S extends EntitySettings, T>(S? Function(Snowflake? guildId, Snowflake userId) settingsCallback, SettingsObject<T> Function(S settings) settingCallback, {required String name, required String category, required String description, String Function(T? input)? toReadable, bool requiresPermsForGet = true, bool private = false, required BotCommandPermissions perms}) {
+  return [
+    BotCommand("set$name", category, "Set setting $name: $description", (ChatContext context, GreedyString input) async {
+      final settings = settingsCallback.call(context.guild?.id, context.user.id);
+      if (settings == null) return context.respondWithError("Invalid context.");
+      final setting = settingCallback.call(settings);
+
+      final converter = context.commands.getConverter(RuntimeType<T>());
+      final value = await converter?.convert(StringView(input.data), context);
+
+      if (value == null) {
+        await context.respond(MessageBuilder(content: "No converter found or converting failed for type `$T`.\n```${converter.runtimeType.toDiscordCodeBlock()}"));
+        return;
+      }
+
+      setting.set(value);
+      await context.respond(MessageBuilder(content: "Set setting `$name`."), level: private ? ResponseLevel.hint : ResponseLevel.public);
+    }, permissionsRequired: perms),
+    BotCommand("get$name", category, "Get setting $name: $description", (ChatContext context) async {
+      final settings = settingsCallback.call(context.guild?.id, context.user.id);
+      if (settings == null) return context.respondWithError("Invalid context.");
+      final setting = settingCallback.call(settings);
+      final value = setting.get();
+
+      toReadable ??= (input) {
+        return input?.toString() ?? "Not set.";
+      };
+
+      await context.respond(MessageBuilder(content: "**Bot Setting `$name`**:\n$description\n\n${toReadable!.call(value)}"), level: private ? ResponseLevel.private : ResponseLevel.public);
+    }, permissionsRequired: requiresPermsForGet ? perms : BotCommandPermissions.any),
+  ];
+}
