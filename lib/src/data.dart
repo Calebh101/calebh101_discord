@@ -357,6 +357,7 @@ class ServerSettings extends EntitySettings {
   SettingsObject<int> get kickMessageRemovalSeconds => SettingsObject(this, "kickMessageRemovalSeconds");
   SettingsObject<int> get warningChannel => SettingsObject(this, "warningChannel");
   SettingsObjectNotNull<List<Snowflake>> get lockAllow => SettingsObject.listSnowflake(this, "lockAllow");
+  SettingsObjectNotNull<List<Snowflake>> get lockAllowIgnore => SettingsObject.listSnowflake(this, "lockAllowIgnore");
 }
 
 class UserSettings extends EntitySettings {

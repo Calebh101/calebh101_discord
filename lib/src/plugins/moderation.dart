@@ -13,7 +13,7 @@ class ModerationPlugin extends BotPluginLegacy {
 
   @override
   FutureOr<List<BotConverter>> converters(CommandsPlugin plugin, KVStore store) {
-    return [durationConverter(), Or.converter<Member, Snowflake>(), GreedyRoleList.converter()];
+    return [durationConverter(), Or.converter<Member, Snowflake>(), GreedyRoleList.converter(), GreedyGuildTextChannelList.converter()];
   }
 
   Future<String> confirmstringify(Member member, NyxxGateway client) async {
@@ -743,7 +743,7 @@ class ModerationPlugin extends BotPluginLegacy {
         final thisChannel = channel == null;
         channel ??= context.channel as GuildTextChannel;
         final role = context.guild!.id;
-        final ignored = false;
+        final ignored = settings.lockAllowIgnore.get().contains(channel.id);
 
         final existingOverwrite = channel.permissionOverwrites.firstWhereOrNull(
           (x) => x.id == role && x.type == PermissionOverwriteType.role,
@@ -763,12 +763,12 @@ class ModerationPlugin extends BotPluginLegacy {
           PermissionOverwriteBuilder(
             id: role,
             type: PermissionOverwriteType.role,
-            deny: (existingOverwrite?.deny ?? Permissions(0)) | (ignored ? Permissions(0) : lockPermissions),
+            deny: (existingOverwrite?.deny ?? Permissions(0)) | lockPermissions,
             allow: existingOverwrite?.allow,
           ),
         );
 
-        for (final role in roles) {
+        if (!ignored) for (final role in roles) {
           final existingOverwrite = channel.permissionOverwrites.firstWhereOrNull(
             (x) => x.id == role && x.type == PermissionOverwriteType.role,
           );
@@ -787,7 +787,7 @@ class ModerationPlugin extends BotPluginLegacy {
           );
         }
 
-        await context.respond(MessageBuilder(content: "${thisChannel ? "Channel" : channel.toMention()} locked.\n-# Allowed ${roles.length} roles."));
+        await context.respond(MessageBuilder(content: "${thisChannel ? "Channel" : channel.toMention()} locked.\n-# Allowed ${ignored ? 0 : roles.length} roles."));
       }, permissionsRequired: BotCommandPermissions.mod, needsGuild: true, extendedDescription: "The following permissions will be disabled for `@everyone`:\n${[
         "Send messages (including in threads)",
         "Create public/private threads",
@@ -833,10 +833,21 @@ class ModerationPlugin extends BotPluginLegacy {
         "Stream",
         "Use soundboard",
       ].map((x) => "- $x").join("\n")}"),
+      BotCommand("lockallow", "ModerationAdmin", "Roles to always allow to speak when locking a channel.", (ChatContext context) async {
+        final settings = ServerSettings(store, context.guild!.id);
+        final roles = settings.lockAllow.get();
+        final ignore = settings.lockAllow.get();
+        await context.respond(MessageBuilder(content: "Lock allow roles:\n${roles.isNotEmpty ? (await Future.wait(roles.map((x) async => (x, await tryCatchA(() => context.guild!.roles.get(x)))))).map((x) => "`${x.$1}` (${x.$2?.name ?? "<Not Found>"})").join(", ").toDiscordCodeBlock() : "None set"}\n\nChannels to ignore lock allow in:\n${ignore.isNotEmpty ? ignore.map((x) => x.value.toChannel()).join(", ") : "None set"}"));
+      }, permissionsRequired: BotCommandPermissions.admin, needsGuild: true),
       BotCommand("setlockallow", "ModerationAdmin", "Set roles to always allow to speak when locking a channel.", (ChatContext context, GreedyRoleList roles) async {
         final settings = ServerSettings(store, context.guild!.id);
         settings.lockAllow.set(roles.input.map((x) => x.id).toList());
-        await context.respond(MessageBuilder(content: "Set lock override roles!\n${roles.input.map((x) => x.name).join(", ").toDiscordCodeBlock()}"));
+        await context.respond(MessageBuilder(content: "Set lock allow roles!\n${roles.input.map((x) => x.name).join(", ").toDiscordCodeBlock()}"));
+      }, permissionsRequired: BotCommandPermissions.admin, needsGuild: true),
+      BotCommand("setlockallowignore", "ModerationAdmin", "Set channels to ignore lock allow settings.", (ChatContext context, GreedyGuildTextChannelList channels) async {
+        final settings = ServerSettings(store, context.guild!.id);
+        settings.lockAllowIgnore.set(channels.input.map((x) => x.id).toList());
+        await context.respond(MessageBuilder(content: "Set lock allow ignore!\n${channels.input.map((x) => x.toMention()).join(", ")}"));
       }, permissionsRequired: BotCommandPermissions.admin, needsGuild: true),
     ];
   }

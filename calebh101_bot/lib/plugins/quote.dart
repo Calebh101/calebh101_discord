@@ -19,7 +19,6 @@ class QuotePlugin extends BotPluginLegacy {
         final emoji = await settings.getQuoteEmoji(client: client, guild: guild);
         final channelId = settings.quoteChannel.get();
 
-        Logger.print("Quote", "Emoji: ${emoji.runtimeType}, channel: $channelId (${channelId.runtimeType})");
         if (emoji == null) return;
         if (channelId == null) return;
         if (event.message.channelId == channelId) return;
