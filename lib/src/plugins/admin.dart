@@ -597,5 +597,45 @@ class AdminPlugin extends BotPluginLegacy {
 
       await context.respond(MessageBuilder(content: role != null ? "Role `$id`: ${await roleToString(role)}" : "No role found for ID `$id`."));
     }),
+
+    BotCommand("emojis", "Server", "Get all emojis for this server.", (T context) async {
+      final emojis = (await context.guild!.emojis.list()).sorted((a, b) => b.createdAt.compareTo(a.createdAt));
+
+      await respondWithPagination(context, PaginatedEmbedBuilder(
+        pages: EmbedPage.generate(emojis.map((emoji) {
+          return EmbedFieldBuilder(name: emojiToString(emoji) ?? "Emoji ${emoji.id.toDiscordCodeString()}", value: [
+            "ID: `${emoji.id}`",
+            "Created: ${emoji.createdAt.toDiscordTimestamp(DiscordTimestamp.shortDateTime)} by ${emoji.user?.toMention() ?? "<unknown user>"}",
+            /*"Is animated: `${emoji.isAnimated}`",
+            "Is available: `${emoji.isAvailable}`",
+            "Is managed: `${emoji.isManaged}`",*/
+          ].join("\n"), isInline: false);
+        }).toList()),
+        color: await getColor(context.member),
+        footer: ElementBasedEmbedFooterBuilder(elements: ["${emojis.length} Emojis"]),
+        title: "All Emojis for ${context.guild?.name}",
+      ), settings: ServerSettings(store, context.guild!.id));
+    }, needsGuild: true),
+
+    BotCommand("emoji", "Server", "Get all emojis for this server.", (T context, Snowflake id) async {
+      final emoji = await tryCatchA(() async => await context.guild!.emojis.fetch(id));
+      if (emoji == null) return context.respondWithError("Invalid emoji ID: `$id`");
+
+      await context.respond(MessageBuilder(embeds: [
+        EmbedBuilder(
+          title: "Emoji Found",
+          color: await getColor(context.member),
+          description: [
+            "# ${emojiToString(emoji) ?? "Emoji ${emoji.id.toDiscordCodeString()}"}",
+            "ID: `${emoji.id}`",
+            "Created: ${emoji.createdAt.toDiscordTimestamp(DiscordTimestamp.shortDateTime)} by ${emoji.user?.toMention() ?? "<unknown user>"}",
+            "Is animated: `${emoji.isAnimated}`",
+            "Is available: `${emoji.isAvailable}`",
+            "Is managed: `${emoji.isManaged}`",
+          ].join("\n"),
+          footer: EmbedFooterBuilder(text: "Emoji $id"),
+        ),
+      ]));
+    }, needsGuild: true),
   ];
 }
