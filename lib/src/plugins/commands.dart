@@ -261,7 +261,7 @@ class HelpPlugin extends BotPluginLegacy {
 
           if (converter != null && converter.choices != null && converter.choices!.isNotEmpty) {
             final choices = converter.choices!.map((x) => x.name);
-            return "${arg.name} [${choices.join(", ")}]";
+            return "${arg.name}${arg.isOptional ? "?" : ""} [${choices.join(", ")}]";
           } else {
             return "${arg.name}${arg.isOptional ? "?" : ""} (${arg.type.internalType})";
           }
