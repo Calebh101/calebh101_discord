@@ -19,8 +19,8 @@ class MessagesPlugin extends BotPluginLegacy {
         if (reply == null) return context.respondWithError("No message found.");
 
         await reply.pin(auditLogReason: reason?.data);
-        await context.respond(MessageBuilder(content: "Message pinned: ${discordLink(context.guild?.id, context.channel.id, reply.id)}"));
-      }, needsGuild: true, options: BotCommandOptions(type: CommandType.textOnly)),
+        await context.message.react(ReactionBuilder(name: "✅", id: null));
+      }, needsGuild: true, triggerTyping: false, options: BotCommandOptions(type: CommandType.textOnly)),
 
       BotCommand("collapse", "Bot", "Collapse a message of mine, by removing embeds, attachments, and extra text.", (ChatContext context, Snowflake id, [GuildTextChannel? targetChannel]) async {
         String getNew(String current) {
