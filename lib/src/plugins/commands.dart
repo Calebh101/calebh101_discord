@@ -6,6 +6,17 @@ import 'package:calebh101_discord/calebh101_discord.dart';
 import 'package:nyxx_commands/src/mirror_utils/function_data.dart';
 import 'package:collection/collection.dart';
 
+String argumentToString(CommandsPlugin plugin, ParameterData arg) {
+  final converter = plugin.getConverter(arg.type);
+
+  if (converter != null && converter.choices != null && converter.choices!.isNotEmpty) {
+    final choices = converter.choices!.map((x) => x.name);
+    return "<${arg.name}${arg.isOptional ? "?" : ""} [${choices.join(", ")}]>";
+  } else {
+    return "<${arg.name}${arg.isOptional ? "?" : ""} (${arg.type.internalType})>";
+  }
+}
+
 const isRPublic = false;
 Map<Snowflake, int> rTrain = {};
 
@@ -116,17 +127,6 @@ class HelpPlugin extends BotPluginLegacy {
           return [if (!command.noGroup && BotCommand.useGroups) command.group, command.name, if (command.aliases != null) aliases(command)].join(" ");
         }
 
-        String argumentToString(ParameterData arg) {
-          final converter = plugin.getConverter(arg.type);
-
-          if (converter != null && converter.choices != null && converter.choices!.isNotEmpty) {
-            final choices = converter.choices!.map((x) => x.name);
-            return "${arg.name} [${choices.join(", ")}]";
-          } else {
-            return "${arg.name}${arg.isOptional ? "?" : ""} (${arg.type.internalType})";
-          }
-        }
-
         for (final command in commands) {
           final c = command;
 
@@ -134,7 +134,7 @@ class HelpPlugin extends BotPluginLegacy {
             usedCategories.add(command.category);
             return "## ${command.category}\n\n";
           }() : ""}### ${getName(command)}\n\n${[
-            "${"${[if (!c.noGroup && BotCommand.useGroups) c.group, c.name].join(" ")} ${(c.command as ChatCommand).arguments.map((x) => argumentToString(x)).join(" ")}".toDiscordCodeBlock()}\n",
+            "${"${[if (!c.noGroup && BotCommand.useGroups) c.group, c.name].join(" ")} ${(c.command as ChatCommand).arguments.map((x) => argumentToString(plugin, x)).join(" ")}".toDiscordCodeBlock()}\n",
             if (getPerms(c) != null) "- Requires perms: `${getPerms(c)}`",
             "- ${getDescription(c)}",
             if (c.extendedDescription != null) "\n${c.extendedDescription}",
@@ -256,23 +256,12 @@ class HelpPlugin extends BotPluginLegacy {
       if (c == null && category == null) return context.respondWithError("Invalid command${useCategories ? "/category" : ""}: `$command`\nRun `search \"$command\"` to search through all commands.");
 
       if (c != null) {
-        String argumentToString(ParameterData arg) {
-          final converter = plugin.getConverter(arg.type);
-
-          if (converter != null && converter.choices != null && converter.choices!.isNotEmpty) {
-            final choices = converter.choices!.map((x) => x.name);
-            return "${arg.name}${arg.isOptional ? "?" : ""} [${choices.join(", ")}]";
-          } else {
-            return "${arg.name}${arg.isOptional ? "?" : ""} (${arg.type.internalType})";
-          }
-        }
-
         await context.respond(MessageBuilder(embeds: [
           EmbedBuilder(
             title: "Command ${getName(c)}",
             color: await getPrimaryColor(context.member) ?? primaryBotColor,
             description: [
-              "${[if (!c.noGroup && BotCommand.useGroups) c.group, c.name].join(" ")} ${(c.command as ChatCommand).arguments.map((x) => argumentToString(x)).join(" ")}".toDiscordCodeBlock(),
+              "${[if (!c.noGroup && BotCommand.useGroups) c.group, c.name].join(" ")} ${(c.command as ChatCommand).arguments.map((x) => argumentToString(plugin, x)).join(" ")}".toDiscordCodeBlock(),
               "Category: ${c.category}",
               if (getPerms(c) != null) "Requires perms: `${getPerms(c)}`",
               getDescription(c),
