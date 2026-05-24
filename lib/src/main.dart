@@ -75,14 +75,7 @@ class TerminalCommand {
 
 late Future<Never> Function([int code]) close;
 
-typedef OnStart = void Function();
-late OnStart _onStart;
 bool stdinInitialized = false;
-
-set onStart(OnStart value) {
-  _onStart = value;
-  _onStart.call();
-}
 
 /// Create a new gateway and bot.
 ///
@@ -96,13 +89,6 @@ set onStart(OnStart value) {
 ///
 /// [createBot] will create a bot user using `client.user.get()` if true.
 Future<BotContext?> load({required BotSettings settings, required FutureOr<Pattern> Function(MessageCreateEvent)? prefix, List<BotCommand>? Function<T extends ChatContext>(CommandsPlugin plugin)? commands, List<BotConverter>? Function(CommandsPlugin plugin)? converters, required List<Flag<GatewayIntents>> permissions, bool createBot = true, List<TerminalCommand> terminalCommands = const [], required List<DefinedUser> owners, required DefinedServer? supportServer, required KVStore store, required DiscordColor primaryColor, required String botName, required Version version, required List<String> args, required ArgParser Function(ArgParser parser) argParser, required Map<String, String> tokens, required PluginStore plugins}) async {
-  try {
-    final _ = _onStart.hashCode;
-  } catch (e) {
-    Logger.error("load", "onStart must be initialized.\n$e");
-    return null;
-  }
-
   late ArgResults results;
   final parser = argParser.call(defaultArgParser());
 

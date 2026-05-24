@@ -4,6 +4,34 @@ import 'dart:math';
 import 'package:calebh101_discord/calebh101_discord.dart';
 import 'package:intl/intl.dart';
 
+class Log {
+  final LogLevel level;
+  final String module;
+  final Object? input;
+  final StackTrace? trace;
+  final List<String> compiledLines;
+  final DateTime time;
+
+  const Log({required this.compiledLines, required this.input, required this.level, required this.module, required this.trace, required this.time});
+
+  Map<String, dynamic> toJson() {
+    return {
+      "level": level.index,
+      "module": module,
+      "input": input,
+      "trace": trace?.format(),
+      "lines": compiledLines,
+      "time": time.toUtc().toIso8601String(),
+    };
+  }
+
+  static Log fromJson(Map input) {
+    return Log(compiledLines: List<String>.from(input["lines"]), input: input["input"], level: LogLevel.values[input["level"]], module: input["module"], trace: input["trace"] is String ? StackTrace.fromString(input["trace"]) : null, time: DateTime.parse(input["time"]));
+  }
+}
+
+typedef OnLogCallback = void Function(Log log);
+
 enum LogLevel {
   config,
   info,
@@ -18,9 +46,21 @@ class Logger {
 
   static int leftOfMessagePadding = 50;
   static DateFormat dateFormat = DateFormat("h:mm:ss.SSS a");
+  static final List<OnLogCallback> _onLogs = [];
+
+  static void _onLog(Log log) {
+    for (final f in _onLogs) {
+      f.call(log);
+    }
+  }
+
+  static void addOnLogCallback(OnLogCallback callback) {
+    _onLogs.add(callback);
+  }
 
   static void _log({required LogLevel level, required String module, required Object? input, StackTrace? trace}) {
     final lines = input.toString().split("\n");
+    final compiled = <String>[];
 
     for (int i = 0; i < lines.length; i++) {
       final x = lines[i];
@@ -28,12 +68,16 @@ class Logger {
       final input = "$x${trace != null ? "${effect([2])}\n$trace\n${effect([0, ?level.toColor()])}$x" : ""}";
       final spacing = leftOfMessagePadding - first.replaceAll(RegExp(r'\x1b\[[0-9;]*m'), '').length;
 
-      stdout.writeln("${effect()}${i == 0 ? first : (" " * first.replaceAll(RegExp(r'\x1b\[[0-9;]*m'), '').length)}${" " * max(2, spacing)}> $input${effect()}");
+      final line = "${effect()}${i == 0 ? first : (" " * first.replaceAll(RegExp(r'\x1b\[[0-9;]*m'), '').length)}${" " * max(2, spacing)}> $input${effect()}";
+      compiled.add(line);
+      stdout.writeln(line);
     }
 
     if (level == LogLevel.signal) {
       _log(level: LogLevel.warning, module: "Logger", input: "Signals are deprecated and will not function correctly. Please use exit codes.");
     }
+
+    _onLog(Log(compiledLines: compiled, input: input, level: level, module: module, trace: trace, time: DateTime.now()));
   }
 
   static String effect([List<int> codes = const [0]]) {

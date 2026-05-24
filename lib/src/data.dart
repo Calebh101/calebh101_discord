@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:calebh101_discord/calebh101_discord.dart';
 import 'package:calebh101_discord/recursive_caster.g.dart';
 import 'package:meta/meta.dart';
+import 'package:resolve_tilde/resolve_tilde.dart';
 import 'package:sqlite3/sqlite3.dart';
 
 enum Scope {
@@ -261,6 +262,10 @@ abstract class EntitySettings {
 
   const EntitySettings(this.store, {required this.id, required this.scope});
 
+  static String global(String id) {
+    return Tilde.resolve("~/bot.$id.db");
+  }
+
   Map<String, dynamic> getAll() {
     return store.getAll(scope, id.toString());
   }
@@ -387,6 +392,10 @@ class BotTokenStore {
 
   BotTokenStore(this.file) {
     data = load() ?? {};
+  }
+
+  static String global(String id) {
+    return Tilde.resolve("~/bot.$id.json");
   }
 
   Map<String, String>? load() {

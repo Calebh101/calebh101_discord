@@ -35,6 +35,7 @@ dependencies:
   unicode: ^1.1.9
   nyxx_extensions: ^4.4.0
   quick_listener: ^0.0.2
+  resolve_tilde: ^0.0.1
 
 dev_dependencies:
   lints: ^6.0.0

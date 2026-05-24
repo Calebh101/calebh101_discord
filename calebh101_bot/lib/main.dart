@@ -27,7 +27,7 @@ final store = KVStore("database.db");
 final tokens = BotTokenStore("settings.json");
 final plugins = PluginStore();
 
-void main(List<String> arguments) => onStart = () async {
+void main(List<String> arguments) async {
   BotCommand.disableGroups();
   BotCommand.commandType = CommandType.textOnly;
 
@@ -94,8 +94,6 @@ void main(List<String> arguments) => onStart = () async {
     commands: <T extends ChatContext>(plugin) => [
       BotCommand.converter((plugin) => plugin.getConverter(RuntimeType<GuildTextChannel>(), logWarn: false)),
       defaultCheck(store),
-
-      //
 
       BotCommand.command("fart", "Fart.", (T context, [int amount = 1]) async {
         if (amount != 1 && !isOwner(id: context.user.id)) return context.respondWithError("You cannot control the amount.");
@@ -172,7 +170,7 @@ void main(List<String> arguments) => onStart = () async {
     ],
     isAfk: false,
   )));
-};
+}
 
 Future<List<Member>> getAllMembers(Guild guild, {int limitPer = 1000}) async {
   List<Member> result = [];

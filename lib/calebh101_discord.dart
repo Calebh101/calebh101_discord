@@ -6,7 +6,9 @@ export 'src/data.dart';
 export 'src/commands.dart';
 export 'src/constants.dart';
 export 'src/plugins.dart';
+
 export 'src/logger/logger.dart';
+export 'src/logger/logbot.dart';
 
 export 'src/util/general.dart';
 export 'src/util/stringify.dart';
