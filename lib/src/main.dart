@@ -76,6 +76,7 @@ class TerminalCommand {
 late Future<Never> Function([int code]) close;
 
 bool stdinInitialized = false;
+NyxxGateway? primaryClient;
 
 /// Create a new gateway and bot.
 ///
@@ -425,6 +426,7 @@ Future<BotContext?> load({required BotSettings settings, required FutureOr<Patte
   stdinInitialized = true;
   final context = BotContext(clients: clients, args: results, store: store);
   plugins.load(context);
+  primaryClient = context.clients.clients.values.first;
   return context;
 }
 
@@ -447,6 +449,27 @@ Future<String?> getStatus() async {
     Logger.warn("Status", "Unable to get status: $e\nMake sure the dev_status command is set up on your system.");
     return null;
   }
+}
+
+void wrap(void Function() callback) {
+  runZonedGuarded(() {
+    callback.call();
+  }, (e, t) async {
+    Logger.error("Main", e, trace: t);
+
+    if (primaryClient != null) await alertOwners(primaryClient!, EmbedBuilder(
+      color: DiscordColor.parseHexString("#AA4444"),
+      title: "Critical Error",
+      fields: [
+        EmbedFieldBuilder(name: "Type", value: e.runtimeType.toDiscordCodeString(), isInline: true),
+        EmbedFieldBuilder(name: "Time", value: DateTime.now().toUtc().toDiscordTimestamp(DiscordTimestamp.shortDateTime), isInline: true),
+        EmbedFieldBuilder(name: "Exception", value: e.toDiscordCodeBlock(), isInline: false),
+        EmbedFieldBuilder(name: "Stack Trace", value: t.format().toDiscordCodeBlock(), isInline: false),
+      ],
+    ));
+
+    exit(-1);
+  });
 }
 
 Uri discordLink(Snowflake? guild, Snowflake channel, [Snowflake? message]) {

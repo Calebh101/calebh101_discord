@@ -565,6 +565,22 @@ class AdminPlugin extends BotPluginLegacy {
         }).toList()),
       ), settings: settings);
     }),
+    BotCommand("listmod", "Admin", "List all mod roles/users.", (T context) async {
+      if (await context.assureGuild() == false) return;
+      final settings = ServerSettings(store, context.guild!.id);
+      final raw = settings.mods.get() ?? [];
+      final all = raw.map((x) => (type: x["type"] as String, id: x["id"] as String)).sorted((a, b) => a.id.compareTo(b.id));
+      if (all.isEmpty) return context.respondWithError("No mods set.");
+
+      await respondWithPagination(context, PaginatedEmbedBuilder(
+        title: "All Mod Roles",
+        color: await getColor(context.member),
+        pages: EmbedPage.generateFromItems(all.map((x) {
+          final id = Snowflake(int.parse(x.id));
+          return "- ${x.type.toDiscordCodeString()} ${x.type == "role" ? id.value.toRoleMention() : id.value.toMention()}";
+        }).toList()),
+      ), settings: settings);
+    }),
     BotCommand("warningchannel", "Admin", "Get the text channel used for automatic warnings.", (T context) async {
       if (await context.assureGuild() == false) return;
       final settings = ServerSettings(store, context.guild!.id);

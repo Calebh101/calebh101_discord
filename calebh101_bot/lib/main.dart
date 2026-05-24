@@ -27,7 +27,7 @@ final store = KVStore("database.db");
 final tokens = BotTokenStore("settings.json");
 final plugins = PluginStore();
 
-void main(List<String> arguments) async {
+void main(List<String> arguments) => wrap(() async {
   BotCommand.disableGroups();
   BotCommand.commandType = CommandType.textOnly;
 
@@ -170,7 +170,7 @@ void main(List<String> arguments) async {
     ],
     isAfk: false,
   )));
-}
+});
 
 Future<List<Member>> getAllMembers(Guild guild, {int limitPer = 1000}) async {
   List<Member> result = [];
