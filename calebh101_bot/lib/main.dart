@@ -19,10 +19,6 @@ import 'package:calebh101_discord/calebh101_discord.dart';
 import 'package:calebh101_discord/recursive_caster.g.dart';
 import 'package:collection/collection.dart';
 
-final double maxXpPerHour = 1;
-final double xpPerReaction = 0.01;
-final double Function(String content) xpPerMessage = (content) => double.parse(min(content.length / 1000, 0.2).toStringAsFixed(3)); // Message length of 200+ => 0.2, 20 => 0.02, 2 => 0.02
-
 final store = KVStore("database.db");
 final tokens = BotTokenStore("settings.json");
 final plugins = PluginStore();

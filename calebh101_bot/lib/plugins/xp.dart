@@ -7,6 +7,10 @@ import 'package:json_annotation/json_annotation.dart';
 
 part 'xp.g.dart';
 
+final double maxXpPerHour = 1000;
+final double xpPerReaction = 1;
+final double Function(int length) xpPerMessage = (length) => (double.parse(min(length / 1000, 0.2).toStringAsFixed(3))) * 1000; // Message length of 200+ => 200, 20 => 20, 2 => 20
+
 class XPPlugin extends BotPluginLegacy {
   XPPlugin() : super(id: "xp", version: Version.parse("1.0.0A"));
 
@@ -132,6 +136,7 @@ class XPPlugin extends BotPluginLegacy {
         await context.respond(MessageBuilder(content: "${await memberToString(member, client: context.client)} bet **$amount** and *lost*. That puts them at **${roundXp(current - amount)}** XP."));
       }
     }, CommandAttributes(category: "XP", extendedDescription: "- Each bet has to be a multiple of 10.\n- The more you bet, the less chance you have to win.")),
+
     BotCommand.command("xplevels", "List all set XP levels.", (T context) async {
       if (context.guild == null) return context.respondWithError("No guild found.");
       final settings = Calebh101BotServerSettings(store, context.guild!.id);
@@ -427,6 +432,26 @@ class XPPlugin extends BotPluginLegacy {
         ],
       ));
     }, CommandAttributes(category: "User")),
+
+    BotCommand("aboutxp", "XP", "See info about the XP system.", (T context) async {
+      final settings = ifGuild(store, context.guild?.id, (id) => Calebh101BotServerSettings(store, id));
+      final levels = settings?.xpLevels.get()?.nullIfEmpty;
+
+      final content = """
+The XP system is a system to show how active you are in the community.
+The way it works, is you get XP from each message you send and reaction you add. You can either save this up, or you can gamble it away with the `gamble` command for a chance to win big!
+
+- XP per message: ${xpPerMessage(2000)}
+- XP per reaction $xpPerReaction
+- Max XP per hour: $maxXpPerHour
+
+${levels != null ? "You can also get these roles from getting XP:\n\n${levels.map((level) {
+  return "- ${level.roleId.toRoleMention()}: **${level.requiredXp}** XP";
+}).join("\n")}""\n\n" : ""}
+""".trim();
+
+      await context.respond(MessageBuilder(content: content, allowedMentions: AllowedMentions(repliedUser: true)));
+    }),
   ];
 
   bool checkIsValidForXp(User? user) {
@@ -554,9 +579,12 @@ class XPPlugin extends BotPluginLegacy {
       if (isIgnored(store, event.message.author.id)) return;
       final guild = await event.guild?.get();
       final user = await client.users.get(event.message.author.id);
-
       if (guild == null || !checkIsValidForXp(user)) return;
-      addXp(event, guild, user, xpPerMessage.call(event.message.content), client: event.gateway.client);
+
+      final prefix = ServerSettings(store, guild.id).prefix.get();
+      final u = client.user.id;
+      final isValidContent = !event.message.content.startsWith(prefix) && !event.message.content.startsWith("<@$u>");
+      if (isValidContent) addXp(event, guild, user, xpPerMessage.call(event.message.content.length), client: event.gateway.client);
     }));
 
     context.clients.run((client) => client.onMessageReactionAdd.listen((event) async {

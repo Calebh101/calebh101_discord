@@ -107,10 +107,7 @@ class BotCommand<T extends Function> {
     };
 
     if (group.trim().isEmpty) group = category.toLowerCase();
-    //if (dev) group = "dev_$group";
-
     commandRegistry[name] = this;
-    //if (dev && (noGroup || !useGroups)) name = "dev_$name";
     final o = options ?? BotCommandOptions();
     command = ChatCommand(name, description, execute, options: o.toOptions(), aliases: aliases ?? []);
   }
@@ -124,7 +121,7 @@ class BotCommand<T extends Function> {
   }
 
   @Deprecated("Use the unnamed constructor instead.")
-  factory BotCommand.command(String name, String description, T execute, CommandAttributes attributes, {CommandOptions? options, String group = "", bool noGroup = false}) {
+  factory BotCommand.command(String name, String description, T execute, CommandAttributes attributes, {CommandOptions? options, String group = "", bool noGroup = false, bool disabled = false}) {
     return BotCommand(name, attributes.category, description, execute, extendedDescription: attributes.extendedDescription, permissionsRequired: attributes.permissionsRequired, enforcePermissions: false, group: group, noGroup: noGroup);
   }
 
