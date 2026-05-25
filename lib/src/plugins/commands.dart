@@ -185,7 +185,7 @@ class HelpPlugin extends BotPluginLegacy {
         }
 
         await context.respond(MessageBuilder(content: "Evaluated **$success** commands."));
-      }, options: BotCommandOptions(type: CommandType.textOnly)),
+      }, options: BotCommandOptions(type: CommandType.textOnly), permissionsRequired: BotCommandPermissions.owner),
       BotCommand("evalas", "Bot", "Evaluate commands as a user.", (MessageChatContext context, User user, GreedyQuotedList input) async {
         int success = 0;
 
@@ -211,7 +211,7 @@ class HelpPlugin extends BotPluginLegacy {
         }
 
         await context.respond(MessageBuilder(content: "Evaluated **$success** commands as user ${await memberFromUserToString(user, client: context.client, guild: context.guild)}."));
-      }, options: BotCommandOptions(type: CommandType.textOnly)),
+      }, options: BotCommandOptions(type: CommandType.textOnly), permissionsRequired: BotCommandPermissions.owner),
     ];
   }
 
