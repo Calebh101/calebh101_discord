@@ -41,7 +41,12 @@ class RestrictCommandsPlugin extends BotPluginLegacy {
   static Future<String?> check({required NyxxGateway client, required String command, required KVStore store, required Guild? guild, required Snowflake userId, required Snowflake channelId}) async {
     if (!enabled) return "Plugin not enabled";
     if (isOwner(id: userId)) return "Bot owner";
-    if (guild == null) return "No guild";
+
+    if (guild == null) {
+      final dmDisabled = RestrictBotSettings(store).disabledCommandsDm.get();
+      if (dmDisabled.contains(command)) return null;
+      return "No guild";
+    }
 
     final settings = RestrictServerSettings(store, guild.id);
     if (isClaimer(settings: settings, id: userId)) return "Bot claimer";
@@ -266,8 +271,53 @@ class RestrictCommandsPlugin extends BotPluginLegacy {
         settings.restrictions.set(results);
         await context.respond(MessageBuilder(content: "Imported **${results.length}** restrictions from **${input.length}** entries."));
       }, permissionsRequired: BotCommandPermissions.admin),
+
+      BotCommand("dmdisabled", "Restrictions", "Get the commands that are disabled in DMs, or a specific one.", (T context, [String? command]) async {
+        final disabled = RestrictBotSettings(store).disabledCommandsDm.get();
+
+        if (command != null) {
+          final found = BotCommand.getCommand(command);
+          if (found == null) return context.respondWithError("Invalid command: `$command`");
+
+          return (await context.respond(MessageBuilder(content: "Command `$command` ${disabled.contains(command) ? "**is**" : "is **not**"} disabled in DMs."))).toVoid();
+        }
+
+        if (disabled.isEmpty) return (await context.respond(MessageBuilder(content: "No commands disabled in DMs."))).toVoid();
+        await context.respond(MessageBuilder(content: "**${disabled.length}** commands disabled in DMs:\n\n${disabled.map((x) => '- `$x`').join("\n")}"));
+      }, permissionsRequired: BotCommandPermissions.owner),
+
+      BotCommand("dmdisable", "Restrictions", "Disable a command in DMs.", (T context, String command) async {
+        final settings = RestrictBotSettings(store);
+        final disabled = settings.disabledCommandsDm.get();
+
+        final found = BotCommand.getCommand(command);
+        if (found == null) return context.respondWithError("Invalid command: `$command`");
+
+        disabled.add(command);
+        settings.disabledCommandsDm.set(disabled);
+        await context.respond(MessageBuilder(content: "Command `$command` **disabled** in DMs."));
+      }, permissionsRequired: BotCommandPermissions.owner),
+
+      BotCommand("dmenable", "Restrictions", "Enable a command in DMs.", (T context, String command) async {
+        final settings = RestrictBotSettings(store);
+        final disabled = settings.disabledCommandsDm.get();
+
+        final found = BotCommand.getCommand(command);
+        if (found == null) return context.respondWithError("Invalid command: `$command`");
+        if (!disabled.contains(command)) return context.respondWithError("Command not disabled.");
+
+        disabled.remove(command);
+        settings.disabledCommandsDm.set(disabled);
+        await context.respond(MessageBuilder(content: "Command `$command` **enabled** in DMs."));
+      }, permissionsRequired: BotCommandPermissions.owner),
     ];
   }
+}
+
+class RestrictBotSettings extends BotSettings {
+  RestrictBotSettings(super.store);
+
+  SettingsObjectNotNull<List<String>> get disabledCommandsDm => SettingsObject.list(this, "disabledCommandsDm");
 }
 
 class RestrictServerSettings extends ServerSettings {

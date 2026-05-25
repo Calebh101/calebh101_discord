@@ -455,7 +455,7 @@ void wrap(void Function() callback) {
   runZonedGuarded(() {
     callback.call();
   }, (e, t) async {
-    Logger.error("Main", e, trace: t);
+    Logger.error("Main", "Error: $e (primaryClient=${primaryClient.runtimeType})", trace: t);
 
     if (primaryClient != null) await alertOwners(primaryClient!, EmbedBuilder(
       color: DiscordColor.parseHexString("#AA4444"),

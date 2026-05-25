@@ -26,12 +26,19 @@ class DebugPlugin extends BotPlugin {
         await Future.delayed(Duration(seconds: seconds));
         await context.respond(MessageBuilder(content: "Waited **$seconds** seconds."), level: ResponseLevel.hint);
       }, permissionsRequired: BotCommandPermissions.owner),
-      BotCommand("throw", "Debug", "Throw an exception.", (ChatContext context, [int type = 0, GreedyString? message]) {
+      BotCommand("throw", "Debug", "Throw an exception.", (ChatContext context, [int type = 0, GreedyString? message]) async {
         switch (type) {
           case 0:
             throw CommandsException("${context.user.id}: ${message?.data}");
           case 1:
             throw Exception("${context.user.id}: ${message?.data}");
+          case 2:
+            await context.respond(MessageBuilder(content: "Waiting **2** seconds..."));
+
+            () async {
+              await Future.delayed(Duration(seconds: 2));
+              throw Exception("${context.user.id}: ${message?.data}");
+            }();
           default:
             return context.respondWithError("Invalid type: $type");
         }

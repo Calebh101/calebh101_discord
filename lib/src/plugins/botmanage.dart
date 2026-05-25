@@ -4,6 +4,8 @@ import 'dart:io';
 import 'package:calebh101_discord/calebh101_discord.dart';
 import 'package:collection/collection.dart';
 
+const alwaysShowAliveMessage = false;
+
 class BotManagePlugin extends BotPluginLegacy {
   BotManagePlugin() : super(id: "botmanage", version: Version.parse("1.0.0A"));
 
@@ -14,26 +16,35 @@ class BotManagePlugin extends BotPluginLegacy {
     () async {
       final settings = BotSettings(context.store);
       final data = settings.whoRestartedMe.get();
+      final interaction = settings.lastInteraction.get();
 
-      final client = data == null ? null : context.clients.clients.values.firstWhereOrNull((x) => x.user.id == data.$1);
+      final client = context.clients.clients.values.firstWhereOrNull((x) => x.user.id == data?.$1 || x.user.id == interaction?.client);
       TextChannel? channel;
 
       try {
-        channel = await client!.channels.get(data!.$2) as TextChannel;
+        channel = await client!.channels.get(data?.$2 ?? interaction!.channel) as TextChannel;
       } catch (e) {
-        Logger.warn("BotManage", "Unable to get channel ${data?.$2} for client ${data?.$1}: $e");
+        Logger.warn("BotManage", "Unable to get channel ${data?.$2},${interaction?.channel} for client ${data?.$1},${interaction?.client}: $e");
       }
 
-      if (!dev) for (final client in context.clients.clients.values) {
+      if (!dev || alwaysShowAliveMessage) for (final client in context.clients.clients.values) {
         await alertOwners(client, EmbedBuilder(
           title: "I'm back alive!",
-          description: data != null ? "See who killed me:" : null,
+          description: data != null ? "See who intentionally killed me:" : (interaction != null ? "See my last interaction:" : null),
           fields: [if (data != null) ...[
             EmbedFieldBuilder(name: "Client ID", value: "${data.$1.toDiscordCodeString()} (${data.$1.value.toMention()})", isInline: false),
             EmbedFieldBuilder(name: "Channel", value: "${data.$2.toDiscordCodeString()} (${channel is GuildTextChannel ? discordLink(channel.guildId, channel.id) : "No link available"}) (${channel.runtimeType.toDiscordCodeString()})", isInline: false),
             EmbedFieldBuilder(name: "User", value: "${data.$3.toDiscordCodeString()} (${data.$3.value.toMention()})", isInline: false),
+          ] else if (interaction != null) ...[
+            EmbedFieldBuilder(name: "Client ID", value: "${interaction.client.toDiscordCodeString()} (${interaction.client.value.toMention()})", isInline: false),
+            EmbedFieldBuilder(name: "Channel", value: "${interaction.channel.toDiscordCodeString()} (${channel is GuildTextChannel ? discordLink(channel.guildId, channel.id) : "No link available"}) (${channel.runtimeType.toDiscordCodeString()})", isInline: false),
+            EmbedFieldBuilder(name: "User", value: "${interaction.user.toDiscordCodeString()} (${interaction.user.value.toMention()})", isInline: false),
+            EmbedFieldBuilder(name: "Command", value: interaction.command.toDiscordCodeString(), isInline: true),
+            EmbedFieldBuilder(name: "Context", value: interaction.context.toDiscordCodeString(), isInline: true),
+            EmbedFieldBuilder(name: "Input", value: interaction.input.toDiscordCodeBlock(), isInline: false),
           ]].nullIfEmpty?.toList(),
           timestamp: DateTime.now().toUtc(),
+          color: DiscordColor.parseHexString("#44CC44")
         ));
       }
 

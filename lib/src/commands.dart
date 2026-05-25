@@ -253,9 +253,11 @@ BotCommand defaultCheck(KVStore store) => BotCommand.check((plugin) {
       if (command.permissionsRequired == BotCommandPermissions.owner) {
         if (await context.assureOwner() == false) return false;
       } else if (command.permissionsRequired != BotCommandPermissions.any) {
-        if (await context.assureGuild() == false) return false;
-        final settings = ServerSettings(store, context.guild!.id);
-        if (await context.assurePerms(command.permissionsRequired, settings) == false) return false;
+        if (!isOwner(id: context.user.id)) {
+          if (await context.assureGuild() == false) return false;
+          final settings = ServerSettings(store, context.guild!.id);
+          if (await context.assurePerms(command.permissionsRequired, settings) == false) return false;
+        }
       }
     }
 
@@ -273,6 +275,7 @@ BotCommand defaultCheck(KVStore store) => BotCommand.check((plugin) {
     }
 
     if (command.triggerTyping) await context.channel.triggerTyping();
+    BotSettings(store).lastInteraction.set((client: context.client.user.id, channel: context.channel.id, user: context.user.id, input: (context is MessageChatContext ? context.message.content : (context is InteractionChatContext ? "${context.command} ${context.rawArguments.entries.map((x) => "(${x.key}: ${x.value})").join(" ")}" : null)), context: context.runtimeType.toString(), command: context.command.name));
     return true;
   });
 });
