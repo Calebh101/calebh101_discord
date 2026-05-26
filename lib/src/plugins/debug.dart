@@ -20,7 +20,7 @@ class DebugPlugin extends BotPlugin {
   FutureOr<List<BotCommand<Function>>> commands<T extends ChatContext>(CommandsPlugin plugin, KVStore store) {
     return [
       confirmationTest(),
-      testChoose(),
+      ...chooseDebug(),
 
       BotCommand("wait", "Debug", "Wait X amount of seconds before responding.", (ChatContext context, int seconds) async {
         await Future.delayed(Duration(seconds: seconds));

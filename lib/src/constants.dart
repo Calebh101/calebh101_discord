@@ -25,3 +25,5 @@ final Map<String? Function(MessageCreateEvent event), num> pingPhrases = {
   (e) => "Hi there, <@${e.member!.id}>!": 100,
   (_) => "AGHGHGHGHGHGHGHGHGHGHGHGHGHGHGHHGHG": 5,
 };
+
+const maxUniqueReactionsPerMessage = 20;
