@@ -269,7 +269,7 @@ class Page extends Selection {
     };
 
     await for (final event in controller.stream) {
-      if (event.messageAuthorId == null || event.messageAuthorId != details.message.author.id || event.message.id != details.message.id || event.userId == details.context.client.user.id) continue;
+      if (event.messageAuthorId == null || event.messageAuthorId != details.message.author.id || event.message.id != details.message.id || event.userId == details.context.client.user.id || event.userId != details.context.user.id) continue;
 
       final emoji = event.emoji.name;
       var option = idx.firstWhereOrNull((x) => x.emoji == emoji);
