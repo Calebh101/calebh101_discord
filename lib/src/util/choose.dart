@@ -144,8 +144,8 @@ List<BotCommand> chooseDebug() => [
           await details.message.edit(MessageUpdateBuilder(content: "something 2"));
         }),
       ]),
-    ]).startHere(context, onCancel: (details) async {
-      await details.message.edit(MessageUpdateBuilder(content: "Cancelled!"));
+    ]).startHere(context, onCancel: (details, info) async {
+      await details.message.edit(MessageUpdateBuilder(content: "Cancelled!\n$info"));
       completer.complete(false);
     }, startingPage: start?.data);
 
@@ -153,18 +153,22 @@ List<BotCommand> chooseDebug() => [
   }),
 ];
 
-class OnSelectDetails {
+class OnSelectDetails<T> {
   final ChatContext context;
   final Message message;
   final Page? previousPage;
   final OnSelectDetails? previousDetails;
-  final void Function(OnSelectDetails details) onCancel;
+  final void Function(OnSelectDetails details, T? data) onCancel;
 
   OnSelectDetails({required this.context, required this.message, required this.previousPage, required this.onCancel, required this.previousDetails});
 
   @override
   String toString() {
     return "OnSelectDetails(context: $context, message: $message, previousPage: $previousPage, previousDetails: $previousDetails, onCancel: $onCancel)";
+  }
+
+  void cancel([T? data]) {
+    onCancel(this, data);
   }
 }
 
@@ -207,7 +211,7 @@ class Page extends Selection {
 
   @override
   Future<void> _onSelect(OnSelectDetails details) async {
-    final allActions = [...actions, if (details.previousPage != null) Action("back", "*Back to*: **${details.previousPage?.name}**", onSelect: (_) => details.previousPage!._onSelect(details.previousDetails!)), Action("quit", "*Quit*", onSelect: (details) => details.onCancel(details), customEmoji: "⏹️")];
+    final allActions = [...actions, if (details.previousPage != null) Action("back", "*Back to*: **${details.previousPage?.name}**", onSelect: (_) => details.previousPage!._onSelect(details.previousDetails!)), Action("quit", "*Quit*", onSelect: (details) => details.onCancel(details, null), customEmoji: "⏹️")];
 
     final content = "## $name${description != null ? "$description\n" : ""}\n\n${allActions.mapIndexed((i, action) {
       final max = min(indices.length, maxUniqueReactionsPerMessage);
@@ -239,7 +243,7 @@ class Page extends Selection {
 
     Future<void> Function() onTimeUp = () async {
       controller.close();
-      details.onCancel(details);
+      details.onCancel(details, null);
     };
 
     await for (final event in controller.stream) {
@@ -260,11 +264,11 @@ class Page extends Selection {
       final option = allActions[result.index];
       option._onSelect(OnSelectDetails(context: details.context, message: details.message, previousPage: this, onCancel: details.onCancel, previousDetails: details));
     } else {
-      details.onCancel(details);
+      details.onCancel(details, null);
     }
   }
 
-  Future<void> startHere(ChatContext context, {Message? message, required void Function(OnSelectDetails details) onCancel, String? startingPage}) async {
+  Future<void> startHere(ChatContext context, {Message? message, required void Function(OnSelectDetails details, dynamic data) onCancel, String? startingPage}) async {
     message ??= await context.respond(MessageBuilder(content: "Loading..."));
     final start = startingPage != null ? actions.firstWhereOrNull((x) => x is Page && (x.id == startingPage || x.name == startingPage)) as Page? : null;
     final details = OnSelectDetails(context: context, message: message, previousPage: null, previousDetails: null, onCancel: onCancel);
