@@ -15,6 +15,7 @@ Bet _$BetFromJson(Map json) => Bet(
     (k, e) => MapEntry(int.parse(k as String), e as String),
   ),
   locked: json['locked'] as bool? ?? false,
+  winnings: Map<String, num>.from(json['winnings'] as Map),
 );
 
 Map<String, dynamic> _$BetToJson(Bet instance) => <String, dynamic>{
@@ -22,6 +23,7 @@ Map<String, dynamic> _$BetToJson(Bet instance) => <String, dynamic>{
   'description': instance.description,
   'id': instance.id,
   'choices': instance.choices,
+  'winnings': instance.winnings,
   'bets': instance.bets.map((k, e) => MapEntry(k.toString(), e)),
   'locked': instance.locked,
 };

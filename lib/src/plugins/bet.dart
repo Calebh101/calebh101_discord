@@ -25,9 +25,9 @@ abstract class BetPlugin<N extends num> extends BotPlugin {
   @override
   FutureOr<List<BotCommand<Function>>> commands<T extends ChatContext>(CommandsPlugin plugin, KVStore store) {
     return [
-      BotCommand("newbet", "Bet", "Create a bet. Use addoption <id> to add options.", (ChatContext context, String title, GreedyString? description) async {
+      BotCommand("newbet", "Bet", "Create a bet. Use addoption <id> to add options.", (ChatContext context, String title, [GreedyString? description]) async {
         final settings = BetServerSettings(store, context.guild!.id);
-        final bet = Bet(title: title, description: description?.data, id: Bet.nextId(settings), choices: {}, bets: {});
+        final bet = Bet(title: title, description: description?.data, id: Bet.nextId(settings), choices: {}, bets: {}, winnings: {});
 
         final current = settings.bets.get();
         current.add(bet);
@@ -49,15 +49,16 @@ abstract class BetPlugin<N extends num> extends BotPlugin {
         await context.respond(MessageBuilder(content: "Bet **#$id** deleted!"));
       }, needsGuild: true, permissionsRequired: BotCommandPermissions.admin),
 
-      BotCommand("addoption", "Bet", "Add an option to a bet.", (ChatContext context, int id, N amount, GreedyString name) async {
+      BotCommand("addoption", "Bet", "Add an option to a bet.", (ChatContext context, int id, String name, N amount, N winnings) async {
         final settings = BetServerSettings(store, context.guild!.id);
         final bets = settings.bets.get();
         final bet = bets.firstWhereOrNull((x) => x.id == id);
 
         if (bet == null) return context.respondWithError("No bet found by ID **$id**.");
-        if (bet.choices.containsKey(name.data)) return context.respondWithError("This choice already exists.");
+        if (bet.choices.containsKey(name)) return context.respondWithError("This choice already exists.");
 
-        bet.choices[name.data] = amount;
+        bet.choices[name] = amount;
+        bet.winnings[name] = winnings;
         settings.bets.set(bets);
 
         await context.respond(MessageBuilder(content: "Added choice to bet **#${bet.id}**."));
@@ -169,7 +170,7 @@ abstract class BetPlugin<N extends num> extends BotPlugin {
 
         for (final entry in entries) {
           final user = await context.client.users.get(Snowflake(entry.key));
-          add(context, store, user, context.guild!, payout * (positive ? 1 : -1) as N);
+          add(context, store, user, context.guild!, (positive ? bet.winnings[name]! : -payout) as N);
         }
 
         await context.respond(MessageBuilder(content: "Payed out **${entries.length}** users."));
@@ -184,6 +185,7 @@ class Bet {
   final String? description;
   final int id;
   final Map<String, num> choices;
+  final Map<String, num> winnings;
   final Map<int, String> bets;
   bool locked;
 
@@ -193,7 +195,7 @@ class Bet {
     return id;
   }
 
-  Bet({required this.title, required this.description, required this.id, required this.choices, required this.bets, this.locked = false});
+  Bet({required this.title, required this.description, required this.id, required this.choices, required this.bets, this.locked = false, required this.winnings});
   factory Bet.fromJson(Map input) => _$BetFromJson(input);
   Map toJson() => _$BetToJson(this);
 
@@ -203,7 +205,7 @@ class Bet {
       description: description,
       color: color,
       footer: EmbedFooterBuilder(text: locked ? "Locked" : "Unlocked"),
-      fields: choices.mapTo((k, v) => EmbedFieldBuilder(name: k, value: "**$v** gabes - **${bets.values.where((x) => x == k).length}** bets", isInline: false)).toList(),
+      fields: choices.mapTo((k, v) => EmbedFieldBuilder(name: k, value: "**$v** gabes - **${winnings[k]}** if you win - **${bets.values.where((x) => x == k).length}** bets", isInline: false)).toList(),
     );
   }
 }
