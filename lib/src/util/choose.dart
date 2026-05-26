@@ -126,7 +126,7 @@ List<BotCommand> chooseDebug() => [
       return "$i. ${x.key}: ${x.value}";
     }).join("\n")));
   }),
-  BotCommand("testpages", "Debug", "Test a page selection.", (ChatContext context) async {
+  BotCommand("testpages", "Debug", "Test a page selection.", (ChatContext context, [GreedyString? start]) async {
     final completer = Completer<bool>();
 
     await Page("root", "Test", actions: [
@@ -147,7 +147,7 @@ List<BotCommand> chooseDebug() => [
     ]).startHere(context, onCancel: (details) async {
       await details.message.edit(MessageUpdateBuilder(content: "Cancelled!"));
       completer.complete(false);
-    });
+    }, startingPage: start?.data);
 
     final result = await completer.future;
   }),
@@ -208,7 +208,7 @@ class Page extends Selection {
   Future<void> _onSelect(OnSelectDetails details) async {
     final allActions = [...actions, if (details.previousPage != null) Action("back", "*Back to*: **${details.previousPage?.name}**", onSelect: (_) => details.previousPage!._onSelect(details.previousDetails!)), Action("quit", "*Quit*", onSelect: (details) => details.onCancel(details), customEmoji: "⏹️")];
 
-    final content = "**$name**\n\n${allActions.mapIndexed((i, action) {
+    final content = "## $name\n\n${allActions.mapIndexed((i, action) {
       final max = min(indices.length, maxUniqueReactionsPerMessage);
       if (i >= max) throw StateError("Too many options! Received ${actions.length}, but max is $max. Try splitting your actions up into pages.");
 
@@ -263,8 +263,15 @@ class Page extends Selection {
     }
   }
 
-  Future<void> startHere(ChatContext context, {Message? message, required void Function(OnSelectDetails details) onCancel}) async {
+  Future<void> startHere(ChatContext context, {Message? message, required void Function(OnSelectDetails details) onCancel, String? startingPage}) async {
     message ??= await context.respond(MessageBuilder(content: "Loading..."));
-    await _onSelect(OnSelectDetails(context: context, message: message, previousPage: null, previousDetails: null, onCancel: onCancel));
+    final start = startingPage != null ? actions.firstWhereOrNull((x) => x is Page && (x.id == startingPage || x.name == startingPage)) as Page? : null;
+    final details = OnSelectDetails(context: context, message: message, previousPage: null, previousDetails: null, onCancel: onCancel);
+
+    if (start == null) {
+      await _onSelect(details);
+    } else {
+      await start._onSelect(OnSelectDetails(context: context, message: message, previousPage: this, onCancel: onCancel, previousDetails: details));
+    }
   }
 }
