@@ -245,10 +245,12 @@ class Page extends Selection {
 
     await details.message.edit(MessageUpdateBuilder(content: content));
     await details.message.deleteAllReactions();
+    bool stopReacting = false;
 
     () async {
       try {
         for (final i in idx) {
+          if (stopReacting) break;
           final option = allSelections.elementAtOrNull(i.index);
           await details.message.react(ReactionBuilder(id: null, name: option?.customEmoji ?? i.emoji));
         }
@@ -279,6 +281,7 @@ class Page extends Selection {
 
       if (option == null) continue;
       result = option;
+      stopReacting = true;
       break;
     }
 
