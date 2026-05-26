@@ -172,7 +172,13 @@ class OnSelectDetails<T> {
   }
 }
 
-abstract class Selection {
+class SelectionItem {
+  final String? customText;
+
+  SelectionItem({this.customText});
+}
+
+abstract class Selection extends SelectionItem {
   final String id;
   final String name;
   final String? customEmoji;
@@ -180,6 +186,10 @@ abstract class Selection {
   Selection(this.id, this.name, {this.customEmoji});
 
   FutureOr<void> _onSelect(OnSelectDetails details);
+}
+
+class Break extends SelectionItem {
+  Break() : super(customText: null);
 }
 
 class Action extends Selection {
@@ -200,7 +210,7 @@ class Action extends Selection {
 
 class Page extends Selection {
   final String? description;
-  final List<Selection> actions;
+  final List<SelectionItem> actions;
 
   Page(super.id, super.name, {required this.actions, this.description}) : assert(actions.isNotEmpty, "Provide at least 1 action.");
 
@@ -211,25 +221,35 @@ class Page extends Selection {
 
   @override
   Future<void> _onSelect(OnSelectDetails details) async {
-    final allActions = [...actions, if (details.previousPage != null) Action("back", "*Back to*: **${details.previousPage?.name}**", onSelect: (_) => details.previousPage!._onSelect(details.previousDetails!)), Action("quit", "*Quit*", onSelect: (details) => details.onCancel(details, null), customEmoji: "⏹️")];
+    final allActionsX = [...actions, Break(), if (details.previousPage != null) Action("back", "*Back to*: **${details.previousPage?.name}**", customEmoji: "◀️", onSelect: (_) => details.previousPage!._onSelect(details.previousDetails!)), Action("quit", "*Quit*", onSelect: (details) => details.onCancel(details, null), customEmoji: "⏹️")];
 
-    final content = "## $name\n${description != null ? "$description" : ""}\n\n${allActions.mapIndexed((i, action) {
+    final allSelections = allActionsX.whereType<Selection>().toList();
+    int emojiIndex = 0;
+
+    final contentLines = allActionsX.map((item) {
+      if (item is Break) {
+        return item.customText ?? "";
+      }
+
+      final action = item as Selection;
       final max = min(indices.length, maxUniqueReactionsPerMessage);
-      if (i >= max) throw StateError("Too many options! Received ${actions.length}, but max is $max. Try splitting your actions up into pages.");
+      if (emojiIndex >= max) throw StateError("Too many options! ...");
 
-      final index = indices.entries.elementAt(i);
+      final index = indices.entries.elementAt(emojiIndex++);
       final effect = action is Page ? "**" : "";
       return "${action.customEmoji ?? "${index.key}."} $effect${action.name}$effect";
-    }).join("\n")}";
+    }).join("\n");
 
-    final idx = indices.entries.mapIndexed((i, x) => (id: x.key, emoji: x.value, index: i)).toList().sublist(0, allActions.length);
+    final content = "## $name\n${description != null ? "$description" : ""}\n\n$contentLines";
+    final idx = indices.entries.mapIndexed((i, x) => (id: x.key, emoji: x.value, index: i)).toList().sublist(0, allSelections.length);
+
     await details.message.edit(MessageUpdateBuilder(content: content));
     await details.message.deleteAllReactions();
 
     () async {
       try {
         for (final i in idx) {
-          final option = allActions.elementAtOrNull(i.index);
+          final option = allSelections.elementAtOrNull(i.index);
           await details.message.react(ReactionBuilder(id: null, name: option?.customEmoji ?? i.emoji));
         }
       } catch (e) {
@@ -248,11 +268,16 @@ class Page extends Selection {
 
     await for (final event in controller.stream) {
       if (event.messageAuthorId == null || event.messageAuthorId != details.message.author.id || event.message.id != details.message.id || event.userId == details.context.client.user.id) continue;
+
       final emoji = event.emoji.name;
+      var option = idx.firstWhereOrNull((x) => x.emoji == emoji);
 
-      final option = idx.firstWhereOrNull((x) => x.emoji == emoji);
+      option ??= idx.firstWhereOrNull((x) {
+        final action = allSelections.elementAtOrNull(x.index);
+        return action?.customEmoji == emoji;
+      });
+
       if (option == null) continue;
-
       result = option;
       break;
     }
@@ -261,7 +286,7 @@ class Page extends Selection {
     await details.message.edit(MessageUpdateBuilder(content: "Loading..."));
 
     if (result != null) {
-      final option = allActions[result.index];
+      final option = allSelections[result.index];
       option._onSelect(OnSelectDetails(context: details.context, message: details.message, previousPage: this, onCancel: details.onCancel, previousDetails: details));
     } else {
       details.onCancel(details, null);
