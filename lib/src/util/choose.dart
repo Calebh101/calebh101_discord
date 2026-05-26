@@ -213,13 +213,13 @@ class Page extends Selection {
   Future<void> _onSelect(OnSelectDetails details) async {
     final allActions = [...actions, if (details.previousPage != null) Action("back", "*Back to*: **${details.previousPage?.name}**", onSelect: (_) => details.previousPage!._onSelect(details.previousDetails!)), Action("quit", "*Quit*", onSelect: (details) => details.onCancel(details, null), customEmoji: "⏹️")];
 
-    final content = "## $name${description != null ? "$description\n" : ""}\n\n${allActions.mapIndexed((i, action) {
+    final content = "## $name\n${description != null ? "$description" : ""}\n\n${allActions.mapIndexed((i, action) {
       final max = min(indices.length, maxUniqueReactionsPerMessage);
       if (i >= max) throw StateError("Too many options! Received ${actions.length}, but max is $max. Try splitting your actions up into pages.");
 
       final index = indices.entries.elementAt(i);
       final effect = action is Page ? "**" : "";
-      return "${index.key}. $effect${action.name}$effect";
+      return "${action.customEmoji ?? "${index.key}."} $effect${action.name}$effect";
     }).join("\n")}";
 
     final idx = indices.entries.mapIndexed((i, x) => (id: x.key, emoji: x.value, index: i)).toList().sublist(0, allActions.length);
