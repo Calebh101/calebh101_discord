@@ -195,9 +195,10 @@ class Action extends Selection {
 }
 
 class Page extends Selection {
+  final String? description;
   final List<Selection> actions;
 
-  Page(super.id, super.name, {required this.actions}) : assert(actions.isNotEmpty, "Provide at least 1 action.");
+  Page(super.id, super.name, {required this.actions, this.description}) : assert(actions.isNotEmpty, "Provide at least 1 action.");
 
   @override
   String toString() {
@@ -208,7 +209,7 @@ class Page extends Selection {
   Future<void> _onSelect(OnSelectDetails details) async {
     final allActions = [...actions, if (details.previousPage != null) Action("back", "*Back to*: **${details.previousPage?.name}**", onSelect: (_) => details.previousPage!._onSelect(details.previousDetails!)), Action("quit", "*Quit*", onSelect: (details) => details.onCancel(details), customEmoji: "⏹️")];
 
-    final content = "## $name\n\n${allActions.mapIndexed((i, action) {
+    final content = "## $name${description != null ? "$description\n" : ""}\n\n${allActions.mapIndexed((i, action) {
       final max = min(indices.length, maxUniqueReactionsPerMessage);
       if (i >= max) throw StateError("Too many options! Received ${actions.length}, but max is $max. Try splitting your actions up into pages.");
 
