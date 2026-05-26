@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:math';
 
+import 'package:calebh101_bot/plugins/bet.dart';
 import 'package:calebh101_bot/plugins/botchat.dart';
 import 'package:calebh101_bot/plugins/crosspost.dart';
 import 'package:calebh101_bot/plugins/github.dart';
@@ -60,6 +61,7 @@ void main(List<String> arguments) => wrap(() async {
     QuotePlugin(),
     DebugPlugin(),
     NumbersPlugin(),
+    Calebh101Bet(),
   ]);
 
   final context = await load(

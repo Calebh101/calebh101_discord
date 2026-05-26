@@ -33,6 +33,7 @@ export 'src/plugins/moderation.dart';
 export 'src/plugins/restriction.dart';
 export 'src/plugins/mute.dart';
 export 'src/plugins/debug.dart';
+export 'src/plugins/bet.dart';
 
 export 'package:nyxx/nyxx.dart' hide Logger;
 export 'package:nyxx_commands/nyxx_commands.dart';

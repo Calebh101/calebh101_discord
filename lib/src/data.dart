@@ -198,15 +198,15 @@ class SettingsObject<T> {
 
   SettingsObject(this.obj, this.key, {this.decodeFunction, this.encodeFunction});
 
-  static SettingsObjectNotNull<List<T>> list<T>(EntitySettings obj, String key, {T Function(dynamic input)? decodeFunction, dynamic Function(List<T>)? encodeFunction}) {
-    return SettingsObjectNotNull(obj, key, encodeFunction: encodeFunction, decodeFunction: (input) => (input as List?)?.map((x) {
+  static SettingsObjectNotNull<List<T>> list<T>(EntitySettings obj, String key, {T Function(dynamic input)? decodeFunction, dynamic Function(T)? encodeFunction}) {
+    return SettingsObjectNotNull(obj, key, encodeFunction: (input) => input.map((x) => encodeFunction?.call(x) ?? x).toList(), decodeFunction: (input) => (input as List?)?.map((x) {
       if (decodeFunction != null) return decodeFunction.call(x);
       return x as T;
     }).toList(), defaultFunction: () => []);
   }
 
   static SettingsObjectNotNull<List<Snowflake>> listSnowflake<T>(EntitySettings obj, String key) {
-    return list<Snowflake>(obj, key, encodeFunction: (input) => input.map((x) => x.value).toList(), decodeFunction: (input) => input != null ? Snowflake(input) : input);
+    return list<Snowflake>(obj, key, encodeFunction: (input) => input.value, decodeFunction: (input) => input != null ? Snowflake(input) : input);
   }
 
   static SettingsObject<Snowflake> snowflake<T>(EntitySettings obj, String key) {

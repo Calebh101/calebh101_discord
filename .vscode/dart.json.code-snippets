@@ -44,5 +44,16 @@
 			"}",
 		],
 		"description": "New BotPlugin"
+	},
+
+	"New Plugin with Import": {
+		"prefix": "plugini",
+		"body": [
+			"import 'package:calebh101_discord/calebh101_discord.dart';", "",
+			"class $1 extends BotPlugin {",
+			"  @override get info => BotPluginInfo(id: \"$2\", version: Version.parse(\"$3\"), description: \"$4\");",
+			"}",
+		],
+		"description": "New BotPlugin with Import"
 	}
 }

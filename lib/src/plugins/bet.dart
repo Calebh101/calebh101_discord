@@ -1,0 +1,216 @@
+import 'dart:async';
+
+import 'package:calebh101_discord/calebh101_discord.dart';
+import 'package:collection/collection.dart';
+import 'package:json_annotation/json_annotation.dart';
+
+part 'bet.g.dart';
+
+abstract class BetPlugin<N extends num> extends BotPlugin {
+  @override get info => BotPluginInfo(id: "bet", version: Version.parse("1.0.0A"), description: "Betting.");
+
+  /// [amount] can be negative.
+  void add<C extends ChatContext>(C context, KVStore store, User user, Guild guild, N amount);
+
+  /// [amount] can be negative.
+  N get<C extends ChatContext>(C context, KVStore store, User user, Guild guild);
+
+  @override
+  FutureOr<List<BotConverter<dynamic>>> converters(CommandsPlugin plugin, KVStore store) {
+    return [
+      GreedyString.converter(),
+    ];
+  }
+
+  @override
+  FutureOr<List<BotCommand<Function>>> commands<T extends ChatContext>(CommandsPlugin plugin, KVStore store) {
+    return [
+      BotCommand("newbet", "Bet", "Create a bet. Use addoption <id> to add options.", (ChatContext context, String title, GreedyString? description) async {
+        final settings = BetServerSettings(store, context.guild!.id);
+        final bet = Bet(title: title, description: description?.data, id: Bet.nextId(settings), choices: {}, bets: {});
+
+        final current = settings.bets.get();
+        current.add(bet);
+        settings.bets.set(current);
+
+        await context.respond(MessageBuilder(content: "Added bet **#${bet.id}**."));
+      }, needsGuild: true, permissionsRequired: BotCommandPermissions.admin, aliases: ["addbet"]),
+
+      BotCommand("deletebet", "Bet", "Delete a bet by ID.", (T context, int id) async {
+        final settings = BetServerSettings(store, context.guild!.id);
+        final bets = settings.bets.get();
+        final bet = bets.firstWhereOrNull((x) => x.id == id);
+
+        if (bet == null) {
+          return context.respondWithError("No bet found by ID **$id**.");
+        }
+
+        bets.removeWhere((x) => x.id == id);
+        await context.respond(MessageBuilder(content: "Bet **#$id** deleted!"));
+      }, needsGuild: true, permissionsRequired: BotCommandPermissions.admin),
+
+      BotCommand("addoption", "Bet", "Add an option to a bet.", (ChatContext context, int id, N amount, GreedyString name) async {
+        final settings = BetServerSettings(store, context.guild!.id);
+        final bets = settings.bets.get();
+        final bet = bets.firstWhereOrNull((x) => x.id == id);
+
+        if (bet == null) return context.respondWithError("No bet found by ID **$id**.");
+        if (bet.choices.containsKey(name.data)) return context.respondWithError("This choice already exists.");
+
+        bet.choices[name.data] = amount;
+        settings.bets.set(bets);
+
+        await context.respond(MessageBuilder(content: "Added choice to bet **#${bet.id}**."));
+      }, needsGuild: true, permissionsRequired: BotCommandPermissions.admin),
+
+      BotCommand("remoption", "Bet", "Remove an option from a bet.", (ChatContext context, int id, GreedyString name) async {
+        final settings = BetServerSettings(store, context.guild!.id);
+        final bets = settings.bets.get();
+        final bet = bets.firstWhereOrNull((x) => x.id == id);
+
+        if (bet == null) return context.respondWithError("No bet found by ID **$id**.");
+        if (!bet.choices.entries.any((x) => x.key.toLowerCase() == name.data.toLowerCase())) return context.respondWithError("This choice doesn't exist.");
+
+        bet.choices.removeWhere((k, v) => k.toLowerCase() == name.data.toLowerCase());
+        settings.bets.set(bets);
+
+        await context.respond(MessageBuilder(content: "Removed choice \"${name.data}\" from bet **#${bet.id}**."));
+      }, needsGuild: true, permissionsRequired: BotCommandPermissions.admin),
+
+      BotCommand("lockbet", "Bet", "Lock people from betting or removing their bets from a bet.", (ChatContext context, int id) async {
+        final settings = BetServerSettings(store, context.guild!.id);
+        final bets = settings.bets.get();
+        final bet = bets.firstWhereOrNull((x) => x.id == id);
+
+        if (bet == null) return context.respondWithError("No bet found by ID **$id**.");
+        bet.locked = !bet.locked;
+        settings.bets.set(bets);
+
+        await context.respond(MessageBuilder(content: "${bet.locked ? "Locked" : "Unlocked"} bet $id."));
+      }, needsGuild: true, permissionsRequired: BotCommandPermissions.admin),
+
+      BotCommand("getbet", "Bet", "Get a bet by ID.", (T context, int id) async {
+        final settings = BetServerSettings(store, context.guild!.id);
+        final bets = settings.bets.get();
+        final bet = bets.firstWhereOrNull((x) => x.id == id);
+
+        if (bet == null) return context.respondWithError("No bet found by ID **$id**.");
+        if (bet.choices.isEmpty) return context.respondWithError("This bet needs at least 1 option.");
+
+        await context.respond(MessageBuilder(embeds: [bet.toEmbed(await getColor(context.member))]));
+      }, needsGuild: true),
+
+      BotCommand("bet", "Bet", "Bet on a choice.", (T context, int id, GreedyString choice) async {
+        final settings = BetServerSettings(store, context.guild!.id);
+        final bets = settings.bets.get();
+        final bet = bets.firstWhereOrNull((x) => x.id == id);
+
+        if (bet == null) return context.respondWithError("No bet found by ID **$id**.");
+        if (bet.locked) return context.respondWithError("This bet is locked.");
+        if (!bet.choices.entries.any((x) => x.key.toLowerCase() == choice.data.toLowerCase())) return context.respondWithError("This choice doesn't exist.");
+        if (bet.bets.containsKey(context.user.id.value)) return context.respondWithError("You already bet on bet #$id! Use `rembet` to remove your bet.");
+
+        final payment = bet.choices[choice.data]!;
+        final amount = get(context, store, context.user, context.guild!);
+
+        if (amount < payment) return context.respondWithError("You don't have enough! You have **$amount**, you need **$payment**.");
+        bet.bets[context.user.id.value] = choice.data;
+        if (payment is! N) return context.respondWithError("Something went wrong.\n```Expected type $N, got ${payment.runtimeType}```");
+        settings.bets.set(bets);
+
+        add(context, store, context.user, context.guild!, -payment as N);
+        await context.respond(MessageBuilder(content: "Bet **$payment** on **${choice.data}**!"));
+      }, needsGuild: true),
+
+      BotCommand("mybet", "Bet", "Get my bet.", (T context, int id) async {
+        final settings = BetServerSettings(store, context.guild!.id);
+        final bets = settings.bets.get();
+        final bet = bets.firstWhereOrNull((x) => x.id == id);
+
+        if (bet == null) return context.respondWithError("No bet found by ID **$id**.");
+        if (bet.locked) return context.respondWithError("This bet is locked.");
+
+        final choice = bet.bets[context.user.id.value];
+        final amount = get(context, store, context.user, context.guild!);
+
+        await context.respond(MessageBuilder(content: choice != null ? "Your choice:\n$choice" : "You haven't bet on bet #$id yet!"));
+      }, needsGuild: true),
+
+      BotCommand("rembet", "Bet", "Remove your bet for a bet.", (T context, int id) async {
+        final settings = BetServerSettings(store, context.guild!.id);
+        final bets = settings.bets.get();
+        final bet = bets.firstWhereOrNull((x) => x.id == id);
+
+        if (bet == null) return context.respondWithError("No bet found by ID **$id**.");
+        if (bet.locked) return context.respondWithError("This bet is locked.");
+        if (!bet.bets.containsKey(context.user.id.value)) return context.respondWithError("You don't have a bet on bet #$id!");
+
+        final choice = bet.bets[context.user.id.value]!;
+        final payment = bet.choices[choice]!;
+
+        bet.bets.remove(context.user.id.value);
+        if (payment is! N) return context.respondWithError("Something went wrong.\n```Expected type $N, got ${payment.runtimeType}```");
+        settings.bets.set(bets);
+
+        add(context, store, context.user, context.guild!, payment);
+        await context.respond(MessageBuilder(content: "Removed bet of **$payment** on **${bet.title}**!"));
+      }, needsGuild: true, aliases: ["unbet"]),
+
+      BotCommand("betpay", "Bet", "Pay out a bet option.", (T context, int id, String name, bool positive) async {
+        final settings = BetServerSettings(store, context.guild!.id);
+        final bets = settings.bets.get();
+        final bet = bets.firstWhereOrNull((x) => x.id == id);
+
+        if (bet == null) return context.respondWithError("No bet found by ID **$id**.");
+        if (!bet.choices.entries.any((x) => x.key.toLowerCase() == name.toLowerCase())) return context.respondWithError("This choice doesn't exist.");
+
+        final entries = bet.bets.entries.where((x) => x.value == name);
+        final payout = bet.choices.entries.firstWhere((x) => x.key.toLowerCase() == name).value;
+
+        for (final entry in entries) {
+          final user = await context.client.users.get(Snowflake(entry.key));
+          add(context, store, user, context.guild!, payout * (positive ? 1 : -1) as N);
+        }
+
+        await context.respond(MessageBuilder(content: "Payed out **${entries.length}** users."));
+      }, needsGuild: true, permissionsRequired: BotCommandPermissions.admin),
+    ];
+  }
+}
+
+@JsonSerializable(anyMap: true)
+class Bet {
+  final String title;
+  final String? description;
+  final int id;
+  final Map<String, num> choices;
+  final Map<int, String> bets;
+  bool locked;
+
+  static int nextId(BetServerSettings settings) {
+    final id = settings.currentBetId.get() + 1;
+    settings.currentBetId.set(id);
+    return id;
+  }
+
+  Bet({required this.title, required this.description, required this.id, required this.choices, required this.bets, this.locked = false});
+  factory Bet.fromJson(Map input) => _$BetFromJson(input);
+  Map toJson() => _$BetToJson(this);
+
+  EmbedBuilder toEmbed(DiscordColor? color) {
+    return EmbedBuilder(
+      title: "$title - Bet #$id",
+      description: description,
+      color: color,
+      footer: EmbedFooterBuilder(text: locked ? "Locked" : "Unlocked"),
+      fields: choices.mapTo((k, v) => EmbedFieldBuilder(name: k, value: "**$v** gabes - **${bets.values.where((x) => x == k).length}** bets", isInline: false)).toList(),
+    );
+  }
+}
+
+class BetServerSettings extends ServerSettings {
+  BetServerSettings(super.store, super.id);
+
+  SettingsObjectNotNull<int> get currentBetId => SettingsObjectNotNull(this, "betId", defaultFunction: () => 0);
+  SettingsObjectNotNull<List<Bet>> get bets => SettingsObject.list(this, "bets", encodeFunction: (x) => x.toJson(), decodeFunction: (input) => Bet.fromJson(input));
+}
