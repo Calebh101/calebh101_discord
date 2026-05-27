@@ -15,6 +15,8 @@ abstract class BetPlugin<N extends num> extends BotPlugin {
   /// [amount] can be negative.
   N get<C extends ChatContext>(C context, KVStore store, User user, Guild guild);
 
+  BotCommandPermissions get requiredPerms => requiredPerms;
+
   @override
   FutureOr<List<BotConverter<dynamic>>> converters(CommandsPlugin plugin, KVStore store) {
     return [
@@ -34,7 +36,7 @@ abstract class BetPlugin<N extends num> extends BotPlugin {
         settings.bets.set(current);
 
         await context.respond(MessageBuilder(content: "Added bet **#${bet.id}**."));
-      }, needsGuild: true, permissionsRequired: BotCommandPermissions.admin, aliases: ["addbet"]),
+      }, needsGuild: true, permissionsRequired: requiredPerms, aliases: ["addbet"]),
 
       BotCommand("deletebet", "Bet", "Delete a bet by ID.", (T context, int id) async {
         final settings = BetServerSettings(store, context.guild!.id);
@@ -47,7 +49,7 @@ abstract class BetPlugin<N extends num> extends BotPlugin {
 
         bets.removeWhere((x) => x.id == id);
         await context.respond(MessageBuilder(content: "Bet **#$id** deleted!"));
-      }, needsGuild: true, permissionsRequired: BotCommandPermissions.admin),
+      }, needsGuild: true, permissionsRequired: requiredPerms),
 
       BotCommand("addoption", "Bet", "Add an option to a bet.", (ChatContext context, int id, String name, N amount, N winnings) async {
         final settings = BetServerSettings(store, context.guild!.id);
@@ -62,7 +64,7 @@ abstract class BetPlugin<N extends num> extends BotPlugin {
         settings.bets.set(bets);
 
         await context.respond(MessageBuilder(content: "Added choice to bet **#${bet.id}**."));
-      }, needsGuild: true, permissionsRequired: BotCommandPermissions.admin),
+      }, needsGuild: true, permissionsRequired: requiredPerms),
 
       BotCommand("remoption", "Bet", "Remove an option from a bet.", (ChatContext context, int id, GreedyString name) async {
         final settings = BetServerSettings(store, context.guild!.id);
@@ -76,7 +78,7 @@ abstract class BetPlugin<N extends num> extends BotPlugin {
         settings.bets.set(bets);
 
         await context.respond(MessageBuilder(content: "Removed choice \"${name.data}\" from bet **#${bet.id}**."));
-      }, needsGuild: true, permissionsRequired: BotCommandPermissions.admin),
+      }, needsGuild: true, permissionsRequired: requiredPerms),
 
       BotCommand("lockbet", "Bet", "Lock people from betting or removing their bets from a bet.", (ChatContext context, int id) async {
         final settings = BetServerSettings(store, context.guild!.id);
@@ -88,7 +90,7 @@ abstract class BetPlugin<N extends num> extends BotPlugin {
         settings.bets.set(bets);
 
         await context.respond(MessageBuilder(content: "${bet.locked ? "Locked" : "Unlocked"} bet $id."));
-      }, needsGuild: true, permissionsRequired: BotCommandPermissions.admin),
+      }, needsGuild: true, permissionsRequired: requiredPerms),
 
       BotCommand("getbet", "Bet", "Get a bet by ID.", (T context, int id) async {
         final settings = BetServerSettings(store, context.guild!.id);
@@ -105,6 +107,7 @@ abstract class BetPlugin<N extends num> extends BotPlugin {
         final settings = BetServerSettings(store, context.guild!.id);
         final bets = settings.bets.get();
         final bet = bets.firstWhereOrNull((x) => x.id == id);
+        Logger.print("Bet", "Bet ${bet?.id}, choices: ${bet?.choices}, input: $choice");
 
         if (bet == null) return context.respondWithError("No bet found by ID **$id**.");
         if (bet.locked) return context.respondWithError("This bet is locked.");
@@ -174,7 +177,7 @@ abstract class BetPlugin<N extends num> extends BotPlugin {
         }
 
         await context.respond(MessageBuilder(content: "Payed out **${entries.length}** users."));
-      }, needsGuild: true, permissionsRequired: BotCommandPermissions.admin),
+      }, needsGuild: true, permissionsRequired: requiredPerms),
     ];
   }
 }
