@@ -38,6 +38,20 @@ abstract class BetPlugin<N extends num> extends BotPlugin {
         await context.respond(MessageBuilder(content: "Added bet **#${bet.id}**."));
       }, needsGuild: true, permissionsRequired: requiredPerms, aliases: ["addbet"]),
 
+      BotCommand("allbets", "Bet", "Get all bets.", (T context, [bool excludeLocked = true]) async {
+        final settings = BetServerSettings(store, context.guild!.id);
+        final bets = settings.bets.get().where((x) => excludeLocked ? (!x.locked) : true);
+
+        await respondWithPagination(context, PaginatedEmbedBuilder(
+          title: "All Bets",
+          pages: EmbedPage.generate(bets.map((bet) {
+            return EmbedFieldBuilder(name: "${bet.title} - Bet #${bet.id}", value: "${bet.choices.length} choices, ${bet.bets.length} votes", isInline: false);
+          }).toList()),
+          footer: ElementBasedEmbedFooterBuilder(elements: ["${bets.length} bets"]),
+          color: await getColor(context.member),
+        ), settings: settings);
+      }, needsGuild: true),
+
       BotCommand("deletebet", "Bet", "Delete a bet by ID.", (T context, int id) async {
         final settings = BetServerSettings(store, context.guild!.id);
         final bets = settings.bets.get();
@@ -208,7 +222,10 @@ class Bet {
       description: description,
       color: color,
       footer: EmbedFooterBuilder(text: locked ? "Locked" : "Unlocked"),
-      fields: choices.mapTo((k, v) => EmbedFieldBuilder(name: k, value: "**$v** gabes - **${winnings[k]}** if you win - **${bets.values.where((x) => x == k).length}** bets", isInline: false)).toList(),
+      fields: choices.mapTo((k, v) {
+        final whoBetted = bets.entries.where((x) => x.value == k);
+        return EmbedFieldBuilder(name: k, value: "**$v** gabes - **${winnings[k]}** if you win - **${whoBetted.length}** bets\n${whoBetted.map((x) => x.key.toMention()).join(", ")}", isInline: false);
+      }).toList(),
     );
   }
 }
