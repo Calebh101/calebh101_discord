@@ -191,7 +191,7 @@ abstract class BetPlugin<N extends num> extends BotPlugin {
         }
 
         await context.respond(MessageBuilder(content: "Payed out **${entries.length}** users."));
-      }, needsGuild: true, permissionsRequired: requiredPerms),
+      }, needsGuild: true, permissionsRequired: requiredPerms, aliases: ["payout"]),
     ];
   }
 }
@@ -224,7 +224,11 @@ class Bet {
       footer: EmbedFooterBuilder(text: locked ? "Locked" : "Unlocked"),
       fields: choices.mapTo((k, v) {
         final whoBetted = bets.entries.where((x) => x.value == k);
-        return EmbedFieldBuilder(name: k, value: "**$v** gabes - **${winnings[k]}** if you win - **${whoBetted.length}** bets\n${whoBetted.map((x) => x.key.toMention()).join(", ")}", isInline: false);
+        return EmbedFieldBuilder(name: k, value: [
+          "**$v** gabes - **${winnings[k]}** if you win - **${whoBetted.length}** bets",
+          (whoBetted.map((x) => x.key.toMention()).join(", ")),
+          if (!locked) "To bet this option, use: `/bet $id \"$k\"",
+        ].join("\n"), isInline: false);
       }).toList(),
     );
   }
