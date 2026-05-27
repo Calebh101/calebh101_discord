@@ -15,7 +15,7 @@ abstract class BetPlugin<N extends num> extends BotPlugin {
   /// [amount] can be negative.
   N get<C extends ChatContext>(C context, KVStore store, User user, Guild guild);
 
-  BotCommandPermissions get requiredPerms => requiredPerms;
+  BotCommandPermissions get requiredPerms => .admin;
 
   @override
   FutureOr<List<BotConverter<dynamic>>> converters(CommandsPlugin plugin, KVStore store) {
