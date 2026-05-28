@@ -213,6 +213,10 @@ class SettingsObject<T> {
     return SettingsObject<Snowflake>(obj, key, encodeFunction: (input) => input.value, decodeFunction: (input) => input != null ? Snowflake(input) : null);
   }
 
+  static SettingsObject<DateTime> dateTime<T>(EntitySettings obj, String key) {
+    return SettingsObject(obj, key, encodeFunction: (input) => input.toUtc().millisecondsSinceEpoch, decodeFunction: (input) => input != null ? DateTime.fromMillisecondsSinceEpoch(input, isUtc: true) : null);
+  }
+
   bool exists() {
     return get() != null;
   }
