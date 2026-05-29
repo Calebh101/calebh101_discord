@@ -211,8 +211,10 @@ class Action extends Selection {
 class Page extends Selection {
   final String? description;
   final List<SelectionItem> actions;
+  final bool noQuit;
+  final bool noBack;
 
-  Page(super.id, super.name, {required this.actions, this.description}) : assert(actions.isNotEmpty, "Provide at least 1 action.");
+  Page(super.id, super.name, {required this.actions, this.description, this.noQuit = false, this.noBack = false}) : assert(actions.isNotEmpty, "Provide at least 1 action.");
 
   @override
   String toString() {
@@ -221,7 +223,7 @@ class Page extends Selection {
 
   @override
   Future<void> _onSelect(OnSelectDetails details) async {
-    final allActionsX = [...actions, Break(), if (details.previousPage != null) Action("back", "*Back to*: **${details.previousPage?.name}**", customEmoji: "◀️", onSelect: (_) => details.previousPage!._onSelect(details.previousDetails!)), Action("quit", "*Quit*", onSelect: (details) => details.onCancel(details, null), customEmoji: "⏹️")];
+    final allActionsX = [...actions, Break(), if (details.previousPage != null && !noBack) Action("back", "*Back to*: **${details.previousPage?.name}**", customEmoji: "◀️", onSelect: (_) => details.previousPage!._onSelect(details.previousDetails!)), if (!noQuit) Action("quit", "*Quit*", onSelect: (details) => details.onCancel(details, null), customEmoji: "⏹️")];
 
     final allSelections = allActionsX.whereType<Selection>().toList();
     int emojiIndex = 0;

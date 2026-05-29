@@ -20,6 +20,7 @@ export 'src/util/confirmation.dart';
 export 'src/util/saferegex.dart';
 export 'src/util/emojis.dart';
 export 'src/util/choose.dart';
+export 'src/util/multiplayer.dart';
 
 export 'src/plugins/modlog.dart';
 export 'src/plugins/messages.dart';

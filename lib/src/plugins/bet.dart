@@ -227,7 +227,7 @@ class Bet {
         return EmbedFieldBuilder(name: k, value: [
           "**$v** gabes - **${winnings[k]}** if you win - **${whoBetted.length}** bets",
           (whoBetted.map((x) => x.key.toMention()).join(", ")),
-          if (!locked) "To bet this option, use: `/bet $id \"$k\"",
+          if (!locked) "To bet this option, use: `/bet $id \"$k\"`",
         ].join("\n"), isInline: false);
       }).toList(),
     );

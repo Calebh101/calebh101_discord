@@ -43,6 +43,11 @@ class BotPluginInfo {
   const BotPluginInfo({required this.id, required this.version, required this.description});
 }
 
+abstract class CommandRegisterable {
+  FutureOr<List<BotCommand>> commands<T extends ChatContext>(CommandsPlugin plugin, KVStore store) => [];
+  FutureOr<List<BotConverter>> converters(CommandsPlugin plugin, KVStore store) => [];
+}
+
 @Deprecated("Use BotPlugin and define getInfo.")
 abstract class BotPluginLegacy extends BotPlugin {
   final String _id;
@@ -56,7 +61,7 @@ abstract class BotPluginLegacy extends BotPlugin {
   }
 }
 
-abstract class BotPlugin {
+abstract class BotPlugin extends CommandRegisterable {
   late String className;
   late PluginStore pluginStore;
 
@@ -67,8 +72,6 @@ abstract class BotPlugin {
   BotPluginInfo get info;
   FutureOr<void> onRegister() async {}
   FutureOr<void> onClientLoad(BotContext context) async {}
-  FutureOr<List<BotCommand>> commands<T extends ChatContext>(CommandsPlugin plugin, KVStore store) => [];
-  FutureOr<List<BotConverter>> converters(CommandsPlugin plugin, KVStore store) => [];
 
   String get id => info.id;
   Version get version => info.version;
