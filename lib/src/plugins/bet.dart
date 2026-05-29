@@ -174,7 +174,7 @@ abstract class BetPlugin<N extends num> extends BotPlugin {
         await context.respond(MessageBuilder(content: "Removed bet of **$payment** on **${bet.title}**!"));
       }, needsGuild: true, aliases: ["unbet"]),
 
-      BotCommand("betpay", "Bet", "Pay out a bet option.", (T context, int id, String name, bool positive) async {
+      BotCommand("betpay", "Bet", "Pay out a bet option.", (T context, int id, String name) async {
         final settings = BetServerSettings(store, context.guild!.id);
         final bets = settings.bets.get();
         final bet = bets.firstWhereOrNull((x) => x.id == id);
@@ -187,7 +187,7 @@ abstract class BetPlugin<N extends num> extends BotPlugin {
 
         for (final entry in entries) {
           final user = await context.client.users.get(Snowflake(entry.key));
-          add(context, store, user, context.guild!, (positive ? bet.winnings[name]! : -payout) as N);
+          add(context, store, user, context.guild!, bet.winnings[name]! as N);
         }
 
         await context.respond(MessageBuilder(content: "Payed out **${entries.length}** users."));
