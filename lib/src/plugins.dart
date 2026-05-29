@@ -43,7 +43,7 @@ class BotPluginInfo {
   const BotPluginInfo({required this.id, required this.version, required this.description});
 }
 
-abstract class CommandRegisterable {
+abstract class BotCommandRegisterable {
   FutureOr<List<BotCommand>> commands<T extends ChatContext>(CommandsPlugin plugin, KVStore store) => [];
   FutureOr<List<BotConverter>> converters(CommandsPlugin plugin, KVStore store) => [];
 }
@@ -61,7 +61,7 @@ abstract class BotPluginLegacy extends BotPlugin {
   }
 }
 
-abstract class BotPlugin extends CommandRegisterable {
+abstract class BotPlugin extends BotCommandRegisterable {
   late String className;
   late PluginStore pluginStore;
 
