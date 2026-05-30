@@ -135,6 +135,7 @@ abstract class BetPlugin<N extends num> extends BotPlugin {
         bet.bets[context.user.id.value] = choice.data;
         if (payment is! N) return context.respondWithError("Something went wrong.\n```Expected type $N, got ${payment.runtimeType}```");
         settings.bets.set(bets);
+        add(context, store, context.user, context.guild!, payment);
 
         add(context, store, context.user, context.guild!, -payment as N);
         await context.respond(MessageBuilder(content: "Bet **$payment** on **${choice.data}**!"));
