@@ -50,6 +50,7 @@ class ChooseResult {
   const ChooseResult({required this.chosenId, required this.sentMessage});
 }
 
+@Deprecated("Use Page instead.")
 /// [items] is a map of ID to human-readable option.
 Future<ChooseResult> chooseFromList(ChatContext context, Map<String, String> items, {String prompt = "Pick from one of the below options.", Duration timeLimit = const Duration(minutes: 1), Message? message}) async {
   if (items.isEmpty) return ChooseResult(chosenId: null, sentMessage: null);
@@ -264,11 +265,22 @@ class Page extends Selection {
     final controller = StreamController<MessageReactionAddEvent>();
     details.context.client.onMessageReactionAdd.listen((x) => controller.isClosed ? null : controller.sink.add(x));
     ({String emoji, String id, int index})? result;
+    int secondsRemaining = 300;
 
     Future<void> Function() onTimeUp = () async {
       controller.close();
       details.onCancel(details, null);
     };
+
+    final countdown = Timer.periodic(Duration(seconds: 1), (timer) {
+      secondsRemaining--;
+
+      if (secondsRemaining <= 0) {
+        Logger.print("Choose", "Choose session with page $name hit time limit.");
+        onTimeUp.call();
+        timer.cancel();
+      }
+    });
 
     await for (final event in controller.stream) {
       if (event.messageAuthorId == null || event.messageAuthorId != details.message.author.id || event.message.id != details.message.id || event.userId == details.context.client.user.id || event.userId != details.context.user.id) continue;
@@ -287,6 +299,7 @@ class Page extends Selection {
       break;
     }
 
+    countdown.cancel();
     await details.message.deleteAllReactions();
     await details.message.edit(MessageUpdateBuilder(content: "Loading..."));
 
