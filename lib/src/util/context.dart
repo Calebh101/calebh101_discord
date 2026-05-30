@@ -3,6 +3,9 @@ import 'dart:async';
 import 'package:calebh101_discord/calebh101_discord.dart';
 
 extension CommandContextHelper on CommandContext {
+  Snowflake get userId => user.id;
+  Snowflake? get guildId => guild?.id;
+
   void respondWithError(String message, {ResponseLevel? level}) async {
     try {
       await respond(MessageBuilder(content: message), level: level);
@@ -24,7 +27,7 @@ extension CommandContextHelper on CommandContext {
     }
   }
 
-  Future<bool> assurePerms(BotCommandPermissions perms, ServerSettings settings) async {
+  Future<bool> assurePerms(BotCommandPermissions perms, ServerSettings? settings) async {
     final result = verifyPerms(perms, settings);
 
     if (result == false) {
