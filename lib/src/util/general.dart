@@ -173,3 +173,7 @@ Future<void> alertOwners(NyxxGateway client, EmbedBuilder embed) async {
 extension IfIs on Object? {
   T? ifIs<T>() => this is T ? this as T : null;
 }
+
+extension ConverterStuff<T> on Converter<T> {
+  RuntimeType get converterType => RuntimeType<T>();
+}

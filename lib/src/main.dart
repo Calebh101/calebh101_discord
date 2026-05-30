@@ -245,13 +245,13 @@ Future<BotContext?> load({required BotSettings settings, required FutureOr<Patte
 
       context.respondWithError([
         message,
-        if (codeblock != null) "```$codeblocklang\n$codeblock\n```",
+        if (codeblock != null) "```${codeblocklang ?? ""}\n$codeblock\n```",
         if (showHelp) "Run `${settings.prefix.get()}help ${context.command.name}` for more info.",
       ].join("\n"));
     }
 
     if (e is ConverterFailedException) {
-      return handleError(e, "Invalid command input.", codeblock: "Could not parse input to type ${e.failed}.", showHelp: true);
+      return handleError(e, "Invalid command input.\nWe couldn't parse something to `${e.failed.output.internalType}`.", codeblock: "Could not parse input to type ${e.failed}.", showHelp: true);
     } else if (e is NotEnoughArgumentsException) {
       return handleError(e, "Not enough arguments.", showHelp: true);
     } else if (e is UncaughtException) {
