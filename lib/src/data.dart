@@ -338,6 +338,7 @@ class BotSettings extends EntitySettings {
   SettingsObjectNotNull<List<Snowflake>> get blockedGuilds => SettingsObject.listSnowflake(this, "blockedGuilds");
   SettingsObjectNotNull<List<Snowflake>> get blockedGuildOwners => SettingsObject.listSnowflake(this, "blockedGuildOwners");
   SettingsObjectNotNull<List<int>> get pausedLocations => SettingsObject.list(this, "paused");
+  SettingsObjectNotNull<List<Snowflake>> get blockedFromGames => SettingsObject.listSnowflake(this, "blockedFromGames");
 
   SettingsObject<({Snowflake client, Snowflake channel, Snowflake user, String command, String? input, String context})> get lastInteraction => SettingsObject(this, "lastInteraction", encodeFunction: (input) => [input.client.value, input.channel.value, input.user.value, input.command, input.input, input.context], decodeFunction: (input) => input is List ? (client: Snowflake(input[0]), channel: Snowflake(input[1]), user: Snowflake(input[2]), command: input[3], input: input[4], context: input[5]) : null);
 

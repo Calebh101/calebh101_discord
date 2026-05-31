@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:math';
 
+import 'package:calebh101_bot/games/guessthenumber.dart';
 import 'package:calebh101_bot/plugins/bet.dart';
 import 'package:calebh101_bot/plugins/botchat.dart';
 import 'package:calebh101_bot/plugins/crosspost.dart';
@@ -62,6 +63,9 @@ void main(List<String> arguments) => wrap(() async {
     DebugPlugin(),
     NumbersPlugin(),
     Calebh101Bet(),
+    MultiplayerPlugin(),
+
+    GuessTheNumberPlugin(),
   ]);
 
   final context = await load(

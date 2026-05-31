@@ -3,25 +3,42 @@ import 'dart:math';
 
 import 'package:calebh101_discord/calebh101_discord.dart';
 
+class GTNEntry {
+  final bool higher;
+  final int number;
+
+  const GTNEntry(this.number, this.higher);
+
+  @override
+  String toString() {
+    return "- **${higher ? "Higher" : "Lower"}** than **$number**";
+  }
+}
+
 class GuessTheNumber extends MultiplayerGame {
   final int number;
 
-  GuessTheNumber({required super.client, required super.store, required super.owner}) : number = Random().nextInt(50), super(version: Version.parse("1.0.0A"));
+  GuessTheNumber({required super.client, required super.store, required super.owner, super.publicMessage}) : number = Random().nextInt(101), super(version: Version.parse("1.0.0A"));
 
   @override
   String get name => "Guess the Number";
 
   @override
-  String get description => "Guess the randomly generated number!";
+  String get description => "Guess the randomly generated number between 1-100 (inclusive)!";
 
   @override
-  int get minPlayers => 2;
+  int get minPlayers => 1;
 
   @override
   int get maxPlayers => 8;
 
+  List<GTNEntry> hints = [];
+  int turn = 1;
+
   @override
-  int getNextTurnIndex(int i) {
+  int getNextTurnIndex(int? i) {
+    if (i == null) return 0;
+    i++;
     return i + 1 > players.length ? 0 : i;
   }
 
@@ -30,22 +47,35 @@ class GuessTheNumber extends MultiplayerGame {
 
   @override
   Future<void> onTurn(GameContext context) async {
-    await updateAllButCurrentPlayer(context, MessageUpdateBuilder(content: "It's ${context.player.formattedDisplayName}'s turn! (${context.turnIndex + 1}/${players.length})"));
-    await updatePlayer(context.player, MessageUpdateBuilder(content: "**It's your turn!**\n\nType your number of choice below. Reminder: The number is in between 1-100 (inclusive).\nType `skip` to skip your turn."));
+    await runForAllButCurrentPlayer(context, (player) async {
+      await player.channel.sendMessage(MessageBuilder(content: "It's ${context.player.formattedDisplayName}'s turn! (${context.turnIndex + 1}/${players.length})"));
+    });
+
+    await updatePublicMessage(MessageUpdateBuilder(content: "", embeds: [
+      EmbedBuilder(
+        title: "It's ${context.player.formattedDisplayName}'s turn!",
+        description: hints.join("\n"),
+        color: await getColor(null),
+        footer: EmbedFooterBuilder(text: "Turn ${turn + 1}"),
+      ),
+    ]));
+
+    await context.player.channel.sendMessage(MessageBuilder(content: "**It's your turn!**\n\nType your number of choice below. Reminder: The number is in between 1-100 (inclusive).\nType `skip` to skip your turn.\n\n${hints.join("\n")}".trim()));
 
     final timeLimit = Duration(minutes: 1);
     int secondsRemaining = timeLimit.inSeconds;
     int? chosen;
+    turn++;
 
     Future<void> Function() onTimeUp = () async {
-      Logger.warn("Confirmation", "Confirmation session with user ${context.player.user.id} has not set onTimeUp at this point. The confirmation will appear broken.");
+      Logger.warn("GTN", "GTN session with user ${context.player.user.id} has not set onTimeUp at this point. The confirmation will appear broken.");
     };
 
     final countdown = Timer.periodic(Duration(seconds: 1), (timer) {
       secondsRemaining--;
 
       if (secondsRemaining <= 0) {
-        Logger.print("Confirmation", "Confirmation session with user ${context.player.user.id} hit time limit.");
+        Logger.print("GTN", "GTN session with user ${context.player.user.id} hit time limit.");
         onTimeUp.call();
         timer.cancel();
       }
@@ -61,7 +91,7 @@ class GuessTheNumber extends MultiplayerGame {
       };
 
       await for (final event in controller.stream) {
-        if (event.message.channelId != context.player.message.channel.id) continue;
+        if (event.message.channelId != context.player.channel.id) continue;
         if (event.message.author.id != context.player.user.id) continue;
         if (event.message.author is! User) continue;
 
@@ -82,24 +112,56 @@ class GuessTheNumber extends MultiplayerGame {
     }
 
     if (chosen == null) {
-      await updateAll(context, MessageUpdateBuilder(content: "${context.player.formattedDisplayName} skipped."));
+      await runForAllPlayers((player) async {
+        await player.channel.sendMessage(MessageBuilder(content: "${context.player.formattedDisplayName} skipped."));
+      });
+
       await Future.delayed(Duration(seconds: 5));
       await nextTurn(context);
-    }
-
-    if (chosen == number) {
-      await updateAll(context, MessageUpdateBuilder(content: "**${context.player.formattedDisplayName} won!**\n\n${context.player.formattedDisplayName} guessed the number correctly, which was **$number**."));
-      end();
       return;
     }
 
-    await updateAll(context, MessageUpdateBuilder(content: "${context.player.formattedDisplayName} guessed **$chosen** and was wrong. The actual number is **${number > chosen! ? "higher" : "lower"}**."));
+    if (chosen == number) {
+      await runForAllPlayers((player) async {
+        await player.channel.sendMessage(MessageBuilder(content: "**${context.player.formattedDisplayName} won!**\n\n${context.player.formattedDisplayName} guessed the number correctly, which was **$number**."));
+      });
+
+      await end();
+
+      await updatePublicMessage(MessageUpdateBuilder(embeds: [
+        EmbedBuilder(
+          title: "${context.player.formattedDisplayName} won!",
+          description: "# $number\n\n${hints.join("\n")}",
+          color: await getColor(null),
+          footer: EmbedFooterBuilder(text: "Turn ${turn + 1}"),
+        ),
+      ]));
+
+      return;
+    }
+
+    await runForAllPlayers((player) async {
+      await player.channel.sendMessage(MessageBuilder(content: "${context.player.formattedDisplayName} guessed **$chosen** and was wrong. The actual number is **${number > chosen! ? "higher" : "lower"}**."));
+    });
+
+    hints.add(GTNEntry(chosen, number > chosen));
     await Future.delayed(Duration(seconds: 5));
     await nextTurn(context);
   }
 
   @override
   GameProfile newGameProfile(NewGameProfileDetails details) {
-    return GameProfile(user: details.user, message: details.message);
+    return GameProfile(user: details.user, channel: details.channel);
+  }
+}
+
+class GuessTheNumberPlugin extends BotPlugin {
+  @override get info => BotPluginInfo(id: "guessthenumber", version: Version.parse("1.0.0A"), description: "Commands for Guess the Number.");
+
+  @override
+  FutureOr<List<BotCommand<Function>>> commands<T extends ChatContext>(CommandsPlugin plugin, KVStore store) {
+    return [
+      ...MultiplayerPlugin.gameCommands(name: "Guess the Number", abbr: "gtn", store: store, newGame: (context) => GuessTheNumber(client: context.client, store: store, owner: context.user)),
+    ];
   }
 }

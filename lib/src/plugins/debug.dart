@@ -149,6 +149,19 @@ class DebugPlugin extends BotPlugin {
       ...BotCommandPermissions.values.map((perms) => BotCommand("checkperm${perms.name}", "Debug", "Check perm ${perms.name}.", (ChatContext context) async {
         await context.respond(MessageBuilder(content: "✅"));
       }, permissionsRequired: perms)),
+
+      BotCommand("oktostop", "Debug", "Check if it's okay to restart or kill the bot right now.", (T context) async {
+        final games = MultiplayerPlugin.games.entries.where((x) => !x.value.ended).map((x) => x.value);
+
+        // true = ok to restart
+        final List<bool> conditions = [
+          games.isEmpty,
+        ];
+
+        await context.respond(MessageBuilder(content: "Status: **${conditions.every((x) => x) ? "OK" : "No"}**\n\n${[
+          "**Active Multiplayer Games**:\n${games.nullIfEmpty?.map((x) => "- ${x.name}: ${x.code} (owned by ${x.owner.username})") ?? "None active"}",
+        ].join("\n\n")}"));
+      }, permissionsRequired: .owner),
     ];
   }
 }

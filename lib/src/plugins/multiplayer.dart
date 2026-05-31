@@ -1,28 +1,100 @@
 import 'dart:async';
 
 import 'package:calebh101_discord/calebh101_discord.dart';
+import 'package:collection/collection.dart';
 
 class MultiplayerPlugin extends BotPlugin {
   @override get info => BotPluginInfo(id: "multiplayer", version: Version.parse("1.0.0A"), description: "Provides commands for the multiplayer game part of this framework.");
 
   static Map<String, MultiplayerGame> games = {};
+  late KVStore store;
+
+  bool isBanned(User user) {
+    return BotSettings(store).blockedFromGames.get().any((x) => x == user.id);
+  }
 
   @override
   FutureOr<List<BotCommand<Function>>> commands<T extends ChatContext>(CommandsPlugin plugin, KVStore store) {
+    this.store = store;
+
     return [
       BotCommand("joingame", "Games", "Join a game by code.", (T context, String code) async {
+        if (isBanned(context.user)) return context.respondWithError("You can't join this game.");
+
+        final existing = MultiplayerPlugin.games.entries.firstWhereOrNull((x) => !x.value.ended && x.value.players.any((y) => context.user.id == y.user.id))?.value;
+        if (existing != null) return context.respondWithError("You're already playing a game of **${existing.name}**!");
+
         final game = games[code];
         if (game == null || game.ended) return context.respondWithError("Invalid code.");
-        await game.join(context);
+
+        final result = await game.join(context);
+        await context.respond(MessageBuilder(content: result ?? "Game joined."));
+      }),
+
+      BotCommand("leavegame", "Games", "Leave any games you're in.", (T context, [User? user]) async {
+        user ??= context.user;
+        final game = MultiplayerPlugin.games.entries.firstWhereOrNull((x) => x.value.players.any((y) => y.user.id == user!.id))?.value;
+        if (game == null) return context.respondWithError("This user is not in any games!");
+        await game.leave(context, user);
+      }),
+
+      BotCommand("gameblock", "Games", "Block someone from games.", (T context, User user) async {
+        final settings = BotSettings(store);
+        final value = settings.blockedFromGames.get();
+        final contains = value.contains(user.id);
+
+        if (!contains) value.add(user.id);
+        else value.remove(user.id);
+        settings.blockedFromGames.set(value);
+
+        await context.respond(MessageBuilder(content: "${contains ? "Unbanned" : "Banned"} ${await userToString(user)} from games."));
+      }, permissionsRequired: .owner),
+
+      BotCommand("gameblocked", "Games", "Get if someone is blocked from games.", (T context, User user) async {
+        final settings = BotSettings(store);
+        final value = settings.blockedFromGames.get();
+        final contains = value.contains(user.id);
+
+        await context.respond(MessageBuilder(content: "${await userToString(user)} is ${contains ? "**banned**" : "**not** banned"} from games."));
       }),
 
       BotCommand("startgame", "Games", "Start a game, if there's enough players.", (T context, String code) async {
+        if (isBanned(context.user)) return context.respondWithError("You can't start this game.");
         final game = games[code];
         if (game == null || game.ended) return context.respondWithError("Invalid code.");
 
-        if (!isOwner(id: context.user.id) && context.userId != game.owner.id) {
-          return context.respondWithError("You're not the owner of this game!");
-        }
+        if (!isOwner(id: context.user.id) && context.userId != game.owner.id) return context.respondWithError("You're not the owner of this game!");
+        if (game.players.length < game.minPlayers) return context.respondWithError("Not enough players! You need **${game.minPlayers}-${game.maxPlayers}**, and you currently have **${game.players.length}**.");
+
+        await context.respond(MessageBuilder(content: "Game **$code** started."));
+        await game.start(context);
+      }),
+
+      BotCommand("listgames", "Games", "List all active games.", (T context) async {
+        final games = MultiplayerPlugin.games.entries.where((x) => !x.value.ended).map((x) => x.value);
+
+        await context.respond(MessageBuilder(content: games.isEmpty ? "No active games." : "**${games.length}** active games:\n\n${games.map((game) {
+          return "- ${game.name} (${game.code}): ${game.started ? "Active" : "Waiting"}, ${game.players.length} players";
+        })}"));
+      }),
+    ];
+  }
+
+  static List<BotCommand> gameCommands<T extends MultiplayerGame>({required String name, required String abbr, required KVStore store, required T Function(ChatContext store) newGame}) {
+    return [
+      BotCommand("new$abbr", "Games", "New game of $name.", (ChatContext context) async {
+        final existing = MultiplayerPlugin.games.entries.firstWhereOrNull((x) => !x.value.ended && x.value.players.any((y) => context.user.id == y.user.id))?.value;
+        if (existing != null) return context.respondWithError("You're already playing a game of **${existing.name}**!");
+
+        final perms = BotCommandPermissions.owner;
+        if (context.verifyPerms(perms, ifGuild(store, context.guild?.id, (id) => ServerSettings(store, id))) == false) return context.respondWithError("You don't have permission to start this game!\n-# Required perms: `${perms.name}`");
+
+        final game = newGame(context);
+        final result = await game.init();
+        if (result != null) return context.respondWithError(result);
+
+        MultiplayerPlugin.games[game.code] = game;
+        await game.showCode(context);
       }),
     ];
   }
