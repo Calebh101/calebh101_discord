@@ -5,7 +5,6 @@ import 'package:calebh101_discord/calebh101_discord.dart';
 import 'package:collection/collection.dart';
 
 const decks = 2;
-const rounds = 4;
 
 final Map<int, String> cards = {
   1: "A",
@@ -93,13 +92,14 @@ class BlackjackProfile extends GameProfile {
 }
 
 class Blackjack extends MultiplayerGame<BlackjackProfile> {
-  Blackjack({required super.client, required super.store, required super.owner, super.publicMessage}) : super(version: Version.parse("1.0.0A"));
+  final int rounds;
+  Blackjack({required super.client, required super.store, required super.owner, super.publicMessage, required this.rounds}) : super(version: Version.parse("1.0.0A"));
 
   @override
   String get description => "Blackjack! Who can get the most wins in $rounds rounds?";
 
   final dealer = Dealer();
-  final allCardsX = Map<int, int>.from(allCards);
+  var allCardsX = Map<int, int>.from(allCards);
 
   int round = 0;
 
@@ -141,9 +141,11 @@ class Blackjack extends MultiplayerGame<BlackjackProfile> {
     final player = context.player;
     player?.cards.add(getCard(allCardsX));
 
-    await runForAllButCurrentPlayer(context, (player) async {
-      await player.channel.sendMessage(MessageBuilder(content: context.player != null ? "# It's ${context.player?.formattedDisplayName}'s turn! (${context.turnIndex + 1}/${players.length})\nRound ${round + 1}/$rounds" : "Loading..."));
-    });
+    Future<void> updateNotYourTurn() async {
+      await runForAllButCurrentPlayer(context, (player) async {
+        await player.channel.sendMessage(MessageBuilder(content: context.player != null ? "# It's ${context.player?.formattedDisplayName}'s turn! (${context.turnIndex + 1}/${players.length})\nThey have **${context.player?.cards.length}** cards.\nRound ${round + 1}/$rounds" : "Loading..."));
+      });
+    }
 
     if (player == null) {
       dealer.cards.add(getCard(allCardsX));
@@ -223,6 +225,7 @@ class Blackjack extends MultiplayerGame<BlackjackProfile> {
       }
 
       dealer.cards.clear();
+      allCardsX = Map<int, int>.from(allCards);
       round++;
       await Future.delayed(Duration(seconds: 10));
 
@@ -250,11 +253,12 @@ class Blackjack extends MultiplayerGame<BlackjackProfile> {
     final myCards = context.player!.cards;
 
     Future<void> eval() async {
+      await updateNotYourTurn();
       Message message = await context.player!.channel.sendMessage(MessageBuilder(content: "Loading..."));
 
       String? getMessage() {
         final scores = getAllScores(cards: myCards);
-        return "**It's your turn!**\n\nYour cards: **${myCards.map((x) => cards[x]).join(", ")}**\nYour possible scores: ${scores.mapIndexed((i, x) => "${i == 0 || x == 21 ? "**" : ""}$x${i == 0 || x == 21 ? "**" : ""}").join(", ")}\n\n:one:: Hit\n:two:: Pass";
+        return "# It's your turn!\nRound ${round + 1}/$rounds\n\nYour cards: **${myCards.map((x) => cards[x]).join(", ")}**\nYour possible scores: ${scores.mapIndexed((i, x) => "${i == 0 || x == 21 ? "**" : ""}$x${i == 0 || x == 21 ? "**" : ""}").join(", ")}\n\n:one:: Hit\n:two:: Pass";
       }
 
       final timeLimit = Duration(minutes: 1);
@@ -300,6 +304,8 @@ class Blackjack extends MultiplayerGame<BlackjackProfile> {
         Logger.warn("BJ", "Error: $e");
       }
 
+      countdown.cancel();
+
       if (hit) {
         myCards.add(getCard(allCardsX));
 
@@ -334,7 +340,10 @@ class BlackjackPlugin extends BotPlugin {
   @override
   FutureOr<List<BotCommand<Function>>> commands<T extends ChatContext>(CommandsPlugin plugin, KVStore store) {
     return [
-      ...MultiplayerPlugin.gameCommands(name: "Blackjack", abbr: "bj", store: store, newGame: (context) => Blackjack(client: context.client, store: store, owner: context.user)),
+      BotCommand("newbj", "Games", "New Blackjack game!", (T context, [int rounds = 4]) async {
+        if (rounds < 1) return context.respondWithError("There must be more than 1 round.");
+        await newGame(context, store: store, newGame: () => Blackjack(client: context.client, store: store, owner: context.user, rounds: rounds));
+      }),
     ];
   }
 }

@@ -174,7 +174,9 @@ class GuessTheNumberPlugin extends BotPlugin {
   @override
   FutureOr<List<BotCommand<Function>>> commands<T extends ChatContext>(CommandsPlugin plugin, KVStore store) {
     return [
-      ...MultiplayerPlugin.gameCommands(name: "Guess the Number", abbr: "gtn", store: store, newGame: (context) => GuessTheNumber(client: context.client, store: store, owner: context.user)),
+      BotCommand("newgtn", "Games", "New Guess the Number game!", (T context) async {
+        await newGame(context, store: store, newGame: () => GuessTheNumber(client: context.client, store: store, owner: context.user));
+      }),
     ];
   }
 }

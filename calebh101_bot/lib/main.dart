@@ -5,6 +5,7 @@ import 'package:calebh101_bot/games/blackjack.dart';
 import 'package:calebh101_bot/games/guessthenumber.dart';
 import 'package:calebh101_bot/plugins/bet.dart';
 import 'package:calebh101_bot/plugins/botchat.dart';
+import 'package:calebh101_bot/plugins/channels.dart';
 import 'package:calebh101_bot/plugins/crosspost.dart';
 import 'package:calebh101_bot/plugins/github.dart';
 import 'package:calebh101_bot/plugins/math.dart';
@@ -64,6 +65,7 @@ void main(List<String> arguments) => wrap(() async {
     DebugPlugin(),
     NumbersPlugin(),
     Calebh101Bet(),
+    ChannelsPlugin(),
     MultiplayerPlugin(),
 
     GuessTheNumberPlugin(),

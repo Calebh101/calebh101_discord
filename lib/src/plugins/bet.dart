@@ -191,7 +191,7 @@ abstract class BetPlugin<N extends num> extends BotPlugin {
           add(context, store, user, context.guild!, bet.winnings[name]! as N);
         }
 
-        await context.respond(MessageBuilder(content: "Payed out **${entries.length}** users."));
+        await context.respond(MessageBuilder(content: "Paid out **${entries.length}** users."));
       }, needsGuild: true, permissionsRequired: requiredPerms, aliases: ["payout"]),
     ];
   }

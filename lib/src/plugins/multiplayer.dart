@@ -82,26 +82,22 @@ class MultiplayerPlugin extends BotPlugin {
         final game = games[code];
         if (game == null || game.ended) return context.respondWithError("Invalid code.");
         await game.showCode(context);
-      }),
+      }, aliases: ["getgame"]),
     ];
   }
+}
 
-  static List<BotCommand> gameCommands<T extends MultiplayerGame>({required String name, required String abbr, required KVStore store, required T Function(ChatContext store) newGame}) {
-    return [
-      BotCommand("new$abbr", "Games", "New game of $name.", (ChatContext context) async {
-        final existing = MultiplayerPlugin.games.entries.firstWhereOrNull((x) => !x.value.ended && x.value.players.any((y) => context.user.id == y.user.id))?.value;
-        if (existing != null) return context.respondWithError("You're already playing a game of **${existing.name}**!");
+Future<void> newGame<T extends MultiplayerGame>(ChatContext context, {required KVStore store, required T Function() newGame}) async {
+  final existing = MultiplayerPlugin.games.entries.firstWhereOrNull((x) => !x.value.ended && x.value.players.any((y) => context.user.id == y.user.id))?.value;
+  if (existing != null) return context.respondWithError("You're already playing a game of **${existing.name}**!");
 
-        final perms = BotCommandPermissions.owner;
-        if (context.verifyPerms(perms, ifGuild(store, context.guild?.id, (id) => ServerSettings(store, id))) == false) return context.respondWithError("You don't have permission to start this game!\n-# Required perms: `${perms.name}`");
+  final perms = BotCommandPermissions.owner;
+  if (context.verifyPerms(perms, ifGuild(store, context.guild?.id, (id) => ServerSettings(store, id))) == false) return context.respondWithError("You don't have permission to start this game!\n-# Required perms: `${perms.name}`");
 
-        final game = newGame(context);
-        final result = await game.init();
-        if (result != null) return context.respondWithError(result);
+  final game = newGame();
+  final result = await game.init();
+  if (result != null) return context.respondWithError(result);
 
-        MultiplayerPlugin.games[game.code] = game;
-        await game.showCode(context);
-      }),
-    ];
-  }
+  MultiplayerPlugin.games[game.code] = game;
+  await game.showCode(context);
 }
