@@ -8,7 +8,19 @@ class StickyRoles extends BotPluginLegacy {
   @override
   FutureOr<List<BotCommand<Function>>> commands<T extends ChatContext>(CommandsPlugin plugin, KVStore store) {
     return [
-      BotCommand("addrole", "Moderation", "Add a sticky role to someone.", (ChatContext context, Member member, Role role, [bool sticky = true]) async {
+      BotCommand("addrole", "Moderation", "Add a sticky role to someone.", (ChatContext context, Member member, Role role) async {
+        if (await context.assureGuild() == false) return;
+
+        try {
+          await member.addRole(role.id);
+        } catch (e) {
+          Logger.warn("StickyRoles", "Unable to add role ${role.id}: $e");
+          return context.respondWithError("We couldn't add role ${await roleToString(role)} to user ${await memberToString(member, client: context.client)}.");
+        }
+
+        await context.respond(MessageBuilder(content: "Added role ${await roleToString(role)} to user ${await memberToString(member, client: context.client)}!"));
+      }, permissionsRequired: BotCommandPermissions.mod, aliases: ["r+"]),
+      BotCommand("addsrole", "Moderation", "Add a sticky role to someone.", (ChatContext context, Member member, Role role) async {
         if (await context.assureGuild() == false) return;
         final settings = StickyRolesSettings(store, context.guild!.id, member.id);
 
@@ -19,14 +31,12 @@ class StickyRoles extends BotPluginLegacy {
           return context.respondWithError("We couldn't add role ${await roleToString(role)} to user ${await memberToString(member, client: context.client)}.");
         }
 
-        if (sticky) {
-          final current = settings.stickyRoles.get() ?? [];
-          current.add(role.id.value);
-          settings.stickyRoles.set(current);
-        }
+        final current = settings.stickyRoles.get() ?? [];
+        current.add(role.id.value);
+        settings.stickyRoles.set(current);
 
-        await context.respond(MessageBuilder(content: "Added ${sticky ? "sticky role" : "role"} ${await roleToString(role)} to user ${await memberToString(member, client: context.client)}!"));
-      }, permissionsRequired: BotCommandPermissions.mod, aliases: ["r+"]),
+        await context.respond(MessageBuilder(content: "Added sticky role ${await roleToString(role)} to user ${await memberToString(member, client: context.client)}!"));
+      }, permissionsRequired: BotCommandPermissions.mod, aliases: ["sr+", "rs+", "addroles"]),
       BotCommand("remrole", "Moderation", "Remove a role from someone.", (ChatContext context, Member member, Role role) async {
         if (await context.assureGuild() == false) return;
         final settings = StickyRolesSettings(store, context.guild!.id, member.id);
@@ -61,7 +71,15 @@ class StickyRoles extends BotPluginLegacy {
           return "- ${role != null ? "${await roleToString(role)}" : "`<no role found>`"} (${x.toDiscordCodeString()})";
         }))).join("\n")}"));
       }, permissionsRequired: BotCommandPermissions.mod),
-      BotCommand("evalstickyroles", "StickyRole", "List someone's current sticky roles.", (ChatContext context, Member member) async {
+      BotCommand("allstickyroles", "StickyRole", "List everyone's current sticky roles.", (ChatContext context) async {
+        if (await context.assureGuild() == false) return;
+        final ids = Map.fromEntries(store.getAllForKey<List<int>>(.userPerServer, "stickyRoles").entries.where((x) => UserPerServerSettings.parseId(x.key).server == context.guildId)).map((k, v) => MapEntry(Snowflake.parse(UserPerServerSettings.parseId(k).user), v.map((x) => Snowflake(x)).toList()));
+
+        await context.respond(MessageBuilder(content: "Current sticky roles for **${ids.length}** users:\n\n${(await Future.wait(ids.mapTo((k, v) async {
+          return "- ${k.value.toMention()}: ${v.map((x) => x.value.toRoleMention()).join(" ")}";
+        }))).join("\n")}", allowedMentions: AllowedMentions(repliedUser: true)));
+      }, permissionsRequired: BotCommandPermissions.mod),
+      BotCommand("evalstickyroles", "StickyRole", "Evaluate someone's sticky roles.", (ChatContext context, Member member) async {
         if (await context.assureGuild() == false) return;
         final results = await eval(store: store, guild: context.guild!, member: member, client: context.client, author: context.user);
         await context.respond(MessageBuilder(content: "Current sticky roles for user ${await memberToString(member, client: context.client)}:\n\n${results.join("\n")}"));
