@@ -73,7 +73,7 @@ class StickyRoles extends BotPluginLegacy {
       }, permissionsRequired: BotCommandPermissions.mod),
       BotCommand("allstickyroles", "StickyRole", "List everyone's current sticky roles.", (ChatContext context) async {
         if (await context.assureGuild() == false) return;
-        final ids = Map.fromEntries(store.getAllForKey<List<int>>(.userPerServer, "sr").entries.where((x) => UserPerServerSettings.parseId(x.key).server == context.guildId)).map((k, v) => MapEntry(Snowflake.parse(UserPerServerSettings.parseId(k).user), v.map((x) => Snowflake(x)).toList()));
+        final ids = Map.fromEntries(store.getAllForKey<List<dynamic>>(.userPerServer, "sr").entries.where((x) => UserPerServerSettings.parseId(x.key).server == context.guildId)).map((k, v) => MapEntry(Snowflake.parse(UserPerServerSettings.parseId(k).user), v.map((x) => Snowflake(x)).toList()));
 
         await context.respond(MessageBuilder(content: "Current sticky roles for **${ids.length}** users:\n\n${(await Future.wait(ids.mapTo((k, v) async {
           return "- ${k.value.toMention()}: ${v.map((x) => x.value.toRoleMention()).join(" ")}";
