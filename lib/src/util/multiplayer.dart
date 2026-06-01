@@ -29,7 +29,7 @@ class GameProfile {
 }
 
 class GameContext<T extends GameProfile> {
-  final T player;
+  final T? player;
   final int turnIndex;
   final int? previousTurnIndex;
 
@@ -86,14 +86,14 @@ abstract class MultiplayerGame<T extends GameProfile> {
   T get ownerPlayer => players.firstWhere((x) => x.user.id == owner.id);
 
   /// [currentIndex] is only null if the game was just started.
-  int getNextTurnIndex(int? currentIndex);
+  FutureOr<int> getNextTurnIndex(int? currentIndex);
 
   T newGameProfile(NewGameProfileDetails details);
 
   /// This is called when a player tries to join, whether on the starting screen or mid-round.
   ///
   /// If the user is not allowed to join, return a non-null `String` as the message that is returned.
-  FutureOr<String?> onJoin();
+  FutureOr<String?> onJoin(ChatContext context);
 
   FutureOr<void> onLeave(T player) {}
 
@@ -118,12 +118,12 @@ abstract class MultiplayerGame<T extends GameProfile> {
   @nonVirtual
   Future<void> start(ChatContext context) async {
     assert(initialized, "Please call init() before starting.");
-    final i = getNextTurnIndex(null);
+    final i = await getNextTurnIndex(null);
     started = true;
 
-    final message = await context.channel.sendMessage(MessageBuilder(content: "Waiting for you to start the game..."));
+    final message = await context.channel.sendMessage(MessageBuilder(content: "Loading..."));
     publicMessage = message;
-    final player = players[i];
+    final player = players.elementAtOrNull(i);
 
     Logger.print("Games", "Starting game $code... (i: $i) (player: $player) (players: $players)");
     return _nextTurn(GameContext(turnIndex: i, previousTurnIndex: null, player: player), i);
@@ -131,12 +131,12 @@ abstract class MultiplayerGame<T extends GameProfile> {
 
   @nonVirtual
   Future<void> nextTurn(GameContext<T> context) async {
-    final i = getNextTurnIndex(context.turnIndex);
-    _nextTurn(context, i);
+    final i = await getNextTurnIndex(context.turnIndex);
+    return _nextTurn(context, i);
   }
 
   Future<void> _nextTurn(GameContext<T> context, int i) async {
-    await onTurn(GameContext<T>(turnIndex: i, previousTurnIndex: context.turnIndex, player: players[i]));
+    await onTurn(GameContext<T>(turnIndex: i, previousTurnIndex: context.turnIndex, player: players.elementAtOrNull(i)));
   }
 
   @nonVirtual
@@ -159,11 +159,12 @@ abstract class MultiplayerGame<T extends GameProfile> {
     await channel.sendMessage(MessageBuilder(embeds: [
       EmbedBuilder(
         color: embedColor,
-        title: "Join Game: $name",
-        description: "$description\n\nUse `joingame $code` to join, or `startgame $code` to start.",
+        title: started ? name : "Join Game: $name",
+        description: started ? "This game is active." : "$description\n\nUse `joingame $code` to join, or `startgame $code` to start.",
         fields: [
           EmbedFieldBuilder(name: "Code", value: code.toDiscordCodeString(), isInline: true),
           EmbedFieldBuilder(name: "Owner", value: owner.mention, isInline: true),
+          EmbedFieldBuilder(name: "Players", value: "${players.length}/$maxPlayers", isInline: true),
         ],
       ),
     ]));
@@ -178,6 +179,8 @@ abstract class MultiplayerGame<T extends GameProfile> {
   @nonVirtual
   Future<String?> join(ChatContext context) async {
     if (players.length + 1 > maxPlayers) return "Maximum number of players reached.";
+    final result = await onJoin(context);
+    if (result != null) return result;
 
     final channel = await tryCatchA(() => context.client.users.createDm(context.user.id));
     if (channel == null) return "We couldn't send you a DM.";

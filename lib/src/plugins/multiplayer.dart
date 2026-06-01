@@ -77,6 +77,12 @@ class MultiplayerPlugin extends BotPlugin {
           return "- ${game.name} (${game.code}): ${game.started ? "Active" : "Waiting"}, ${game.players.length} players";
         })}"));
       }),
+
+      BotCommand("game", "Games", "Get a game by code.", (T context, String code) async {
+        final game = games[code];
+        if (game == null || game.ended) return context.respondWithError("Invalid code.");
+        await game.showCode(context);
+      }),
     ];
   }
 
