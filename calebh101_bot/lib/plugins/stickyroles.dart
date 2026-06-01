@@ -71,6 +71,14 @@ class StickyRoles extends BotPluginLegacy {
           return "- ${role != null ? "${await roleToString(role)}" : "`<no role found>`"} (${x.toDiscordCodeString()})";
         }))).join("\n")}"));
       }, permissionsRequired: BotCommandPermissions.mod),
+      BotCommand("clearstickyroles", "StickyRole", "Clear someone's current sticky roles.", (ChatContext context, Member member) async {
+        if (await context.assureGuild() == false) return;
+        final settings = StickyRolesSettings(store, context.guild!.id, member.id);
+        final current = settings.stickyRoles.get() ?? [];
+
+        settings.stickyRoles.delete();
+        await context.respond(MessageBuilder(content: "Removed **${current.length}** sticky role entries from ${await memberToString(member, client: context.client)}.\nTheir existing roles were not affected."));
+      }, permissionsRequired: BotCommandPermissions.mod),
       BotCommand("allstickyroles", "StickyRole", "List everyone's current sticky roles.", (ChatContext context) async {
         if (await context.assureGuild() == false) return;
         final ids = Map.fromEntries(store.getAllForKey<List<dynamic>>(.userPerServer, "sr").entries.where((x) => UserPerServerSettings.parseId(x.key).server == context.guildId)).map((k, v) => MapEntry(Snowflake.parse(UserPerServerSettings.parseId(k).user), v.map((x) => Snowflake(x)).toList()));
