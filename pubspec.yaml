@@ -13,10 +13,16 @@ dependencies:
       url: https://github.com/Calebh101/localpkg-dart.git
       ref: 440a4e8d416a2a47d6f2b1c2ca2372b146109c58
 
+  nyxx:
+    path: nyxx
+
+  nyxx_commands:
+    path: nyxx_commands
+
   dotenv: ^4.2.0
   intl: ^0.20.2
   meta: ^1.18.2
-  nyxx: ^6.8.1
+  #nyxx: ^6.8.1
   path: ^1.9.1
   sqlite3: ^3.2.0
   async: ^2.13.0
@@ -29,9 +35,6 @@ dependencies:
   chrono_dart: ^2.0.2
   build_runner: ^2.13.1
   # path: ^1.9.0
-
-  nyxx_commands:
-    path: nyxx_commands
   unicode: ^1.1.9
   nyxx_extensions: ^4.4.0
   quick_listener: ^0.0.2
@@ -46,3 +49,9 @@ dev_dependencies:
     git:
       url: https://github.com/Calebh101/dart-recursive-caster.git
       ref: main
+
+dependency_overrides:
+  nyxx:
+    path: nyxx
+  nyxx_commands:
+    path: nyxx_commands

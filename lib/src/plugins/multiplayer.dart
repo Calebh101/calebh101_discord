@@ -31,9 +31,16 @@ class MultiplayerPlugin extends BotPlugin {
         await context.respond(MessageBuilder(content: result ?? "Game joined."));
       }),
 
-      BotCommand("leavegame", "Games", "Leave any games you're in.", (T context, [User? user]) async {
-        user ??= context.user;
-        final game = games.entries.firstWhereOrNull((x) => x.value.players.any((y) => y.user.id == user!.id))?.value;
+      BotCommand("kickgame", "Games", "Make someone leave any games they're in.", (T context, User user) async {
+        final game = games.entries.firstWhereOrNull((x) => x.value.players.any((y) => y.user.id == user.id))?.value;
+        if (game == null) return context.respondWithError("This user is not in any games!");
+        await game.leave(context, user);
+      }, permissionsRequired: .owner),
+
+      BotCommand("leavegame", "Games", "Leave any games you're in.", (T context) async {
+        final user = context.user;
+        final game = games.entries.firstWhereOrNull((x) => x.value.players.any((y) => y.user.id == user.id))?.value;
+
         if (game == null) return context.respondWithError("This user is not in any games!");
         await game.leave(context, user);
       }),
@@ -83,6 +90,14 @@ class MultiplayerPlugin extends BotPlugin {
         if (game == null || game.ended) return context.respondWithError("Invalid code.");
         await game.showCode(context);
       }, aliases: ["getgame"]),
+
+      BotCommand("forcestopgame", "Games", "Stop a game instantly.", (T context, String code) async {
+        final game = games[code];
+        if (game == null || game.ended) return context.respondWithError("Invalid code.");
+
+        await game.onStop();
+        await context.respond(MessageBuilder(content: "Game stopped."));
+      }, permissionsRequired: BotCommandPermissions.owner),
     ];
   }
 }

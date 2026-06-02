@@ -82,7 +82,7 @@ enum PrefixMode {
 
 extension ContextHelper on ChatContext {
   String getPrintablePrefix({required KVStore store, PrefixMode defaultMode = .slash}) {
-    final textPrefix = "${dev ? "d" : ""}${ifGuild(store, guildId, (id) => ServerSettings(store, id))?.prefix.get() ?? defaultPrefix}";
+    final textPrefix = "${ifGuild(store, guildId, (id) => ServerSettings(store, id))?.prefix.get() ?? defaultPrefix}${dev ? "d" : ""}";
 
     if (commandType == .textOnly) {
       return textPrefix;

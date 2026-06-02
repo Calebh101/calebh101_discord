@@ -1,7 +1,7 @@
 import 'dart:async';
 import 'dart:math';
 
-import 'package:calebh101_bot/games/blackjack.dart';
+import 'package:calebh101_discord/src/games/blackjack.dart';
 import 'package:calebh101_bot/games/guessthenumber.dart';
 import 'package:calebh101_bot/plugins/bet.dart';
 import 'package:calebh101_bot/plugins/botchat.dart';
@@ -69,7 +69,7 @@ void main(List<String> arguments) => wrap(() async {
     MultiplayerPlugin(),
 
     GuessTheNumberPlugin(),
-    BlackjackPlugin(),
+    DefaultBlackjackPlugin(),
   ]);
 
   final context = await load(

@@ -1,0 +1,169 @@
+import 'dart:convert';
+
+import 'package:nyxx/src/builders/role.dart';
+import 'package:nyxx/src/http/managers/manager.dart';
+import 'package:nyxx/src/http/request.dart';
+import 'package:nyxx/src/http/route.dart';
+import 'package:nyxx/src/models/discord_color.dart';
+import 'package:nyxx/src/models/permissions.dart';
+import 'package:nyxx/src/models/role.dart';
+import 'package:nyxx/src/models/snowflake.dart';
+import 'package:nyxx/src/utils/cache_helpers.dart';
+import 'package:nyxx/src/utils/parsing_helpers.dart';
+
+/// A manager for [Role]s.
+///
+/// {@category managers}
+class RoleManager extends Manager<Role> {
+  /// The ID of the guild this manager is for.
+  final Snowflake guildId;
+
+  /// Create a new [RoleManager].
+  RoleManager(super.config, super.client, {required this.guildId}) : super(identifier: '$guildId.roles');
+
+  @override
+  PartialRole operator [](Snowflake id) => PartialRole(id: id, manager: this);
+
+  @override
+  Role parse(Map<String, Object?> raw) {
+    final colors = parseRoleColors(raw['colors'] as Map<String, Object?>);
+
+    return Role(
+      id: Snowflake.parse(raw['id']!),
+      manager: this,
+      name: raw['name'] as String,
+      // Just in case discord seemingly stops sending this property. Surely they wouldn't do that, right? :clueless:
+      color: maybeParse(raw['color'], DiscordColor.new) ?? colors.primary,
+      colors: colors,
+      isHoisted: raw['hoist'] as bool,
+      iconHash: raw['icon'] as String?,
+      unicodeEmoji: raw['unicode_emoji'] as String?,
+      position: raw['position'] as int,
+      permissions: Permissions(int.parse(raw['permissions'] as String)),
+      isMentionable: raw['mentionable'] as bool,
+      tags: maybeParse(raw['tags'], parseRoleTags),
+      flags: RoleFlags(raw['flags'] as int),
+    );
+  }
+
+  /// Parse [RoleTags] from [raw].
+  RoleTags parseRoleTags(Map<String, Object?> raw) {
+    return RoleTags(
+      botId: maybeParse(raw['bot_id'], Snowflake.parse),
+      integrationId: maybeParse(raw['integration_id'], Snowflake.parse),
+      isPremiumSubscriber: raw.containsKey('premium_subscriber'),
+      subscriptionListingId: maybeParse(raw['subscription_listing_id'], Snowflake.parse),
+      isAvailableForPurchase: raw.containsKey('available_for_purchase'),
+      isLinkedRole: raw.containsKey('guild_connections'),
+    );
+  }
+
+  /// Parse [RoleColors] from [raw].
+  RoleColors parseRoleColors(Map<String, Object?> raw) {
+    return RoleColors(
+      primary: DiscordColor(raw['primary_color'] as int),
+      secondary: maybeParse(raw['secondary_color'], DiscordColor.new),
+      tertiary: maybeParse(raw['tertiary_color'], DiscordColor.new),
+    );
+  }
+
+  /// List the roles in this guild.
+  Future<List<Role>> list() async {
+    final route = HttpRoute()
+      ..guilds(id: guildId.toString())
+      ..roles();
+    final request = BasicRequest(route);
+
+    final response = await client.httpHandler.executeSafe(request);
+    final roles = parseMany(response.jsonBody as List, parse);
+
+    roles.forEach(client.updateCacheWith);
+    return roles;
+  }
+
+  @override
+  Future<Role> fetch(Snowflake id) async {
+    final route = HttpRoute()
+      ..guilds(id: guildId.toString())
+      ..roles(id: id.toString());
+
+    final request = BasicRequest(route);
+    final response = await client.httpHandler.executeSafe(request);
+    final role = parse(response.jsonBody as Map<String, Object?>);
+
+    client.updateCacheWith(role);
+    return role;
+  }
+
+  @override
+  Future<Role> create(RoleBuilder builder, {String? auditLogReason}) async {
+    final route = HttpRoute()
+      ..guilds(id: guildId.toString())
+      ..roles();
+    final request = BasicRequest(route, method: 'POST', auditLogReason: auditLogReason, body: jsonEncode(builder.build()));
+
+    final response = await client.httpHandler.executeSafe(request);
+    final role = parse(response.jsonBody as Map<String, Object?>);
+
+    client.updateCacheWith(role);
+    return role;
+  }
+
+  @override
+  Future<Role> update(Snowflake id, RoleUpdateBuilder builder, {String? auditLogReason}) async {
+    final route = HttpRoute()
+      ..guilds(id: guildId.toString())
+      ..roles(id: id.toString());
+    final request = BasicRequest(route, method: 'PATCH', auditLogReason: auditLogReason, body: jsonEncode(builder.build()));
+
+    final response = await client.httpHandler.executeSafe(request);
+    final role = parse(response.jsonBody as Map<String, Object?>);
+
+    client.updateCacheWith(role);
+    return role;
+  }
+
+  @override
+  Future<void> delete(Snowflake id, {String? auditLogReason}) async {
+    final route = HttpRoute()
+      ..guilds(id: guildId.toString())
+      ..roles(id: id.toString());
+    final request = BasicRequest(route, method: 'DELETE', auditLogReason: auditLogReason);
+
+    await client.httpHandler.executeSafe(request);
+    cache.remove(id);
+  }
+
+  /// Update the positions of the roles in this guild.
+  Future<List<Role>> updatePositions(Map<Snowflake, int> positions, {String? auditLogReason}) async {
+    final route = HttpRoute()
+      ..guilds(id: guildId.toString())
+      ..roles();
+    final request = BasicRequest(
+      route,
+      method: 'PATCH',
+      auditLogReason: auditLogReason,
+      body: jsonEncode(positions.entries.map((e) => {'id': e.key.toString(), 'position': e.value}).toList()),
+    );
+
+    final response = await client.httpHandler.executeSafe(request);
+    final roles = parseMany(response.jsonBody as List, parse);
+
+    roles.forEach(client.updateCacheWith);
+    return roles;
+  }
+
+  /// Fetch a map of roles to the number of members with that role.
+  Future<Map<PartialRole, int>> fetchMemberCounts() async {
+    final route = HttpRoute()
+      ..guilds(id: guildId.toString())
+      ..roles()
+      ..memberCounts();
+
+    final request = BasicRequest(route, method: 'GET');
+
+    final response = await client.httpHandler.executeSafe(request);
+
+    return (response.jsonBody as Map).cast<String, int>().map((id, count) => MapEntry(this[Snowflake.parse(id)], count));
+  }
+}

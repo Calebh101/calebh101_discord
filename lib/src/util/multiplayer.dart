@@ -56,10 +56,11 @@ abstract class MultiplayerGame<T extends GameProfile> {
 
   @nonVirtual
   Future<String?> init(ChatContext context, KVStore store) async {
+    if (stopped) return "This game is not available.";
     final channel = await tryCatchA(() => client.users.createDm(owner.id));
     if (channel == null) return "We couldn't send you a DM.";
 
-    final message = await tryCatchA(() => channel.sendMessage(MessageBuilder(content: "Waiting for you to start the game!\nUse the `startgame` command to start it.")));
+    final message = await tryCatchA(() => channel.sendMessage(MessageBuilder(content: "Waiting for you to start the game!\nUse the `startgame` command to start it.\n\nCode: `$code`\nPlayers: $minPlayers-$maxPlayers")));
     if (message == null) return "We couldn't send you a message in your DMs.";
 
     players.add(newGameProfile(NewGameProfileDetails(user: owner, channel: channel)));
@@ -72,6 +73,7 @@ abstract class MultiplayerGame<T extends GameProfile> {
 
   bool started = false;
   bool ended = false;
+  bool stopped = false;
   bool initialized = false;
 
   int get minPlayers;
@@ -101,6 +103,7 @@ abstract class MultiplayerGame<T extends GameProfile> {
 
   @nonVirtual
   Future<void> leave(ChatContext context, User user) async {
+    if (stopped) return;
     final player = players.firstWhereOrNull((x) => x.user.id == user.id);
     if (player == null) return context.respondWithError("Player doesn't exist.");
     players.remove(player);
@@ -117,7 +120,9 @@ abstract class MultiplayerGame<T extends GameProfile> {
 
   @nonVirtual
   Future<void> start(ChatContext context) async {
+    if (stopped) return;
     assert(initialized, "Please call init() before starting.");
+
     final i = await getNextTurnIndex(null);
     started = true;
 
@@ -131,6 +136,7 @@ abstract class MultiplayerGame<T extends GameProfile> {
 
   @nonVirtual
   Future<void> nextTurn(GameContext<T> context) async {
+    if (stopped) return;
     final i = await getNextTurnIndex(context.turnIndex);
     return _nextTurn(context, i);
   }
@@ -151,6 +157,7 @@ abstract class MultiplayerGame<T extends GameProfile> {
 
   @nonVirtual
   Future<String?> showCode(ChatContext context) async {
+    if (stopped) return "This game is not available.";
     return await _showCodeFromDetails(channel: context.channel, embedColor: await getColor(context.member), owner: context.user, prefix: context.getPrintablePrefix(store: store)).to(null);
   }
 
@@ -172,13 +179,16 @@ abstract class MultiplayerGame<T extends GameProfile> {
 
   @nonVirtual
   Future<void> end() async {
+    if (ended) return;
     ended = true;
     Logger.print("Games", "Game $name:$code ended");
   }
 
   @nonVirtual
   Future<String?> join(ChatContext context) async {
+    if (stopped) return "This game is not available.";
     if (players.length + 1 > maxPlayers) return "Maximum number of players reached.";
+
     final result = await onJoin(context);
     if (result != null) return result;
 
@@ -204,5 +214,12 @@ abstract class MultiplayerGame<T extends GameProfile> {
   @nonVirtual
   FutureOr<void> updatePublicMessage(MessageUpdateBuilder builder) async {
     await publicMessage?.update(builder);
+  }
+
+  @nonVirtual
+  FutureOr<void> onStop() async {
+    stopped = true;
+    ended = true;
+    await updatePublicMessage(MessageUpdateBuilder(content: "This game has been stopped.", embeds: []));
   }
 }

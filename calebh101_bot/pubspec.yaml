@@ -26,3 +26,9 @@ dev_dependencies:
   json_serializable: ^6.8.0
   lints: ^6.0.0
   test: ^1.25.6
+
+dependency_overrides:
+  nyxx:
+    path: ../nyxx
+  nyxx_commands:
+    path: ../nyxx_commands

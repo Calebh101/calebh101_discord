@@ -92,9 +92,13 @@ class BlackjackProfile extends GameProfile {
   BlackjackProfile({required super.user, required super.channel});
 }
 
-class Blackjack extends MultiplayerGame<BlackjackProfile> {
+abstract class BlackjackBettingPlugin {}
+
+abstract class Blackjack extends MultiplayerGame<BlackjackProfile> {
   final int rounds;
-  Blackjack({required super.client, required super.store, required super.owner, super.publicMessage, required this.rounds}) : super(version: Version.parse("1.0.0A"));
+  final BlackjackBettingPlugin? betting;
+
+  Blackjack({required super.client, required super.store, required super.owner, super.publicMessage, required this.rounds, this.betting}) : super(version: Version.parse("1.0.0A"));
 
   @override
   String get description => "Blackjack! Who can get the most wins in $rounds rounds?";
@@ -150,12 +154,33 @@ class Blackjack extends MultiplayerGame<BlackjackProfile> {
       });
     }
 
+    final scoreboard = players.sorted((a, b) => b.wins.compareTo(a.wins)).map((player) {
+      return "- ${player.formattedDisplayName}: **${player.wins}**";
+    }).join("\n");
+
     if (player == null) {
       dealer.cards.add(getCard(allCardsX));
 
       final scoreList = players.map((x) {
         return "- ${x.formattedDisplayName}: **${x.biggestPossibleScore ?? "Busted!"}**";
       }).join("\n");
+
+      Future<void> pm() async {
+        await updatePublicMessage(MessageUpdateBuilder(embeds: [
+          EmbedBuilder(
+            title: "It's the dealer's turn!",
+            fields: [
+              EmbedFieldBuilder(name: "Cards", value: "**${dealer.cards.map((x) => cardMap[x]).join(", ")}**", isInline: false),
+              EmbedFieldBuilder(name: "Scores", value: scoreList, isInline: false),
+              EmbedFieldBuilder(name: "Scoreboard", value: scoreboard, isInline: false),
+            ],
+            footer: EmbedFooterBuilder(text: "Round ${round + 1}/$rounds"),
+            color: primaryBotColor,
+          ),
+        ]));
+      }
+
+      await pm();
 
       String getDealerMessage(String? action) {
         return "# It's the dealer's turn!\n\nDealer's cards: **${dealer.cards.map((x) => cardMap[x]).join(", ")}**\nDealer's possible scores: ${dealer.possibleScores.nullIfEmpty?.mapIndexed((i, x) => "${i == 0 || x == 21 ? "**" : ""}$x${i == 0 || x == 21 ? "**" : ""}").join(", ") ?? "**Busted!**"}${action != null ? "\n\n$action" : ""}\n\nScores:\n$scoreList";
@@ -176,6 +201,8 @@ class Blackjack extends MultiplayerGame<BlackjackProfile> {
       dealer.cards.add(getCard(allCardsX));
 
       while (true) {
+        await pm();
+
         if (dealer.biggestPossibleScore == null) {
           await update("The dealer **busted**.");
           await Future.delayed(Duration(seconds: 5));
@@ -194,10 +221,12 @@ class Blackjack extends MultiplayerGame<BlackjackProfile> {
         await Future.delayed(Duration(seconds: 3));
         await update("The dealer will **hit**.");
         await Future.delayed(Duration(seconds: 3));
+
         dealer.cards.add(getCard(allCardsX));
       }
 
       bool dealerBusted = dealer.possibleScores.isEmpty;
+      await pm();
 
       List<BlackjackProfile> winners = players.where((player) {
         if (dealerBusted) return player.possibleScores.isNotEmpty;
@@ -212,15 +241,34 @@ class Blackjack extends MultiplayerGame<BlackjackProfile> {
         }
       }
 
+      final winnersList = winners.map((player) {
+        return "- ${player.formattedDisplayName}: **+${player.blackjackIn2 ? 2 : 1}**";
+      }).join("\n").nullIfEmptyTrimmed ?? "There were no winners!";
+
+      final scoreboardX = players.sorted((a, b) => b.wins.compareTo(a.wins)).map((player) {
+        return "- ${player.formattedDisplayName}: **${player.wins}**";
+      }).join("\n");
+
       await runForAllPlayers((player) async {
         player.done = false;
 
-        await player.channel.sendMessage(MessageBuilder(content: "# Round ${round + 1}/$rounds is over!\nHere are the results!\n\n$scoreList\n- The dealer: **${dealer.possibleScores.nullIfEmpty?.reduce((a, b) => a > b ? a : b) ?? "Busted!"}**\n\nWinners:\n${winners.map((player) {
-          return "- ${player.formattedDisplayName}: **+${player.blackjackIn2 ? 2 : 1}**";
-        }).join("\n").nullIfEmptyTrimmed ?? "There were no winners!"}\n\nScoreboard:\n${players.sorted((a, b) => b.wins.compareTo(a.wins)).map((player) {
-          return "- ${player.formattedDisplayName}: **${player.wins}**";
-        }).join("\n")}\n\nContinuing in **10** seconds..."));
+        await player.channel.sendMessage(MessageBuilder(
+          content: "# Round ${round + 1}/$rounds is over!\nHere are the results!\n\n$scoreList\n- The dealer: **${dealer.possibleScores.nullIfEmpty?.reduce((a, b) => a > b ? a : b) ?? "Busted!"}**\n\nWinners:\n$winnersList\n\nScoreboard:\n$scoreboardX\n\nContinuing in **10** seconds...",
+        ));
       });
+
+      await updatePublicMessage(MessageUpdateBuilder(embeds: [
+        EmbedBuilder(
+          title: "Round ${round + 1}/$rounds is over!",
+          fields: [
+            EmbedFieldBuilder(name: "Scores", value: "$scoreList\n- The dealer: **${dealer.possibleScores.nullIfEmpty?.reduce((a, b) => a > b ? a : b) ?? "Busted!"}**", isInline: false),
+            if (winners.isNotEmpty) EmbedFieldBuilder(name: "Winners", value: winnersList, isInline: false),
+            EmbedFieldBuilder(name: "Scoreboard", value: scoreboardX, isInline: false),
+          ],
+          color: primaryBotColor,
+          footer: EmbedFooterBuilder(text: "Round ${round + 1}/$rounds"),
+        ),
+      ]));
 
       for (final p in players) {
         p.cards.clear();
@@ -236,16 +284,33 @@ class Blackjack extends MultiplayerGame<BlackjackProfile> {
         final sorted = players.sorted((a, b) => b.wins.compareTo(a.wins));
         final winners = sorted.where((x) => x.wins >= sorted.first.wins);
 
+        final winnersListX = winners.length == 1 ? "The winner was:\n**${winners.first.formattedDisplayName}** with **${winners.first.wins}** points!" : "There were **${winners.length}** winners!\n${winners.map((player) {
+          return "- ${player.formattedDisplayName}: **${player.wins}** points";
+        }).join("\n")}";
+
+        final scoreListX = sorted.map((player) {
+          return "- ${player.formattedDisplayName}: **${player.wins}** points";
+        }).join("\n");
+
         await runForAllPlayers((player) async {
           await player.channel.sendMessage(MessageBuilder(
-            content: "# The game is over!\n\n${winners.length == 1 ? "The winner was:\n**${winners.first.formattedDisplayName}** with **${winners.first.wins}** points!" : "There were **${winners.length}** winners!\n${winners.map((player) {
-              return "- ${player.formattedDisplayName}: **${player.wins}** points";
-            }).join("\n")}"}\n\n${sorted.map((player) {
-              return "- ${player.formattedDisplayName}: **${player.wins}** points";
-            }).join("\n")}\n\nThanks for playing!",
+            content: "# The game is over!\n\n$winnersListX\n\n$scoreListX\n\nThanks for playing!",
           ));
         });
 
+        await updatePublicMessage(MessageUpdateBuilder(embeds: [
+          EmbedBuilder(
+            title: "The game is over!",
+            fields: [
+              if (winners.isNotEmpty) EmbedFieldBuilder(name: "Winners", value: winnersListX, isInline: false),
+              EmbedFieldBuilder(name: "Scoreboard", value: scoreListX, isInline: false),
+            ],
+            color: primaryBotColor,
+            footer: EmbedFooterBuilder(text: "Round $round/$rounds"),
+          ),
+        ]));
+
+        await end();
         return;
       }
 
@@ -254,6 +319,17 @@ class Blackjack extends MultiplayerGame<BlackjackProfile> {
     }
 
     final myCards = context.player!.cards;
+
+    await updatePublicMessage(MessageUpdateBuilder(content: "", embeds: [
+      EmbedBuilder(
+        title: "It's ${player.formattedDisplayName}'s turn! (${context.turnIndex + 1}/${players.length})",
+        fields: [
+          EmbedFieldBuilder(name: "Scoreboard", value: scoreboard, isInline: false),
+        ],
+        footer: EmbedFooterBuilder(text: "Round ${round + 1}/$rounds"),
+        color: primaryBotColor,
+      ),
+    ]));
 
     Future<void> eval() async {
       await updateNotYourTurn();
@@ -337,18 +413,31 @@ class Blackjack extends MultiplayerGame<BlackjackProfile> {
   }
 }
 
-class BlackjackPlugin extends BotPlugin {
+abstract class BlackjackPlugin<T extends Blackjack> extends BotPlugin {
   @override get info => BotPluginInfo(id: "blackjack", version: Version.parse("1.0.0A"), description: "Commands for Blackjack.");
 
   @override
-  FutureOr<List<BotCommand<Function>>> commands<T extends ChatContext>(CommandsPlugin plugin, KVStore store) {
+  FutureOr<List<BotCommand<Function>>> commands<C extends ChatContext>(CommandsPlugin plugin, KVStore store) {
     return [
-      BotCommand("newbj", "Games", "New Blackjack game!", (T context, [int rounds = 4]) async {
+      BotCommand("newbj", "Games", "New Blackjack game!", (C context, [int rounds = 4]) async {
         if (rounds < 1) return context.respondWithError("There must be more than 1 round.");
         if (rounds > 20) return context.respondWithError("You can't have more than 20 rounds.");
 
-        await newGame(context, store: store, newGame: () => Blackjack(client: context.client, store: store, owner: context.user, rounds: rounds));
+        await newGame(context, store: store, newGame: () => newBj(client: context.client, store: store, owner: context.user, rounds: rounds));
       }),
     ];
+  }
+
+  T newBj({required NyxxGateway client, required KVStore store, required User owner, required int rounds});
+}
+
+class DefaultBlackjack extends Blackjack {
+  DefaultBlackjack({required super.client, required super.store, required super.owner, required super.rounds});
+}
+
+class DefaultBlackjackPlugin extends BlackjackPlugin<DefaultBlackjack> {
+  @override
+  DefaultBlackjack newBj({required NyxxGateway client, required KVStore store, required User owner, required int rounds}) {
+    return DefaultBlackjack(client: client, store: store, owner: owner, rounds: rounds);
   }
 }

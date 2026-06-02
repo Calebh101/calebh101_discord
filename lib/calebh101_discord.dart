@@ -37,6 +37,8 @@ export 'src/plugins/debug.dart';
 export 'src/plugins/bet.dart';
 export 'src/plugins/multiplayer.dart';
 
+export 'src/games/blackjack.dart';
+
 export 'package:nyxx/nyxx.dart' hide Logger;
 export 'package:nyxx_commands/nyxx_commands.dart';
 export 'package:nyxx_extensions/nyxx_extensions.dart';

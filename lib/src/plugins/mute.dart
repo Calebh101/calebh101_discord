@@ -84,7 +84,7 @@ class MutePlugin extends BotPluginLegacy {
 
         await context.respond(MessageBuilder(content: channels.isEmpty ? "No channels ignored." : "**${channels.length}** ignored mute channels:\n\n${channels.map((x) {
           return "- ${x.value.toChannel()} (`$x`)";
-        })}"));
+        }).join("\n")}"));
       }, needsGuild: true),
       BotCommand("unmute", "Moderation", "Get the current mute role ignored channels..", (T context, Member member) async {
         final settings = MuteServerSettings(store, context.guild!.id);
