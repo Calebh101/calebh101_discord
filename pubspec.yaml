@@ -15,9 +15,10 @@ dependencies:
 
   nyxx:
     path: nyxx
-
   nyxx_commands:
     path: nyxx_commands
+  nyxx_extensions:
+    path: nyxx_extensions
 
   dotenv: ^4.2.0
   intl: ^0.20.2
@@ -36,7 +37,6 @@ dependencies:
   build_runner: ^2.13.1
   # path: ^1.9.0
   unicode: ^1.1.9
-  nyxx_extensions: ^4.4.0
   quick_listener: ^0.0.2
   resolve_tilde: ^0.0.1
 
@@ -55,3 +55,5 @@ dependency_overrides:
     path: nyxx
   nyxx_commands:
     path: nyxx_commands
+  nyxx_extensions:
+    path: nyxx_extensions

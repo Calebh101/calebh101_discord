@@ -32,3 +32,5 @@ dependency_overrides:
     path: ../nyxx
   nyxx_commands:
     path: ../nyxx_commands
+  nyxx_extensions:
+    path: ../nyxx_extensions
