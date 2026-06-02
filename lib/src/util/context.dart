@@ -74,3 +74,22 @@ extension CommandContextHelper on CommandContext {
     return discordLink(guild?.id, channel.id, message);
   }
 }
+
+enum PrefixMode {
+  text,
+  slash,
+}
+
+extension ContextHelper on ChatContext {
+  String getPrintablePrefix({required KVStore store, PrefixMode defaultMode = .slash}) {
+    final textPrefix = "${dev ? "d" : ""}${ifGuild(store, guildId, (id) => ServerSettings(store, id))?.prefix.get() ?? defaultPrefix}";
+
+    if (commandType == .textOnly) {
+      return textPrefix;
+    } else if (commandType == .slashOnly || defaultMode == .slash) {
+      return "/";
+    } else /*if (defaultMode == .text)*/ {
+      return textPrefix;
+    }
+  }
+}

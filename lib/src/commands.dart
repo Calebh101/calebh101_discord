@@ -2,7 +2,13 @@ import 'package:calebh101_discord/calebh101_discord.dart';
 import 'package:collection/collection.dart';
 
 RuntimeType<ChatContext> _commandType = RuntimeType<ChatContext>();
-RuntimeType<ChatContext> get commandType => _commandType;
+Type get internalCommandType => _commandType.internalType;
+
+CommandType get commandType => switch (_commandType.internalType) {
+  == MessageChatContext => CommandType.textOnly,
+  == InteractionCommandContext => CommandType.slashOnly,
+  _ => CommandType.all,
+};
 
 class BotCommandOptions {
   /// Whether to automatically acknowledge interactions before they expire.
@@ -71,11 +77,7 @@ class BotCommandOptions {
   final bool? caseInsensitiveCommands;
 
   BotCommandOptions({this.acceptBotCommands, this.acceptSelfCommands, this.autoAcknowledgeDuration, this.autoAcknowledgeInteractions, this.caseInsensitiveCommands, this.defaultResponseLevel, this.type}) {
-    type ??= switch (commandType.internalType) {
-      == MessageChatContext => CommandType.textOnly,
-      == InteractionCommandContext => CommandType.slashOnly,
-      _ => CommandType.all,
-    };
+    type ??= commandType;
   }
 
   CommandOptions toOptions() {

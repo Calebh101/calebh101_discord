@@ -83,6 +83,7 @@ class BlackjackProfile extends GameProfile {
   List<int> cards = [];
   int wins = 0;
   bool done = false;
+  Message? notYourTurnMessage;
 
   List<int> get possibleScores => getAllScores(cards: cards);
   int? get biggestPossibleScore => possibleScores.nullIfEmpty?.reduce((a, b) => a > b ? a : b);
@@ -100,7 +101,6 @@ class Blackjack extends MultiplayerGame<BlackjackProfile> {
 
   final dealer = Dealer();
   var allCardsX = Map<int, int>.from(allCards);
-
   int round = 0;
 
   @override
@@ -143,7 +143,10 @@ class Blackjack extends MultiplayerGame<BlackjackProfile> {
 
     Future<void> updateNotYourTurn() async {
       await runForAllButCurrentPlayer(context, (player) async {
-        await player.channel.sendMessage(MessageBuilder(content: context.player != null ? "# It's ${context.player?.formattedDisplayName}'s turn! (${context.turnIndex + 1}/${players.length})\nThey have **${context.player?.cards.length}** cards.\nRound ${round + 1}/$rounds" : "Loading..."));
+        player.notYourTurnMessage ??= await player.channel.sendMessage(MessageBuilder(content: "Loading..."));
+        final length = context.player?.cards.length;
+
+        await player.notYourTurnMessage?.edit(MessageUpdateBuilder(content: context.player != null ? "# It's ${context.player?.formattedDisplayName}'s turn! (${context.turnIndex + 1}/${players.length})\nThey have **$length** ${Word.fromCount(length ?? 0, singular: Word("card"))}.\nRound ${round + 1}/$rounds" : "Loading..."));
       });
     }
 
@@ -237,7 +240,7 @@ class Blackjack extends MultiplayerGame<BlackjackProfile> {
           await player.channel.sendMessage(MessageBuilder(
             content: "# The game is over!\n\n${winners.length == 1 ? "The winner was:\n**${winners.first.formattedDisplayName}** with **${winners.first.wins}** points!" : "There were **${winners.length}** winners!\n${winners.map((player) {
               return "- ${player.formattedDisplayName}: **${player.wins}** points";
-            })}"}\n\n${sorted.map((player) {
+            }).join("\n")}"}\n\n${sorted.map((player) {
               return "- ${player.formattedDisplayName}: **${player.wins}** points";
             }).join("\n")}\n\nThanks for playing!",
           ));
@@ -311,12 +314,11 @@ class Blackjack extends MultiplayerGame<BlackjackProfile> {
 
         if (context.player?.biggestPossibleScore == null) {
           await context.player!.channel.sendMessage(MessageBuilder(content: "# You busted!\nYour cards: **${myCards.map((x) => cards[x]).join(", ")}**"));
-          await nextTurn(context);
           return;
         } else {
           if (player.biggestPossibleScore == 21) {
             await context.player!.channel.sendMessage(MessageBuilder(content: "# You got a blackjack!\nYour cards: **${myCards.map((x) => cards[x]).join(", ")}**"));
-            await nextTurn(context);
+            return;
           } else {
             await message.delete();
             await eval();
@@ -325,12 +327,13 @@ class Blackjack extends MultiplayerGame<BlackjackProfile> {
         }
       } else {
         await context.player!.channel.sendMessage(MessageBuilder(content: "Your score: **${context.player?.biggestPossibleScore}**\nYour cards: **${myCards.map((x) => cards[x]).join(", ")}**"));
-        await nextTurn(context);
         return;
       }
     }
 
     await eval();
+    for (final x in players) x.notYourTurnMessage = null;
+    await nextTurn(context);
   }
 }
 
@@ -342,6 +345,8 @@ class BlackjackPlugin extends BotPlugin {
     return [
       BotCommand("newbj", "Games", "New Blackjack game!", (T context, [int rounds = 4]) async {
         if (rounds < 1) return context.respondWithError("There must be more than 1 round.");
+        if (rounds > 20) return context.respondWithError("You can't have more than 20 rounds.");
+
         await newGame(context, store: store, newGame: () => Blackjack(client: context.client, store: store, owner: context.user, rounds: rounds));
       }),
     ];

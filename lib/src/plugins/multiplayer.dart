@@ -33,7 +33,7 @@ class MultiplayerPlugin extends BotPlugin {
 
       BotCommand("leavegame", "Games", "Leave any games you're in.", (T context, [User? user]) async {
         user ??= context.user;
-        final game = MultiplayerPlugin.games.entries.firstWhereOrNull((x) => x.value.players.any((y) => y.user.id == user!.id))?.value;
+        final game = games.entries.firstWhereOrNull((x) => x.value.players.any((y) => y.user.id == user!.id))?.value;
         if (game == null) return context.respondWithError("This user is not in any games!");
         await game.leave(context, user);
       }),
@@ -95,7 +95,7 @@ Future<void> newGame<T extends MultiplayerGame>(ChatContext context, {required K
   if (context.verifyPerms(perms, ifGuild(store, context.guild?.id, (id) => ServerSettings(store, id))) == false) return context.respondWithError("You don't have permission to start this game!\n-# Required perms: `${perms.name}`");
 
   final game = newGame();
-  final result = await game.init();
+  final result = await game.init(context, store);
   if (result != null) return context.respondWithError(result);
 
   MultiplayerPlugin.games[game.code] = game;

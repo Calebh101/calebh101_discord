@@ -55,11 +55,11 @@ abstract class MultiplayerGame<T extends GameProfile> {
   MultiplayerGame({required this.client, required this.store, required this.owner, required this.version, this.publicMessage}) : code = List.generate(4, (i) => 'abcdefghijklmnopqrstuvwxyz'[Random().nextInt(26)]).join("");
 
   @nonVirtual
-  Future<String?> init() async {
+  Future<String?> init(ChatContext context, KVStore store) async {
     final channel = await tryCatchA(() => client.users.createDm(owner.id));
     if (channel == null) return "We couldn't send you a DM.";
 
-    final message = await tryCatchA(() => channel.sendMessage(MessageBuilder(content: "Loading...")));
+    final message = await tryCatchA(() => channel.sendMessage(MessageBuilder(content: "Waiting for you to start the game!\nUse the `startgame` command to start it.")));
     if (message == null) return "We couldn't send you a message in your DMs.";
 
     players.add(newGameProfile(NewGameProfileDetails(user: owner, channel: channel)));
@@ -151,16 +151,16 @@ abstract class MultiplayerGame<T extends GameProfile> {
 
   @nonVirtual
   Future<String?> showCode(ChatContext context) async {
-    return await _showCodeFromDetails(channel: context.channel, embedColor: await getColor(context.member), owner: context.user).to(null);
+    return await _showCodeFromDetails(channel: context.channel, embedColor: await getColor(context.member), owner: context.user, prefix: context.getPrintablePrefix(store: store)).to(null);
   }
 
   @nonVirtual
-  Future<void> _showCodeFromDetails({required TextChannel channel, required DiscordColor embedColor, required User owner}) async {
+  Future<void> _showCodeFromDetails({required TextChannel channel, required String prefix, required DiscordColor embedColor, required User owner}) async {
     await channel.sendMessage(MessageBuilder(embeds: [
       EmbedBuilder(
         color: embedColor,
         title: started ? name : "Join Game: $name",
-        description: started ? "This game is active." : "$description\n\nUse `joingame $code` to join, or `startgame $code` to start.",
+        description: started ? "This game is active." : "$description\n\nUse `${prefix}joingame $code` to join.",
         fields: [
           EmbedFieldBuilder(name: "Code", value: code.toDiscordCodeString(), isInline: true),
           EmbedFieldBuilder(name: "Owner", value: owner.mention, isInline: true),
@@ -193,8 +193,11 @@ abstract class MultiplayerGame<T extends GameProfile> {
       return "Maximum number of players reached.";
     }
 
-    players.add(newGameProfile(NewGameProfileDetails(user: context.user, channel: channel)));
+    final player = newGameProfile(NewGameProfileDetails(user: context.user, channel: channel));
+    players.add(player);
+
     await message.edit(MessageUpdateBuilder(content: "Waiting for ${ownerPlayer.formattedDisplayName} to start the game!"));
+    await ownerPlayer.channel.sendMessage(MessageBuilder(content: "**${player.formattedDisplayName}** joined!\nPlayers: **${players.length}/$maxPlayers**"));
     return null;
   }
 

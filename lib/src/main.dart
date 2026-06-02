@@ -141,7 +141,7 @@ Future<BotContext?> load({required BotSettings settings, required FutureOr<Patte
     return true;
   }));
 
-  R cr<R>(R Function<T extends ChatContext>() callback) => switch (commandType.internalType) {
+  R cr<R>(R Function<T extends ChatContext>() callback) => switch (internalCommandType) {
     == MessageChatContext => callback.call<MessageChatContext>(),
     == InteractionChatContext => callback.call<InteractionChatContext>(),
     _ => callback.call<ChatContext>(),
