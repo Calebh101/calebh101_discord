@@ -14,6 +14,13 @@ class MultiplayerPlugin extends BotPlugin {
   }
 
   @override
+  FutureOr<List<BotConverter<dynamic>>> converters(CommandsPlugin plugin, KVStore store) {
+    return [
+      GreedyString.converter(),
+    ];
+  }
+
+  @override
   FutureOr<List<BotCommand<Function>>> commands<T extends ChatContext>(CommandsPlugin plugin, KVStore store) {
     this.store = store;
 
@@ -85,11 +92,11 @@ class MultiplayerPlugin extends BotPlugin {
         })}"));
       }),
 
-      BotCommand("game", "Games", "Get a game by code.", (T context, String code) async {
+      BotCommand("getgame", "Games", "Get a game by code.", (T context, String code) async {
         final game = games[code];
         if (game == null || game.ended) return context.respondWithError("Invalid code.");
         await game.showCode(context);
-      }, aliases: ["getgame"]),
+      }),
 
       BotCommand("forcestopgame", "Games", "Stop a game instantly.", (T context, String code) async {
         final game = games[code];
@@ -98,6 +105,31 @@ class MultiplayerPlugin extends BotPlugin {
         await game.onStop();
         await context.respond(MessageBuilder(content: "Game stopped."));
       }, permissionsRequired: BotCommandPermissions.owner),
+
+      BotCommand("games", "Games", "Browse the catalog of games.", (T context) async {
+        await respondWithPagination(context, PaginatedEmbedBuilder(
+          title: "All Games",
+          color: await getColor(context.member),
+          footer: ElementBasedEmbedFooterBuilder(elements: ["${gameCatalog.length} Games"]),
+          pages: EmbedPage.generate(gameCatalog.map((game) {
+            return EmbedFieldBuilder(name: game.name, value: "**${game.minPlayers}-${game.maxPlayers}** players", isInline: false);
+          }).toList()),
+        ), settings: ifGuild(store, context.guildId, (id) => ServerSettings(store, id)));
+      }),
+
+      BotCommand("game", "Games", "Get a game by name.", (T context, GreedyString input) async {
+        final game = gameCatalog.firstWhereOrNull((x) => x.name.toLowerCase() == input.data.trim().toLowerCase());
+        if (game == null) return context.respondWithError("Game not found.\nUse `${context.getPrintablePrefix(store: store)}games` to browse games.");
+
+        await context.respond(MessageBuilder(embeds: [
+          EmbedBuilder(
+            title: game.name,
+            description: game.description,
+            color: await getColor(context.member),
+            footer: EmbedFooterBuilder(text: "${game.minPlayers}-${game.maxPlayers} players"),
+          ),
+        ]));
+      }),
     ];
   }
 }

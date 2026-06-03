@@ -5,6 +5,23 @@ import 'package:calebh101_discord/calebh101_discord.dart';
 import 'package:collection/collection.dart';
 import 'package:meta/meta.dart';
 
+class GameData {
+  final String name;
+  final int minPlayers;
+  final int maxPlayers;
+  final String description;
+
+  GameData(this.name, {required this.minPlayers, required this.maxPlayers, required this.description});
+}
+
+List<GameData> _gameCatalog = [];
+List<GameData> get gameCatalog => _gameCatalog;
+
+void registerGame(GameData game) {
+  _gameCatalog.add(game);
+  Logger.print("Games", "Registered game: ${game.name}");
+}
+
 class GameProfile {
   final User user;
   final DmChannel channel;
@@ -120,6 +137,11 @@ abstract class MultiplayerGame<T extends GameProfile> {
     });
 
     await context.respond(MessageBuilder(content: "You left the game."));
+
+    if (players.isEmpty) {
+      Logger.print("Game", "Game $name:$code: Stopping game because there are ${players.length} players");
+      await onStop();
+    }
   }
 
   @nonVirtual

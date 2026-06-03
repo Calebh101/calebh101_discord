@@ -179,4 +179,13 @@ class GuessTheNumberPlugin extends BotPlugin {
       }),
     ];
   }
+
+  @override
+  FutureOr<void> onRegister() {
+    registerGame(GameData(
+      "Guess the Number",
+      minPlayers: 1, maxPlayers: 8,
+      description: "In this game, you're working together with everyone else to try to guess a number between **1-$highest** (inclusive). Each time you guess, you'll get told if the *actual* number is **higher** or **lower** than your guess.",
+    ));
+  }
 }

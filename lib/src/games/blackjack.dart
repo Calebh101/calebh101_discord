@@ -491,6 +491,16 @@ abstract class BlackjackPlugin<T extends Blackjack> extends BotPlugin {
 
   T newBj({required NyxxGateway client, required KVStore store, required User owner, required int rounds});
   String get newCommand => "newbj";
+  String get extendedDescription;
+
+  @override
+  FutureOr<void> onRegister() {
+    registerGame(GameData(
+      "Blackjack",
+      minPlayers: 1, maxPlayers: 12,
+      description: extendedDescription,
+    ));
+  }
 }
 
 class DefaultBlackjack extends Blackjack {
@@ -502,4 +512,7 @@ class DefaultBlackjackPlugin extends BlackjackPlugin<DefaultBlackjack> {
   DefaultBlackjack newBj({required NyxxGateway client, required KVStore store, required User owner, required int rounds}) {
     return DefaultBlackjack(client: client, store: store, owner: owner, rounds: rounds);
   }
+
+  @override
+  String get extendedDescription => "Blackjack is a game where you're always trying to beat the dealer. You start out with 1 card, and you can either continue getting more (\"hitting\"), or you can pass and keep your cards. You're trying to get as close as you can to 21, without going over. If you go over, you get nothing\n\nThe dealer will go after each player, and will continue hitting until they get 17 or above.\n\nA couple special rules:\n- Tie goes to the dealer.\n- Aces count as either 1 or 11.\n- You can get double your bet if you get a blackjack in only 2 cards (an ace and a 10-king).\n\nCards:\n- 2-10\n- J: Jack\n- Q: Queen\n- K: King\n- A: Ace";
 }
