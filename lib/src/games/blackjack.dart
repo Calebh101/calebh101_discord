@@ -109,8 +109,6 @@ abstract class BlackjackBettingPlugin<T extends num> {
 
   T get lowBet;
   T get highBet;
-
-  List<T> get _possibleBets => [lowBet, highBet];
 }
 
 abstract class Blackjack extends MultiplayerGame<BlackjackProfile> {
@@ -156,10 +154,11 @@ abstract class Blackjack extends MultiplayerGame<BlackjackProfile> {
   @override
   FutureOr<String?> onJoin(context) {
     if (this.started) return "This game has already been started.";
+    Logger.print("BJ", "Checking user ${context.user.id}: betting=${betting.runtimeType}, amount=${betting?.get(user: context.user)}, needed=${betting?.lowBet}*$rounds");
 
     if (betting != null) {
       final amount = betting!.get(user: context.user);
-      final needed = betting!._possibleBets.first * rounds;
+      final needed = betting!.lowBet * rounds;
 
       if (amount < needed) {
         return "You don't have enough ${betting?.getName(amount)}! You need **$needed** (for all **$rounds** rounds).";
