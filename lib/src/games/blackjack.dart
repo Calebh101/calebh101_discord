@@ -84,6 +84,7 @@ class BlackjackProfile extends GameProfile {
   int wins = 0;
   bool done = false;
   Message? notYourTurnMessage;
+  num? bet;
 
   List<int> get possibleScores => getAllScores(cards: cards);
   int? get biggestPossibleScore => possibleScores.nullIfEmpty?.reduce((a, b) => a > b ? a : b);
@@ -92,7 +93,18 @@ class BlackjackProfile extends GameProfile {
   BlackjackProfile({required super.user, required super.channel});
 }
 
-abstract class BlackjackBettingPlugin {}
+abstract class BlackjackBettingPlugin<T extends num> {
+  BlackjackBettingPlugin();
+
+  void add(T input);
+  T get({required User user});
+  Word get name;
+
+  T get lowBet;
+  T get highBet;
+
+  List<T> get _possibleBets => [lowBet, highBet];
+}
 
 abstract class Blackjack extends MultiplayerGame<BlackjackProfile> {
   final int rounds;
@@ -137,6 +149,15 @@ abstract class Blackjack extends MultiplayerGame<BlackjackProfile> {
   @override
   FutureOr<String?> onJoin(context) {
     if (this.started) return "This game has already been started.";
+
+    if (betting != null) {
+      final needed = betting!._possibleBets.first * rounds;
+
+      if (betting!.get(user: context.user) < needed) {
+        return "You don't have enough ${betting?.name}! You need **$needed** (for all **$rounds** rounds).";
+      }
+    }
+
     return null;
   }
 
@@ -150,7 +171,7 @@ abstract class Blackjack extends MultiplayerGame<BlackjackProfile> {
         player.notYourTurnMessage ??= await player.channel.sendMessage(MessageBuilder(content: "Loading..."));
         final length = context.player?.cards.length;
 
-        await player.notYourTurnMessage?.edit(MessageUpdateBuilder(content: context.player != null ? "# It's ${context.player?.formattedDisplayName}'s turn! (${context.turnIndex + 1}/${players.length})\nThey have **$length** ${Word.fromCount(length ?? 0, singular: Word("card"))}.\nRound ${round + 1}/$rounds" : "Loading..."));
+        await player.notYourTurnMessage?.edit(MessageUpdateBuilder(content: context.player != null ? "# It's ${context.player?.formattedDisplayName}'s turn! (${context.turnIndex + 1}/${players.length})\n${betting != null && context.player?.bet == null ? "They're currently placing their bets!" : "They have **$length** ${Word.fromCount(length ?? 0, singular: Word("card"))}."}\nRound ${round + 1}/$rounds" : "Loading..."));
       });
     }
 
@@ -271,8 +292,14 @@ abstract class Blackjack extends MultiplayerGame<BlackjackProfile> {
       ]));
 
       for (final p in players) {
+        if (p.bet != null && betting != null) {
+          final bet = p.bet!;
+          betting!.add(bet * (p.blackjackIn2 ? 3 : 2));
+        }
+
         p.cards.clear();
         p.done = false;
+        p.bet == null;
       }
 
       dealer.cards.clear();
@@ -332,6 +359,7 @@ abstract class Blackjack extends MultiplayerGame<BlackjackProfile> {
     ]));
 
     Future<void> eval() async {
+      final isBetting = betting != null && player.bet == null;
       await updateNotYourTurn();
       Message message = await context.player!.channel.sendMessage(MessageBuilder(content: "Loading..."));
 
@@ -358,7 +386,7 @@ abstract class Blackjack extends MultiplayerGame<BlackjackProfile> {
         }
       });
 
-      await message.edit(MessageUpdateBuilder(content: getMessage()));
+      await message.edit(MessageUpdateBuilder(content: isBetting ? "Select how much you will bet.\n\n1️⃣ **${betting?.lowBet}** ${betting?.name}\n2️⃣ **${betting?.highBet}** ${betting?.name}" : getMessage()));
       await message.react(ReactionBuilder(name: "1️⃣", id: null));
       await message.react(ReactionBuilder(name: "2️⃣", id: null));
 
@@ -384,6 +412,16 @@ abstract class Blackjack extends MultiplayerGame<BlackjackProfile> {
       }
 
       countdown.cancel();
+
+      if (isBetting) {
+        final bet = hit ? betting!.highBet : betting!.lowBet;
+        betting?.add(bet);
+        context.player!.bet = bet;
+
+        await context.player!.channel.sendMessage(MessageBuilder(content: "# You Bet:\n**$bet** ${betting?.name}"));
+        await eval();
+        return;
+      }
 
       if (hit) {
         myCards.add(getCard(allCardsX));
@@ -419,7 +457,7 @@ abstract class BlackjackPlugin<T extends Blackjack> extends BotPlugin {
   @override
   FutureOr<List<BotCommand<Function>>> commands<C extends ChatContext>(CommandsPlugin plugin, KVStore store) {
     return [
-      BotCommand("newbj", "Games", "New Blackjack game!", (C context, [int rounds = 4]) async {
+      BotCommand(newCommand, "Games", "New Blackjack game!", (C context, [int rounds = 4]) async {
         if (rounds < 1) return context.respondWithError("There must be more than 1 round.");
         if (rounds > 20) return context.respondWithError("You can't have more than 20 rounds.");
 
@@ -429,6 +467,7 @@ abstract class BlackjackPlugin<T extends Blackjack> extends BotPlugin {
   }
 
   T newBj({required NyxxGateway client, required KVStore store, required User owner, required int rounds});
+  String get newCommand => "newbj";
 }
 
 class DefaultBlackjack extends Blackjack {
