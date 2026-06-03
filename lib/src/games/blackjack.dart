@@ -202,7 +202,7 @@ abstract class Blackjack extends MultiplayerGame<BlackjackProfile> {
           EmbedBuilder(
             title: "It's the dealer's turn!",
             fields: [
-              EmbedFieldBuilder(name: "Cards", value: "**${dealer.cards.map((x) => cardMap[x]).join(", ")}**\n= **${dealer.possibleScores.nullIfEmpty?.mapIndexed((i, x) => "${i == 0 || x == 21 ? "**" : ""}$x${i == 0 || x == 21 ? "**" : ""}").join(", ") ?? "Busted!"}**", isInline: false),
+              EmbedFieldBuilder(name: "Cards", value: "**${dealer.cards.map((x) => cardMap[x]).join(", ")}**\n= ${dealer.possibleScores.nullIfEmpty?.mapIndexed((i, x) => "${i == 0 || x == 21 ? "**" : ""}$x${i == 0 || x == 21 ? "**" : ""}").join(", ") ?? "**Busted!**"}", isInline: false),
               EmbedFieldBuilder(name: "Scores", value: scoreList, isInline: false),
               EmbedFieldBuilder(name: "Scoreboard", value: scoreboard, isInline: false),
             ],
@@ -409,7 +409,7 @@ abstract class Blackjack extends MultiplayerGame<BlackjackProfile> {
         return betting!.get(user: player.user) >= betting!.highBet * roundsLeft;
       }
 
-      await message.edit(MessageUpdateBuilder(content: isBetting ? "Select how much you will bet.\n\n1️⃣ **${betting?.lowBet}** ${betting?.getName(betting!.lowBet)}\n2️⃣ **${betting?.highBet}** ${betting?.getName(betting!.highBet)} (**${availableForHighBet() ? "available" : "unavailable"}**)" : getMessage()));
+      await message.edit(MessageUpdateBuilder(content: isBetting ? "Select how much you will bet.\nYour first card: **${cards[myCards.firstOrNull]}**\n\n1️⃣ **${betting?.lowBet}** ${betting?.getName(betting!.lowBet)}\n2️⃣ **${betting?.highBet}** ${betting?.getName(betting!.highBet)} (**${availableForHighBet() ? "available" : "unavailable"}**)" : getMessage()));
       await message.react(ReactionBuilder(name: "1️⃣", id: null));
       if (!isBetting || availableForHighBet()) await message.react(ReactionBuilder(name: "2️⃣", id: null));
 
