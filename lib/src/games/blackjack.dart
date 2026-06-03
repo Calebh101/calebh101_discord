@@ -397,7 +397,12 @@ abstract class Blackjack extends MultiplayerGame<BlackjackProfile> {
         }
       });
 
-      await message.edit(MessageUpdateBuilder(content: isBetting ? "Select how much you will bet.\n\n1️⃣ **${betting?.lowBet}** ${betting?.getName(betting!.lowBet)}\n2️⃣ **${betting?.highBet}** ${betting?.getName(betting!.highBet)}" : getMessage()));
+      bool availableForHighBet() {
+        final roundsLeft = rounds - (round + 1);
+        return betting!.get(user: player.user) >= betting!.highBet * roundsLeft;
+      }
+
+      await message.edit(MessageUpdateBuilder(content: isBetting ? "Select how much you will bet.\n\n1️⃣ **${betting?.lowBet}** ${betting?.getName(betting!.lowBet)}\n2️⃣ **${betting?.highBet}** ${betting?.getName(betting!.highBet)} (**${availableForHighBet() ? "available" : "unavailable"}**)" : getMessage()));
       await message.react(ReactionBuilder(name: "1️⃣", id: null));
       await message.react(ReactionBuilder(name: "2️⃣", id: null));
 
@@ -425,7 +430,7 @@ abstract class Blackjack extends MultiplayerGame<BlackjackProfile> {
       countdown.cancel();
 
       if (isBetting) {
-        final bet = hit ? betting!.highBet : betting!.lowBet;
+        final bet = hit && availableForHighBet() ? betting!.highBet : betting!.lowBet;
         betting?.add(player, bet);
         context.player!.bet = bet;
 
