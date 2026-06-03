@@ -57,6 +57,10 @@ abstract class MultiplayerGame<T extends GameProfile> {
   @nonVirtual
   Future<String?> init(ChatContext context, KVStore store) async {
     if (stopped) return "This game is not available.";
+
+    final result = await onJoin(context);
+    if (result != null) return result;
+
     final channel = await tryCatchA(() => client.users.createDm(owner.id));
     if (channel == null) return "We couldn't send you a DM.";
 
