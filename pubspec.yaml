@@ -14,11 +14,19 @@ dependencies:
       ref: 440a4e8d416a2a47d6f2b1c2ca2372b146109c58
 
   nyxx:
-    path: nyxx
+    git:
+      url: https://github.com/Calebh101/nyxx.git
+      ref: main
+
   nyxx_commands:
-    path: nyxx_commands
+    git:
+      url: https://github.com/Calebh101/nyxx_commands
+      ref: main
+
   nyxx_extensions:
-    path: nyxx_extensions
+    git:
+      url: https://github.com/Calebh101/nyxx_extensions
+      ref: main
 
   dotenv: ^4.2.0
   intl: ^0.20.2
@@ -49,11 +57,3 @@ dev_dependencies:
     git:
       url: https://github.com/Calebh101/dart-recursive-caster.git
       ref: main
-
-dependency_overrides:
-  nyxx:
-    path: nyxx
-  nyxx_commands:
-    path: nyxx_commands
-  nyxx_extensions:
-    path: nyxx_extensions
