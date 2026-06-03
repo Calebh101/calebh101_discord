@@ -328,7 +328,7 @@ abstract class Blackjack extends MultiplayerGame<BlackjackProfile> {
         final scoreListX = sorted.map((player) {
           return "- ${player.formattedDisplayName}: **${player.wins}** points${betting != null ? () {
             final gained = player.gained;
-            return " (**${gained >= 0 ? "+" : "-"}$gained** ${betting?.getName(gained)})";
+            return " (**${gained >= 0 ? "+" : "-"}${gained.abs()}** ${betting?.getName(gained)})";
           }() : ""}";
         }).join("\n");
 
@@ -406,7 +406,7 @@ abstract class Blackjack extends MultiplayerGame<BlackjackProfile> {
 
       await message.edit(MessageUpdateBuilder(content: isBetting ? "Select how much you will bet.\n\n1️⃣ **${betting?.lowBet}** ${betting?.getName(betting!.lowBet)}\n2️⃣ **${betting?.highBet}** ${betting?.getName(betting!.highBet)} (**${availableForHighBet() ? "available" : "unavailable"}**)" : getMessage()));
       await message.react(ReactionBuilder(name: "1️⃣", id: null));
-      await message.react(ReactionBuilder(name: "2️⃣", id: null));
+      if (availableForHighBet()) await message.react(ReactionBuilder(name: "2️⃣", id: null));
 
       try {
         final controller = StreamController<MessageReactionAddEvent>();
