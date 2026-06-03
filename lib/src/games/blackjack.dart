@@ -267,7 +267,7 @@ abstract class Blackjack extends MultiplayerGame<BlackjackProfile> {
 
       final winnersList = winners.map((player) {
         final gained = player.bet != null ? player.bet! * (player.blackjackIn2 ? 3 : 2) : null;
-        return "- ${player.formattedDisplayName}: **+${player.blackjackIn2 ? 2 : 1}**${betting != null && gained != null ? " (**+$gained** ${betting?.getName(gained)})" : ""}";
+        return "- ${player.formattedDisplayName}: **+${player.blackjackIn2 ? 2 : 1}**";
       }).join("\n").nullIfEmptyTrimmed ?? "There were no winners!";
 
       final scoreboardX = players.sorted((a, b) => b.wins.compareTo(a.wins)).map((player) {
@@ -327,7 +327,10 @@ abstract class Blackjack extends MultiplayerGame<BlackjackProfile> {
         }).join("\n")}";
 
         final scoreListX = sorted.map((player) {
-          return "- ${player.formattedDisplayName}: **${player.wins}** points";
+          return "- ${player.formattedDisplayName}: **${player.wins}** points${betting != null ? () {
+            final gained = player.gained;
+            return " (**${gained >= 0 ? "+" : "-"}$gained** ${betting?.getName(gained)})";
+          }() : ""}";
         }).join("\n");
 
         await runForAllPlayers((player) async {
