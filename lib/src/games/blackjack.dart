@@ -310,7 +310,7 @@ abstract class Blackjack extends MultiplayerGame<BlackjackProfile> {
 
         p.cards.clear();
         p.done = false;
-        p.bet == null;
+        p.bet = null;
       }
 
       dealer.cards.clear();
