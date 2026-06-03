@@ -244,7 +244,7 @@ abstract class Blackjack extends MultiplayerGame<BlackjackProfile> {
         await Future.delayed(Duration(seconds: 3));
         await update(null);
 
-        if (dealer.biggestPossibleScore! >= 17) {
+        if (dealer.biggestPossibleScore! >= 17 && !isSoft17(dealer.cards)) {
           await update("The dealer will **pass**.");
           await Future.delayed(Duration(seconds: 5));
           break;
@@ -409,7 +409,7 @@ abstract class Blackjack extends MultiplayerGame<BlackjackProfile> {
         return betting!.get(user: player.user) >= betting!.highBet * roundsLeft;
       }
 
-      await message.edit(MessageUpdateBuilder(content: isBetting ? "Select how much you will bet.\nYour first card: **${cards[myCards.firstOrNull]}**\n\n1️⃣ **${betting?.lowBet}** ${betting?.getName(betting!.lowBet)}\n2️⃣ **${betting?.highBet}** ${betting?.getName(betting!.highBet)} (**${availableForHighBet() ? "available" : "unavailable"}**)" : getMessage()));
+      await message.edit(MessageUpdateBuilder(content: isBetting ? "Select how much you will bet.\nYou have **${betting?.get(user: player.user)}** ${betting?.getName(betting?.get(user: player.user) ?? 0)}.\nYour first card: **${cards[myCards.firstOrNull]}**\n\n1️⃣ **${betting?.lowBet}** ${betting?.getName(betting!.lowBet)}\n2️⃣ **${betting?.highBet}** ${betting?.getName(betting!.highBet)} (**${availableForHighBet() ? "available" : "unavailable"}**)" : getMessage()));
       await message.react(ReactionBuilder(name: "1️⃣", id: null));
       if (!isBetting || availableForHighBet()) await message.react(ReactionBuilder(name: "2️⃣", id: null));
 
