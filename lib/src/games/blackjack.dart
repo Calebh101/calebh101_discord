@@ -20,7 +20,6 @@ final Map<int, String> cards = {
   11: "J",
   12: "Q",
   13: "K",
-  14: "G",
 };
 
 final Map<int, List<int>> values = {
@@ -37,11 +36,16 @@ final Map<int, List<int>> values = {
   11: [10],
   12: [10],
   13: [10],
-  14: [3, 5, 7, 9],
 };
 
 final Map<int, int> allCards = cards.keys.map((x) => List.filled(4 * decks, x)).flatten().toList().asMap();
 final cardMap = cards;
+
+bool isSoft17(List<int> cards) {
+  if (!cards.contains(1)) return false;
+  final scores = getAllScores(cards: cards, includeOver: true);
+  return scores.contains(17) && scores.any((s) => s < 17);
+}
 
 int getCard(Map<int, int> cards) {
   final x = cards.entries.toList().ro();
@@ -198,7 +202,7 @@ abstract class Blackjack extends MultiplayerGame<BlackjackProfile> {
           EmbedBuilder(
             title: "It's the dealer's turn!",
             fields: [
-              EmbedFieldBuilder(name: "Cards", value: "**${dealer.cards.map((x) => cardMap[x]).join(", ")}**", isInline: false),
+              EmbedFieldBuilder(name: "Cards", value: "**${dealer.cards.map((x) => cardMap[x]).join(", ")}**\n= **${dealer.possibleScores.nullIfEmpty?.mapIndexed((i, x) => "${i == 0 || x == 21 ? "**" : ""}$x${i == 0 || x == 21 ? "**" : ""}").join(", ") ?? "Busted!"}**", isInline: false),
               EmbedFieldBuilder(name: "Scores", value: scoreList, isInline: false),
               EmbedFieldBuilder(name: "Scoreboard", value: scoreboard, isInline: false),
             ],
@@ -400,13 +404,14 @@ abstract class Blackjack extends MultiplayerGame<BlackjackProfile> {
       });
 
       bool availableForHighBet() {
+        if (betting == null) return false;
         final roundsLeft = rounds - (round + 1);
         return betting!.get(user: player.user) >= betting!.highBet * roundsLeft;
       }
 
       await message.edit(MessageUpdateBuilder(content: isBetting ? "Select how much you will bet.\n\n1️⃣ **${betting?.lowBet}** ${betting?.getName(betting!.lowBet)}\n2️⃣ **${betting?.highBet}** ${betting?.getName(betting!.highBet)} (**${availableForHighBet() ? "available" : "unavailable"}**)" : getMessage()));
       await message.react(ReactionBuilder(name: "1️⃣", id: null));
-      if (availableForHighBet()) await message.react(ReactionBuilder(name: "2️⃣", id: null));
+      if (!isBetting || availableForHighBet()) await message.react(ReactionBuilder(name: "2️⃣", id: null));
 
       try {
         final controller = StreamController<MessageReactionAddEvent>();
