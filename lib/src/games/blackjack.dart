@@ -85,20 +85,27 @@ class BlackjackProfile extends GameProfile {
   bool done = false;
   Message? notYourTurnMessage;
   num? bet;
+  num gained = 0;
 
   List<int> get possibleScores => getAllScores(cards: cards);
   int? get biggestPossibleScore => possibleScores.nullIfEmpty?.reduce((a, b) => a > b ? a : b);
   bool get blackjackIn2 => biggestPossibleScore == 21 && cards.length == 2;
 
   BlackjackProfile({required super.user, required super.channel});
+
+  bool won(Dealer dealer) {
+    final busted = dealer.possibleScores.isEmpty;
+    if (busted) return possibleScores.isNotEmpty;
+    return biggestPossibleScore != null && biggestPossibleScore! > dealer.biggestPossibleScore!;
+  }
 }
 
 abstract class BlackjackBettingPlugin<T extends num> {
   BlackjackBettingPlugin();
 
-  void add(T input);
+  void add(BlackjackProfile player, T input);
   T get({required User user});
-  Word get name;
+  String getName(T amount);
 
   T get lowBet;
   T get highBet;
@@ -151,10 +158,11 @@ abstract class Blackjack extends MultiplayerGame<BlackjackProfile> {
     if (this.started) return "This game has already been started.";
 
     if (betting != null) {
+      final amount = betting!.get(user: context.user);
       final needed = betting!._possibleBets.first * rounds;
 
-      if (betting!.get(user: context.user) < needed) {
-        return "You don't have enough ${betting?.name}! You need **$needed** (for all **$rounds** rounds).";
+      if (amount < needed) {
+        return "You don't have enough ${betting?.getName(amount)}! You need **$needed** (for all **$rounds** rounds).";
       }
     }
 
@@ -246,13 +254,8 @@ abstract class Blackjack extends MultiplayerGame<BlackjackProfile> {
         dealer.cards.add(getCard(allCardsX));
       }
 
-      bool dealerBusted = dealer.possibleScores.isEmpty;
       await pm();
-
-      List<BlackjackProfile> winners = players.where((player) {
-        if (dealerBusted) return player.possibleScores.isNotEmpty;
-        return player.biggestPossibleScore != null && player.biggestPossibleScore! > dealer.biggestPossibleScore!;
-      }).toList();
+      List<BlackjackProfile> winners = players.where((p) => p.won(dealer)).toList();
 
       for (final winner in winners) {
         if (winner.blackjackIn2) {
@@ -263,7 +266,8 @@ abstract class Blackjack extends MultiplayerGame<BlackjackProfile> {
       }
 
       final winnersList = winners.map((player) {
-        return "- ${player.formattedDisplayName}: **+${player.blackjackIn2 ? 2 : 1}**";
+        final gained = player.bet != null ? player.bet! * (player.blackjackIn2 ? 3 : 2) : null;
+        return "- ${player.formattedDisplayName}: **+${player.blackjackIn2 ? 2 : 1}**${betting != null && gained != null ? " (+**$gained** ${betting?.getName(gained)})" : ""}";
       }).join("\n").nullIfEmptyTrimmed ?? "There were no winners!";
 
       final scoreboardX = players.sorted((a, b) => b.wins.compareTo(a.wins)).map((player) {
@@ -294,7 +298,14 @@ abstract class Blackjack extends MultiplayerGame<BlackjackProfile> {
       for (final p in players) {
         if (p.bet != null && betting != null) {
           final bet = p.bet!;
-          betting!.add(bet * (p.blackjackIn2 ? 3 : 2));
+
+          if (p.won(dealer)) {
+            final gained = bet * (p.blackjackIn2 ? 3 : 2);
+            betting!.add(p, gained);
+            p.gained += gained;
+          } else {
+            p.gained -= bet;
+          }
         }
 
         p.cards.clear();
@@ -386,7 +397,7 @@ abstract class Blackjack extends MultiplayerGame<BlackjackProfile> {
         }
       });
 
-      await message.edit(MessageUpdateBuilder(content: isBetting ? "Select how much you will bet.\n\n1️⃣ **${betting?.lowBet}** ${betting?.name}\n2️⃣ **${betting?.highBet}** ${betting?.name}" : getMessage()));
+      await message.edit(MessageUpdateBuilder(content: isBetting ? "Select how much you will bet.\n\n1️⃣ **${betting?.lowBet}** ${betting?.getName(betting!.lowBet)}\n2️⃣ **${betting?.highBet}** ${betting?.getName(betting!.highBet)}" : getMessage()));
       await message.react(ReactionBuilder(name: "1️⃣", id: null));
       await message.react(ReactionBuilder(name: "2️⃣", id: null));
 
@@ -415,10 +426,10 @@ abstract class Blackjack extends MultiplayerGame<BlackjackProfile> {
 
       if (isBetting) {
         final bet = hit ? betting!.highBet : betting!.lowBet;
-        betting?.add(bet);
+        betting?.add(player, bet);
         context.player!.bet = bet;
 
-        await context.player!.channel.sendMessage(MessageBuilder(content: "# You Bet:\n**$bet** ${betting?.name}"));
+        await context.player!.channel.sendMessage(MessageBuilder(content: "# You Bet:\n**$bet** ${betting?.getName(bet)}"));
         await eval();
         return;
       }
