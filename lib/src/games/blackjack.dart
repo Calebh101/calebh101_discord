@@ -267,7 +267,7 @@ abstract class Blackjack extends MultiplayerGame<BlackjackProfile> {
 
       final winnersList = winners.map((player) {
         final gained = player.bet != null ? player.bet! * (player.blackjackIn2 ? 3 : 2) : null;
-        return "- ${player.formattedDisplayName}: **+${player.blackjackIn2 ? 2 : 1}**${betting != null && gained != null ? " (+**$gained** ${betting?.getName(gained)})" : ""}";
+        return "- ${player.formattedDisplayName}: **+${player.blackjackIn2 ? 2 : 1}**${betting != null && gained != null ? " (**+$gained** ${betting?.getName(gained)})" : ""}";
       }).join("\n").nullIfEmptyTrimmed ?? "There were no winners!";
 
       final scoreboardX = players.sorted((a, b) => b.wins.compareTo(a.wins)).map((player) {
@@ -416,11 +416,11 @@ abstract class Blackjack extends MultiplayerGame<BlackjackProfile> {
         };
 
         await for (final event in controller.stream) {
-          if (event.messageId != message.id)
+          if (event.messageId != message.id) continue;
           if (event.message.channelId != player.channel.id) continue;
           if (event.userId != context.player!.user.id) continue;
 
-          hit = event.emoji.name == "1️⃣";
+          hit = event.emoji.name == "1️⃣"; // in betting, means low bet
           break;
         }
       } catch (e) {
@@ -430,7 +430,7 @@ abstract class Blackjack extends MultiplayerGame<BlackjackProfile> {
       countdown.cancel();
 
       if (isBetting) {
-        final bet = hit && availableForHighBet() ? betting!.highBet : betting!.lowBet;
+        final bet = !hit && availableForHighBet() ? betting!.highBet : betting!.lowBet;
         betting?.add(player, bet);
         context.player!.bet = bet;
 
