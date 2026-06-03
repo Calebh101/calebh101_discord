@@ -301,7 +301,7 @@ abstract class Blackjack extends MultiplayerGame<BlackjackProfile> {
           if (p.won(dealer)) {
             final gained = bet * (p.blackjackIn2 ? 3 : 2);
             betting!.add(p, gained);
-            p.gained += gained;
+            p.gained += gained - bet;
           } else {
             p.gained -= bet;
           }
