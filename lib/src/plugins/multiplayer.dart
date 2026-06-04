@@ -98,6 +98,23 @@ class MultiplayerPlugin extends BotPlugin {
         await game.showCode(context);
       }),
 
+      BotCommand("stopgame", "Games", "Stop a game that hasn't been started.", (T context, String code) async {
+        final game = games[code];
+        if (game == null || game.ended) return context.respondWithError("Invalid code.");
+
+        if (!isOwner(id: context.user.id) && context.userId != game.owner.id) return context.respondWithError("You're not the owner of this game!");
+        if (game.started) return context.respondWithError("This game has already been started!");
+
+        game.stopped = true;
+        game.ended = true;
+
+        await game.runForAllPlayers((player) async {
+          await player.channel.sendMessage(MessageBuilder(content: "This game has been stopped."));
+        });
+
+        await context.respond(MessageBuilder(content: "Game stopped."));
+      }),
+
       BotCommand("forcestopgame", "Games", "Stop a game instantly.", (T context, String code) async {
         final game = games[code];
         if (game == null || game.ended) return context.respondWithError("Invalid code.");

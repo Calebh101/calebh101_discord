@@ -80,16 +80,10 @@ enum PrefixMode {
   slash,
 }
 
+final _gPP = getPrintablePrefix;
+
 extension ContextHelper on ChatContext {
   String getPrintablePrefix({required KVStore store, PrefixMode defaultMode = .slash}) {
-    final textPrefix = "${ifGuild(store, guildId, (id) => ServerSettings(store, id))?.prefix.get() ?? defaultPrefix}${dev ? "d" : ""}";
-
-    if (commandType == .textOnly) {
-      return textPrefix;
-    } else if (commandType == .slashOnly || defaultMode == .slash) {
-      return "/";
-    } else /*if (defaultMode == .text)*/ {
-      return textPrefix;
-    }
+    return _gPP(guildId: guildId, store: store, defaultMode: defaultMode);
   }
 }

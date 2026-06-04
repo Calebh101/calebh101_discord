@@ -173,3 +173,15 @@ Future<void> alertOwners(NyxxGateway client, EmbedBuilder embed) async {
 extension IfIs on Object? {
   T? ifIs<T>() => this is T ? this as T : null;
 }
+
+String getPrintablePrefix({required KVStore store, required Snowflake? guildId, PrefixMode defaultMode = .slash}) {
+  final textPrefix = "${ifGuild(store, guildId, (id) => ServerSettings(store, id))?.prefix.get() ?? defaultPrefix}${dev ? "d" : ""}";
+
+  if (commandType == .textOnly) {
+    return textPrefix;
+  } else if (commandType == .slashOnly || defaultMode == .slash) {
+    return "/";
+  } else /*if (defaultMode == .text)*/ {
+    return textPrefix;
+  }
+}

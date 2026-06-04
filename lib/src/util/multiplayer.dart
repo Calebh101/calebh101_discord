@@ -81,7 +81,7 @@ abstract class MultiplayerGame<T extends GameProfile> {
     final channel = await tryCatchA(() => client.users.createDm(owner.id));
     if (channel == null) return "We couldn't send you a DM.";
 
-    final message = await tryCatchA(() => channel.sendMessage(MessageBuilder(content: "Waiting for you to start the game!\nUse the `startgame` command to start it.\n\nCode: `$code`\nPlayers: $minPlayers-$maxPlayers")));
+    final message = await tryCatchA(() => channel.sendMessage(MessageBuilder(content: "Waiting for you to start the game!\nUse `${getPrintablePrefix(store: store, guildId: null)}startgame $code` to start it.\n\nCode: `$code`\nPlayers: $minPlayers-$maxPlayers")));
     if (message == null) return "We couldn't send you a message in your DMs.";
 
     players.add(newGameProfile(NewGameProfileDetails(user: owner, channel: channel)));
