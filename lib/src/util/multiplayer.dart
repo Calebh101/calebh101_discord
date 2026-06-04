@@ -205,8 +205,8 @@ abstract class MultiplayerGame<T extends GameProfile> {
 
   @nonVirtual
   Future<void> end() async {
-    if (ended) return;
-    ended = true;
+    if (ended || stopped) return;
+    setStopped();
     Logger.print("Games", "Game $name:$code ended");
   }
 
@@ -242,10 +242,15 @@ abstract class MultiplayerGame<T extends GameProfile> {
     await publicMessage?.update(builder);
   }
 
-  @nonVirtual
-  FutureOr<void> onStop() async {
+  void setStopped() {
     stopped = true;
     ended = true;
+    MultiplayerPlugin.games.remove(code);
+  }
+
+  @nonVirtual
+  FutureOr<void> onStop() async {
+    setStopped();
     await updatePublicMessage(MessageUpdateBuilder(content: "This game has been stopped.", embeds: []));
   }
 }

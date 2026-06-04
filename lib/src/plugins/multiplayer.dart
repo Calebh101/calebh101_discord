@@ -105,8 +105,7 @@ class MultiplayerPlugin extends BotPlugin {
         if (!isOwner(id: context.user.id) && context.userId != game.owner.id) return context.respondWithError("You're not the owner of this game!");
         if (game.started) return context.respondWithError("This game has already been started!");
 
-        game.stopped = true;
-        game.ended = true;
+        game.setStopped();
 
         await game.runForAllPlayers((player) async {
           await player.channel.sendMessage(MessageBuilder(content: "This game has been stopped."));
