@@ -917,7 +917,8 @@ class ModerationPlugin extends BotPluginLegacy {
             "Link": "https://discord.com/channels/${[event.guildId ?? "@me", event.message.channelId, event.message.id].join("/")}",
             "Embeds": "${old?.embeds.length} -> ${event.message.embeds.length}".toDiscordCodeString(),
             "Attachments": "${old?.attachments.length} -> ${event.message.attachments.length}".toDiscordCodeString(),
-            "Timestamp": event.message.editedTimestamp?.toDiscordTimestamp(DiscordTimestamp.longDateTime) ?? "No timestamp",
+            "Sent": event.message.timestamp.toDiscordTimestamp(DiscordTimestamp.shortDateTime),
+            "Edited": event.message.editedTimestamp?.toDiscordTimestamp(DiscordTimestamp.longDateTime) ?? "No timestamp",
             "Was": old?.content.toDiscordCodeBlock(language: "md") ?? "Not found",
             "Content": event.message.content.toDiscordCodeBlock(language: "md"),
           },
@@ -929,6 +930,7 @@ class ModerationPlugin extends BotPluginLegacy {
 
       client.onMessageDelete.listen((event) async {
         final old = event.deletedMessage ?? event.channel.messages.cache[event.id];
+        final channel = await tryCatchA(() => old?.channel.get());
 
         Modlog.add(ModlogEvent(
           "message.delete",
@@ -936,7 +938,11 @@ class ModerationPlugin extends BotPluginLegacy {
           fields: {
             "Author": event.deletedMessage?.author.id.value.toMention() ?? "No author found",
             "ID": event.id.toDiscordCodeString(),
+            if (channel != null) "Where": discordLink(event.guildId, channel.id).toString(),
+            "Sent": old?.timestamp.toDiscordTimestamp(DiscordTimestamp.shortDateTime) ?? "No timestamp found",
+            "Edited": old?.editedTimestamp?.toDiscordTimestamp(DiscordTimestamp.shortDateTime) ?? "No timestamp found",
             "Was": old?.content.toDiscordCodeBlock(language: "md") ?? "Not found",
+            "Embeds/attachments": "${old?.embeds.length} embeds, ${old?.attachments.length} attachments",
           },
           guild: await event.guild?.get(),
           settings: ifGuild(context.store, event.guildId, (id) => ServerSettings(context.store, id)),
