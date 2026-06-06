@@ -212,7 +212,8 @@ abstract class BetPlugin<N extends num> extends BotPlugin {
         if (bet == null) return context.respondWithError("Invalid ID: `$id`");
 
         await message.edit(MessageUpdateBuilder(embeds: [bet.toEmbed(await getColor(context.member), context.getPrintablePrefix(store: store))]));
-      }, options: BotCommandOptions(type: .textOnly), permissionsRequired: .admin, needsGuild: true),
+        await context.message.react(ReactionBuilder(name: "✅", id: null));
+      }, options: BotCommandOptions(type: .textOnly), permissionsRequired: .admin, needsGuild: true, triggerTyping: false),
     ];
   }
 }
