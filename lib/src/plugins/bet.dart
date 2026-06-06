@@ -62,6 +62,7 @@ abstract class BetPlugin<N extends num> extends BotPlugin {
         }
 
         bets.removeWhere((x) => x.id == id);
+        settings.bets.set(bets);
         await context.respond(MessageBuilder(content: "Bet **#$id** deleted!"));
       }, needsGuild: true, permissionsRequired: requiredPerms),
 
@@ -114,7 +115,7 @@ abstract class BetPlugin<N extends num> extends BotPlugin {
         if (bet == null) return context.respondWithError("No bet found by ID **$id**.");
         if (bet.choices.isEmpty) return context.respondWithError("This bet needs at least 1 option.");
 
-        await context.respond(MessageBuilder(embeds: [bet.toEmbed(await getColor(context.member))]));
+        await context.respond(MessageBuilder(embeds: [bet.toEmbed(await getColor(context.member), context.getPrintablePrefix(store: store))]));
       }, needsGuild: true),
 
       BotCommand("bet", "Bet", "Bet on a choice.", (T context, int id, GreedyString choice) async {
@@ -128,14 +129,19 @@ abstract class BetPlugin<N extends num> extends BotPlugin {
         if (!bet.choices.entries.any((x) => x.key.toLowerCase() == choice.data.toLowerCase())) return context.respondWithError("This choice doesn't exist.");
         if (bet.bets.containsKey(context.user.id.value)) return context.respondWithError("You already bet on bet #$id! Use `rembet` to remove your bet.");
 
-        final payment = bet.choices[choice.data]!;
+        final choiceEntry = bet.choices.entries.firstWhere(
+          (x) => x.key.toLowerCase() == choice.data.toLowerCase(),
+        );
+
+        final payment = choiceEntry.value;
+        final actualChoiceName = choiceEntry.key;
         final amount = get(context, store, context.user, context.guild!);
 
         if (amount < payment) return context.respondWithError("You don't have enough! You have **$amount**, you need **$payment**.");
-        bet.bets[context.user.id.value] = choice.data;
+        bet.bets[context.user.id.value] = actualChoiceName;
+
         if (payment is! N) return context.respondWithError("Something went wrong.\n```Expected type $N, got ${payment.runtimeType}```");
         settings.bets.set(bets);
-        add(context, store, context.user, context.guild!, payment);
 
         add(context, store, context.user, context.guild!, -payment as N);
         await context.respond(MessageBuilder(content: "Bet **$payment** on **${choice.data}**!"));
@@ -193,6 +199,20 @@ abstract class BetPlugin<N extends num> extends BotPlugin {
 
         await context.respond(MessageBuilder(content: "Paid out **${entries.length}** users."));
       }, needsGuild: true, permissionsRequired: requiredPerms, aliases: ["payout"]),
+
+      BotCommand("betupdate", "Bet", "Update a bet's message.", (MessageChatContext context) async {
+        final message = context.message.referencedMessage;
+        if (message == null || message.author.id != context.client.user.id || message.embeds.length != 1) return context.respondWithError("Invalid message.");
+
+        final id = int.tryParse(message.embeds.firstOrNull?.footer?.text.replaceFirst("#", "") ?? "");
+        if (id == null) return context.respondWithError("Unable to parse ID.");
+
+        final bets = BetServerSettings(store, context.guildId!).bets.get();
+        final bet = bets.firstWhereOrNull((x) => x.id == id);
+        if (bet == null) return context.respondWithError("Invalid ID: `$id`");
+
+        await message.edit(MessageUpdateBuilder(embeds: [bet.toEmbed(await getColor(context.member), context.getPrintablePrefix(store: store))]));
+      }, options: BotCommandOptions(type: .textOnly), permissionsRequired: .admin, needsGuild: true),
     ];
   }
 }
@@ -217,18 +237,18 @@ class Bet {
   factory Bet.fromJson(Map input) => _$BetFromJson(input);
   Map toJson() => _$BetToJson(this);
 
-  EmbedBuilder toEmbed(DiscordColor? color) {
+  EmbedBuilder toEmbed(DiscordColor? color, String prefix) {
     return EmbedBuilder(
-      title: "$title - Bet #$id",
+      title: "$title - Bet #$id - ${locked ? "Locked" : "Unlocked"}",
       description: description,
       color: color,
-      footer: EmbedFooterBuilder(text: locked ? "Locked" : "Unlocked"),
+      footer: EmbedFooterBuilder(text: "#$id"),
       fields: choices.mapTo((k, v) {
         final whoBetted = bets.entries.where((x) => x.value == k);
         return EmbedFieldBuilder(name: k, value: [
           "**$v** gabes - **${winnings[k]}** if you win - **${whoBetted.length}** bets",
           (whoBetted.map((x) => x.key.toMention()).join(", ")),
-          if (!locked) "To bet this option, use: `/bet $id \"$k\"`",
+          if (!locked) "To bet this option, use: `${prefix}bet $id $k`",
         ].join("\n"), isInline: false);
       }).toList(),
     );
