@@ -182,7 +182,12 @@ abstract class Blackjack extends MultiplayerGame<BlackjackProfile> {
         player.notYourTurnMessage ??= await player.channel.sendMessage(MessageBuilder(content: "Loading..."));
         final length = context.player?.cards.length;
 
-        await player.notYourTurnMessage?.edit(MessageUpdateBuilder(content: context.player != null ? "# It's ${context.player?.formattedDisplayName}'s turn! (${context.turnIndex + 1}/${players.length})\n${betting != null && context.player?.bet == null ? "They're currently placing their bets!" : "They have **$length** ${Word.fromCount(length ?? 0, singular: Word("card"))}."}\nRound ${round + 1}/$rounds" : "Loading..."));
+        await player.notYourTurnMessage?.edit(MessageUpdateBuilder(content: "", embeds: [
+          EmbedBuilder(
+            description: context.player != null ? "# It's ${context.player?.formattedDisplayName}'s turn! (${context.turnIndex + 1}/${players.length})\n${betting != null && context.player?.bet == null ? "They're currently placing their bets!" : "They have **$length** ${Word.fromCount(length ?? 0, singular: Word("card"))}."}\nRound ${round + 1}/$rounds" : "Loading...",
+            color: Severity.purple.color,
+          )
+        ]));
       });
     }
 
@@ -219,12 +224,22 @@ abstract class Blackjack extends MultiplayerGame<BlackjackProfile> {
       }
 
       final messages = await runForAllPlayers((profile) async {
-        return await profile.channel.sendMessage(MessageBuilder(content: getDealerMessage(null)));
+        return await profile.channel.sendMessage(MessageBuilder(embeds: [
+          EmbedBuilder(
+            description: getDealerMessage(null),
+            color: Severity.blue.color,
+          ),
+        ]));
       });
 
       Future<void> update(String? action) async {
         await Future.wait(messages.map((message) async {
-          await message.edit(MessageUpdateBuilder(content: getDealerMessage(action)));
+          await message.edit(MessageUpdateBuilder(embeds: [
+            EmbedBuilder(
+              description: getDealerMessage(null),
+              color: Severity.blue.color,
+            ),
+          ]));
         }));
       }
 
@@ -281,7 +296,12 @@ abstract class Blackjack extends MultiplayerGame<BlackjackProfile> {
         player.done = false;
 
         await player.channel.sendMessage(MessageBuilder(
-          content: "# Round ${round + 1}/$rounds is over!\nHere are the results!\n\n$scoreList\n- The dealer: **${dealer.possibleScores.nullIfEmpty?.reduce((a, b) => a > b ? a : b) ?? "Busted!"}**\n\nWinners:\n$winnersList\n\nScoreboard:\n$scoreboardX\n\nContinuing in **10** seconds...",
+          embeds: [
+            EmbedBuilder(
+              description: "# Round ${round + 1}/$rounds is over!\nHere are the results!\n\n$scoreList\n- The dealer: **${dealer.possibleScores.nullIfEmpty?.reduce((a, b) => a > b ? a : b) ?? "Busted!"}**\n\nWinners:\n$winnersList\n\nScoreboard:\n$scoreboardX\n\nContinuing in **10** seconds...",
+              color: Severity.good.color,
+            ),
+          ],
         ));
       });
 
@@ -337,9 +357,12 @@ abstract class Blackjack extends MultiplayerGame<BlackjackProfile> {
         }).join("\n");
 
         await runForAllPlayers((player) async {
-          await player.channel.sendMessage(MessageBuilder(
-            content: "# The game is over!\n\n$winnersListX\n\n$scoreListX\n\nThanks for playing!",
-          ));
+          await player.channel.sendMessage(MessageBuilder(embeds: [
+            EmbedBuilder(
+              description: "# The game is over!\n\n$winnersListX\n\n$scoreListX\n\nThanks for playing!",
+              color: Severity.good.color,
+            )
+          ]));
         });
 
         await updatePublicMessage(MessageUpdateBuilder(embeds: [
@@ -409,7 +432,13 @@ abstract class Blackjack extends MultiplayerGame<BlackjackProfile> {
         return betting!.get(user: player.user) >= betting!.highBet * roundsLeft;
       }
 
-      await message.edit(MessageUpdateBuilder(content: isBetting ? "Select how much you will bet.\nYou have **${betting?.get(user: player.user)}** ${betting?.getName(betting?.get(user: player.user) ?? 0)}.\nYour first card: **${cards[myCards.firstOrNull]}**\n\n1️⃣ **${betting?.lowBet}** ${betting?.getName(betting!.lowBet)}\n2️⃣ **${betting?.highBet}** ${betting?.getName(betting!.highBet)} (**${availableForHighBet() ? "available" : "unavailable"}**)" : getMessage()));
+      await message.edit(MessageUpdateBuilder(content: "", embeds: [
+        EmbedBuilder(
+          description: isBetting ? "Select how much you will bet.\nYou have **${betting?.get(user: player.user)}** ${betting?.getName(betting?.get(user: player.user) ?? 0)}.\nYour first card: **${cards[myCards.firstOrNull]}**\n\n1️⃣ **${betting?.lowBet}** ${betting?.getName(betting!.lowBet)}\n2️⃣ **${betting?.highBet}** ${betting?.getName(betting!.highBet)} (**${availableForHighBet() ? "available" : "unavailable"}**)" : getMessage(),
+          color: Severity.warning.color,
+        ),
+      ]));
+
       await message.react(ReactionBuilder(name: "1️⃣", id: null));
       if (!isBetting || availableForHighBet()) await message.react(ReactionBuilder(name: "2️⃣", id: null));
 
@@ -441,7 +470,12 @@ abstract class Blackjack extends MultiplayerGame<BlackjackProfile> {
         betting?.add(player, bet);
         context.player!.bet = bet;
 
-        await context.player!.channel.sendMessage(MessageBuilder(content: "# You Bet:\n**$bet** ${betting?.getName(bet)}"));
+        await context.player!.channel.sendMessage(MessageBuilder(embeds: [
+          EmbedBuilder(
+            description: "# You Bet:\n**$bet** ${betting?.getName(bet)}",
+            color: Severity.blue.color,
+          ),
+        ]));
         await eval();
         return;
       }
@@ -450,11 +484,21 @@ abstract class Blackjack extends MultiplayerGame<BlackjackProfile> {
         myCards.add(getCard(allCardsX));
 
         if (context.player?.biggestPossibleScore == null) {
-          await context.player!.channel.sendMessage(MessageBuilder(content: "# You busted!\nYour cards: **${myCards.map((x) => cards[x]).join(", ")}**"));
+          await context.player!.channel.sendMessage(MessageBuilder(embeds: [
+            EmbedBuilder(
+              description: "# You busted!\nYour cards: **${myCards.map((x) => cards[x]).join(", ")}**",
+              color: Severity.severe.color,
+            ),
+          ]));
           return;
         } else {
           if (player.biggestPossibleScore == 21) {
-            await context.player!.channel.sendMessage(MessageBuilder(content: "# You got a blackjack!\nYour cards: **${myCards.map((x) => cards[x]).join(", ")}**"));
+            await context.player!.channel.sendMessage(MessageBuilder(embeds: [
+              EmbedBuilder(
+                description: "# You got a blackjack!\nYour cards: **${myCards.map((x) => cards[x]).join(", ")}**",
+                color: Severity.good.color,
+              ),
+            ]));
             return;
           } else {
             await message.delete();
@@ -463,7 +507,12 @@ abstract class Blackjack extends MultiplayerGame<BlackjackProfile> {
           }
         }
       } else {
-        await context.player!.channel.sendMessage(MessageBuilder(content: "Your score: **${context.player?.biggestPossibleScore}**\nYour cards: **${myCards.map((x) => cards[x]).join(", ")}**"));
+        await context.player!.channel.sendMessage(MessageBuilder(embeds: [
+          EmbedBuilder(
+            description: "Your score: **${context.player?.biggestPossibleScore}**\nYour cards: **${myCards.map((x) => cards[x]).join(", ")}**",
+            color: Severity.warning.color,
+          )
+        ]));
         return;
       }
     }

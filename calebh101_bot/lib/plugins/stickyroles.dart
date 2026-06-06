@@ -135,6 +135,7 @@ class StickyRoles extends BotPluginLegacy {
         "Results": "**${current.length}** found, **${success.length}** success",
         "Output": all.join("\n").toDiscordCodeBlock(),
       },
+      severity: .log,
     ));
 
     return all;

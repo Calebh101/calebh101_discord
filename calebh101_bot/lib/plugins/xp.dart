@@ -525,6 +525,7 @@ ${levels != null ? "You can also get these roles from getting XP:\n\n${levels.ma
         "Level Up": levelUp ? "${oldLevel?.roleId} (${oldRole?.name}) => ${newLevel.roleId} (${newRole?.name})".toDiscordCodeBlock() : null.toDiscordCodeString(),
       },
       alsoTriggerOn: [if (levelUp) "xp.levelup"],
+      severity: .verbose,
     ));
 
     if (levelUp && member != null) {

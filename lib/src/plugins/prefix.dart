@@ -38,6 +38,7 @@ class PrefixPlugin extends BotPluginLegacy {
           "Default": defaultPrefix.toDiscordCodeBlock(),
         },
         settings: settings,
+        severity: .verbose,
       ));
 
       await context.respond(MessageBuilder(
@@ -64,6 +65,7 @@ class PrefixPlugin extends BotPluginLegacy {
           "Default": defaultPrefix.toDiscordCodeBlock(),
         },
         settings: settings,
+        severity: .verbose,
       ));
 
       context.respond(MessageBuilder(

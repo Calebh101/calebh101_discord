@@ -19,7 +19,7 @@ class GTNEntry {
 
 extension on List<GTNEntry> {
   ({int low, int high}) get range {
-    int low = where((x) => x.higher).nullIfEmpty?.reduce((a, b) => a.number > b.number ? a : b).number ?? 1;
+    int low = where((x) => x.higher).nullIfEmpty?.reduce((a, b) => a.number > b.number ? a : b).number ?? 0;
     int high = where((x) => !x.higher).nullIfEmpty?.reduce((a, b) => a.number < b.number ? a : b).number ?? highest;
     return (low: low, high: high);
   }
@@ -28,7 +28,9 @@ extension on List<GTNEntry> {
 class GuessTheNumber extends MultiplayerGame {
   final int number;
 
-  GuessTheNumber({required super.client, required super.store, required super.owner, super.publicMessage}) : number = Random().nextInt(highest + 1), super(version: Version.parse("1.0.0A"));
+  GuessTheNumber({required super.client, required super.store, required super.owner, super.publicMessage}) : number = Random().nextInt(highest + 1), super(version: Version.parse("1.0.0A")) {
+    Logger.print("GTN", "New GTN: owner=${owner.id}, number=$number");
+  }
 
   @override
   String get name => "Guess the Number";
@@ -61,7 +63,12 @@ class GuessTheNumber extends MultiplayerGame {
     if (player == null) throw Exception();
 
     await runForAllButCurrentPlayer(context, (player) async {
-      await player.channel.sendMessage(MessageBuilder(content: "It's ${context.player?.formattedDisplayName}'s turn! (${context.turnIndex + 1}/${players.length})"));
+      await player.channel.sendMessage(MessageBuilder(embeds: [
+        EmbedBuilder(
+          description: "It's ${context.player?.formattedDisplayName}'s turn! (${context.turnIndex + 1}/${players.length})",
+          color: Severity.blue.color,
+        )
+      ]));
     });
 
     await updatePublicMessage(MessageUpdateBuilder(content: "", embeds: [
@@ -73,7 +80,12 @@ class GuessTheNumber extends MultiplayerGame {
       ),
     ]));
 
-    await player.channel.sendMessage(MessageBuilder(content: "**It's your turn!**\n\nType your number of choice below. Reminder: The number is in between 1-$highest (inclusive).\nType `skip` to skip your turn.\nCurrent range: **${hints.range.low}-${hints.range.high}** inclusive\n\n${hints.join("\n")}".trim()));
+    await player.channel.sendMessage(MessageBuilder(embeds: [
+      EmbedBuilder(
+        description: "**It's your turn!**\n\nType your number of choice below. Reminder: The number is in between 1-$highest (inclusive).\nType `skip` to skip your turn.\nCurrent range: **${hints.range.low}-${hints.range.high}**\n\n${hints.join("\n")}".trim(),
+        color: Severity.warning.color,
+      ),
+    ]));
 
     final timeLimit = Duration(minutes: 1);
     int secondsRemaining = timeLimit.inSeconds;
@@ -136,7 +148,12 @@ class GuessTheNumber extends MultiplayerGame {
 
     if (chosen == number) {
       await runForAllPlayers((player) async {
-        await player.channel.sendMessage(MessageBuilder(content: "**${context.player?.formattedDisplayName} won!**\n\n${context.player?.formattedDisplayName} guessed the number correctly, which was **$number**."));
+        await player.channel.sendMessage(MessageBuilder(embeds: [
+          EmbedBuilder(
+            description: "**${context.player?.formattedDisplayName} won!**\n\n${context.player?.formattedDisplayName} guessed the number correctly, which was **$number**.",
+            color: Severity.good.color,
+          ),
+        ]));
       });
 
       await end();
@@ -154,7 +171,12 @@ class GuessTheNumber extends MultiplayerGame {
     }
 
     await runForAllPlayers((player) async {
-      await player.channel.sendMessage(MessageBuilder(content: "${context.player?.formattedDisplayName} guessed **$chosen** and was wrong. The actual number is **${number > chosen! ? "higher" : "lower"}**."));
+      await player.channel.sendMessage(MessageBuilder(embeds: [
+        EmbedBuilder(
+          description: "${context.player?.formattedDisplayName} guessed **$chosen** and was wrong. The actual number is **${number > chosen! ? "higher" : "lower"}**.",
+          color: Severity.severe.color,
+        ),
+      ]));
     });
 
     hints.add(GTNEntry(chosen, number > chosen));

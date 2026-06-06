@@ -47,6 +47,7 @@ class AdminPlugin extends BotPluginLegacy {
           "Author": "<@${context.user.id}>",
         },
         settings: settings,
+        severity: .verbose,
       ));
 
       context.respond(MessageBuilder(
@@ -78,6 +79,7 @@ class AdminPlugin extends BotPluginLegacy {
           "Author": "<@${context.user.id}>",
         },
         settings: settings,
+        severity: .verbose,
       ));
 
       context.respond(MessageBuilder(
@@ -111,6 +113,7 @@ class AdminPlugin extends BotPluginLegacy {
             "Author": "<@${context.user.id}>",
           },
           settings: settings,
+          severity: .verbose,
         ));
       }
 
@@ -145,6 +148,7 @@ class AdminPlugin extends BotPluginLegacy {
             "Author": "<@${context.user.id}>",
           },
           settings: settings,
+          severity: .verbose,
         ));
       }
 
@@ -178,6 +182,7 @@ class AdminPlugin extends BotPluginLegacy {
           "Author": "<@${context.user.id}>",
         },
         settings: settings,
+        severity: .verbose,
       ));
 
       context.respond(MessageBuilder(
@@ -209,6 +214,7 @@ class AdminPlugin extends BotPluginLegacy {
           "Author": "<@${context.user.id}>",
         },
         settings: settings,
+          severity: .verbose,
       ));
 
       context.respond(MessageBuilder(
@@ -242,6 +248,7 @@ class AdminPlugin extends BotPluginLegacy {
             "Author": "<@${context.user.id}>",
           },
           settings: settings,
+          severity: .verbose,
         ));
       }
 
@@ -276,6 +283,7 @@ class AdminPlugin extends BotPluginLegacy {
             "Author": "<@${context.user.id}>",
           },
           settings: settings,
+          severity: .verbose,
         ));
       }
 
@@ -296,13 +304,14 @@ class AdminPlugin extends BotPluginLegacy {
         Modlog.add(ModlogEvent(
           "claim",
           guild: context.guild,
-        client: context.client,
+          client: context.client,
           title: "I Have Been Claimed",
           fields: {
             "Who": "<@${context.user.id}>",
             "Was": mainAdmin != null ? "<@$mainAdmin>" : null.toDiscordCodeBlock(),
           },
           settings: settings,
+          severity: .good,
         ));
 
         context.respond(MessageBuilder(
@@ -360,13 +369,14 @@ class AdminPlugin extends BotPluginLegacy {
         Modlog.add(ModlogEvent(
           "claim",
           guild: context.guild,
-        client: context.client,
+          client: context.client,
           title: "I Have Been Unclaimed",
           fields: {
             "Who": "<@${context.user.id}>",
             "Was": "<@$old>",
           },
           settings: settings,
+          severity: .log,
         ));
 
         await context.respond(MessageBuilder(

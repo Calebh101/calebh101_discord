@@ -162,6 +162,18 @@ class DebugPlugin extends BotPlugin {
           "**Active Multiplayer Games**:\n${games.nullIfEmpty?.map((x) => "- ${x.name}: ${x.code} (owned by ${x.owner.username})") ?? "None active"}",
         ].join("\n\n")}"));
       }, permissionsRequired: .owner),
+
+      BotCommand("color", "Debug", "Print a color's hex code or Discord value.", (T context, GreedyString input) async {
+        final color = tryCatch(() => DiscordColor.parseHexString(input.data)) ?? tryCatch(() => DiscordColor(int.parse(input.data)));
+        if (color == null) return context.respondWithError("Invalid hex code or value.");
+
+        await context.respond(MessageBuilder(embeds: [
+          EmbedBuilder(
+            description: [color.toHexString().toDiscordCodeBlock(), color.value.toDiscordCodeBlock()].join("\n"),
+            color: color,
+          ),
+        ]));
+      }),
     ];
   }
 }

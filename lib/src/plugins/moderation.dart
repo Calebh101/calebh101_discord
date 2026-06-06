@@ -896,6 +896,7 @@ class ModerationPlugin extends BotPluginLegacy {
           guild: await event.guild?.get(),
           settings: ifGuild(context.store, event.guildId, (id) => ServerSettings(context.store, id)),
           client: client,
+          severity: .verbose,
         ));
       });
 
@@ -925,6 +926,7 @@ class ModerationPlugin extends BotPluginLegacy {
           guild: await event.guild?.get(),
           settings: ifGuild(context.store, event.guildId, (id) => ServerSettings(context.store, id)),
           client: client,
+          severity: .log,
         ));
       });
 
@@ -947,6 +949,7 @@ class ModerationPlugin extends BotPluginLegacy {
           guild: await event.guild?.get(),
           settings: ifGuild(context.store, event.guildId, (id) => ServerSettings(context.store, id)),
           client: client,
+          severity: .log,
         ));
       });
 
@@ -980,26 +983,6 @@ class ModerationPlugin extends BotPluginLegacy {
             ].join("\n\n\n"),
           },
           severity: ModlogSeverity.severe,
-        ));
-      });
-
-      client.onGuildAuditLogCreate.listen((event) async {
-        Modlog.add(ModlogEvent(
-          "audit",
-          title: "Audit Log Update",
-          fields: {
-            "Action Type": event.entry.actionType.toDiscordCodeString(),
-            "Target": event.entry.targetId.toDiscordCodeString(),
-            "Author": event.entry.userId?.value.toMention() ?? "No author",
-            "Reason": event.entry.reason ?? "No reason",
-            "ID": event.entry.id.toDiscordCodeString(),
-            "Updates": event.entry.changes?.map((x) {
-              return "${x.key}: ${x.oldValue} -> ${x.newValue}";
-            }).toDiscordCodeBlock() ?? "No updates",
-          },
-          guild: await event.guild.get(),
-          settings: ifGuild(context.store, event.guildId, (id) => ServerSettings(context.store, id)),
-          client: client,
         ));
       });
 
@@ -1047,6 +1030,7 @@ class ModerationPlugin extends BotPluginLegacy {
             guild: await event.guild.get(),
             settings: ifGuild(context.store, event.guildId, (id) => ServerSettings(context.store, id)),
             client: client,
+            severity: .log,
           ));
         } catch (_) {}
       });
@@ -1137,6 +1121,7 @@ class ModerationPlugin extends BotPluginLegacy {
             guild: await event.guild.get(),
             settings: ifGuild(context.store, event.guildId, (id) => ServerSettings(context.store, id)),
             client: client,
+            severity: .verbose,
           ));
         }
       });
@@ -1181,6 +1166,7 @@ class ModerationPlugin extends BotPluginLegacy {
           guild: guild,
           settings: ServerSettings(context.store, guild.id),
           client: client,
+          severity: .verbose,
         ));
       });
 
@@ -1201,6 +1187,7 @@ class ModerationPlugin extends BotPluginLegacy {
           guild: await tryCatchA(() => channel.guild.get()),
           settings: ServerSettings(context.store, channel.guildId),
           client: client,
+          severity: .verbose,
         ));
       });
     });

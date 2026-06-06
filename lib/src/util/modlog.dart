@@ -2,9 +2,13 @@ import 'dart:convert';
 
 import 'package:calebh101_discord/calebh101_discord.dart';
 import 'package:collection/collection.dart';
-import 'package:localpkg/classes.dart';
 
 typedef ModlogGroupCollection = Map<ModlogGroup, Set<String> Function(Set<String> levelBelow)>;
+typedef Severity = ModlogSeverity;
+
+extension GetColor on Severity {
+  DiscordColor get color => modLogSeverityToColor(this);
+}
 
 enum ModlogSeverity {
   verbose,
@@ -12,6 +16,8 @@ enum ModlogSeverity {
   warning,
   severe,
   good,
+  blue,
+  purple,
 }
 
 enum ModlogGroup {
@@ -21,13 +27,15 @@ enum ModlogGroup {
   off,
 }
 
-DiscordColor? modLogSeverityToColor(ModlogSeverity severity) {
+DiscordColor modLogSeverityToColor(ModlogSeverity severity) {
   return switch (severity) {
     ModlogSeverity.verbose => DiscordColor.parseHexString("#808080"),
     ModlogSeverity.log => DiscordColor.parseHexString("#808080"),
     ModlogSeverity.good => DiscordColor.parseHexString("#90EE90"),
-    ModlogSeverity.warning => DiscordColor.parseHexString("#FFFF00"),
-    ModlogSeverity.severe => DiscordColor.parseHexString("#BB3333"),
+    ModlogSeverity.warning => DiscordColor.parseHexString("#f1c40f"),
+    ModlogSeverity.severe => DiscordColor.parseHexString("#e74c3c"),
+    ModlogSeverity.blue => DiscordColor.parseHexString("#3498db"),
+    ModlogSeverity.purple => DiscordColor.parseHexString("#9b59b6"),
   };
 }
 
@@ -146,7 +154,7 @@ class ModlogEvent {
   late List<String> triggers;
   Map<String, String>? attachments;
 
-  ModlogEvent(this.eventId, {this.severity = .log, required this.guild, required this.settings, required this.title, this.description, this.fields, this.timestamp, this.url, this.image, this.thumbail, this.alsoTriggerOn, required this.client, this.attachments}) {
+  ModlogEvent(this.eventId, {required this.severity, required this.guild, required this.settings, required this.title, this.description, this.fields, this.timestamp, this.url, this.image, this.thumbail, this.alsoTriggerOn, required this.client, this.attachments}) {
     timestamp ??= DateTime.now();
     triggers = [eventId, ...?alsoTriggerOn];
   }
