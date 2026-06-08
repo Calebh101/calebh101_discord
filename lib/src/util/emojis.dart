@@ -6,16 +6,19 @@ import 'package:unicode/blocks.dart';
 
 class EmojiListDetails {
   final List<Emoji> emojis;
-  const EmojiListDetails(this.emojis);
+  final Message sentMessage;
+
+  const EmojiListDetails(this.emojis, {required this.sentMessage});
 }
 
-Future<EmojiListDetails?> askForEmojis(ChatContext context, [int? required]) async {
+Future<EmojiListDetails?> askForEmojis(ChatContext context, {int? required, String? prompt, bool allowCustom = true}) async {
   Future<void> Function() onTimeUp = () async {
     Logger.warn("Emojis", "askForEmojis session with user ${context.user.id} has not set onTimeUp at this point. The message will appear broken.");
   };
 
   int secondsRemaining = 300;
   List<Emoji> emojis = [];
+  Message? message;
 
   final countdown = Timer.periodic(Duration(seconds: 1), (timer) {
     secondsRemaining--;
@@ -28,7 +31,7 @@ Future<EmojiListDetails?> askForEmojis(ChatContext context, [int? required]) asy
   });
 
   try {
-    final message = await context.channel.sendMessage(MessageBuilder(content: "To select emojis, react to this message with ${required != null ? "**$required**" : "any"} emojis.\nReact with :stop_button: to ${required != null ? "cancel" : "stop"}."));
+    message = await context.channel.sendMessage(MessageBuilder(content: prompt ?? "To select emojis, react to this message with ${required != null ? "**$required**" : "any"} emojis.\n${allowCustom ? "Custom emojis are allowed." : "Custom emojis are **not** allowed."}\nReact with :stop_button: to ${required != null ? "cancel" : "stop"}."));
     final controller = StreamController<GatewayEvent>();
 
     StreamGroup.merge([
@@ -50,10 +53,12 @@ Future<EmojiListDetails?> askForEmojis(ChatContext context, [int? required]) asy
         if (event.emoji.name == "⏹️") {
           controller.close();
           break;
-        } else {
+        } else if (allowCustom || event.emoji.name != null) {
           secondsRemaining = 300;
           emojis.add(event.emoji);
+
           await event.message.react(ReactionBuilder.fromEmoji(event.emoji));
+          if (required != null && emojis.length >= required) break;
         }
       } else if (event is MessageReactionRemoveEvent) {
         if (event.userId != context.user.id || event.messageId != message.id) continue;
@@ -64,7 +69,7 @@ Future<EmojiListDetails?> askForEmojis(ChatContext context, [int? required]) asy
     }
 
     if (emojis.length == required || (required == null && emojis.isNotEmpty)) {
-      return EmojiListDetails(emojis);
+      return EmojiListDetails(emojis, sentMessage: message);
     } else {
       return null;
     }

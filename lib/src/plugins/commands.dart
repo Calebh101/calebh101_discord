@@ -168,7 +168,7 @@ class HelpPlugin extends BotPluginLegacy {
           await context.respond(MessageBuilder(content: "Couldn't process your latest message: ${context.createDiscordLink(message.id)}"));
         }
       }, options: BotCommandOptions(type: CommandType.textOnly), permissionsRequired: false ? BotCommandPermissions.any : BotCommandPermissions.owner),
-      BotCommand("eval", "Bot", "Evaluate commands.", (MessageChatContext context, GreedyQuotedList input) async {
+      BotCommand("eval", "Util", "Evaluate commands.", (MessageChatContext context, GreedyQuotedList input) async {
         int success = 0;
 
         for (String x in input.input) {
@@ -186,7 +186,7 @@ class HelpPlugin extends BotPluginLegacy {
 
         await context.respond(MessageBuilder(content: "Evaluated **$success** commands."));
       }, options: BotCommandOptions(type: CommandType.textOnly), permissionsRequired: BotCommandPermissions.owner),
-      BotCommand("evalas", "Bot", "Evaluate commands as a user.", (MessageChatContext context, User user, GreedyQuotedList input) async {
+      BotCommand("evalas", "Util", "Evaluate commands as a user.", (MessageChatContext context, User user, GreedyQuotedList input) async {
         int success = 0;
 
         for (final x in input.input) {

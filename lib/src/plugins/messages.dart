@@ -22,7 +22,7 @@ class MessagesPlugin extends BotPluginLegacy {
         await context.message.react(ReactionBuilder(name: "✅", id: null));
       }, needsGuild: true, triggerTyping: false, options: BotCommandOptions(type: CommandType.textOnly)),
 
-      BotCommand("collapse", "Bot", "Collapse a message of mine, by removing embeds, attachments, and extra text.", (ChatContext context, Snowflake id, [GuildTextChannel? targetChannel]) async {
+      BotCommand("collapse", "Util", "Collapse a message of mine, by removing embeds, attachments, and extra text.", (ChatContext context, Snowflake id, [GuildTextChannel? targetChannel]) async {
         String getNew(String current) {
           final lines = current.split("\n");
           final target = lines.sublist(0, min(3, lines.length));
@@ -61,7 +61,7 @@ class MessagesPlugin extends BotPluginLegacy {
       Logger.warn("SendMessageAs", "Unable to send message from ${channel?.id}: $e");
       context.respondWithError("Unable to send message.", level: ResponseLevel.private);
     }
-  }, CommandAttributes(category: "Bot"));
+  }, CommandAttributes(category: "Util"));
 
   BotCommand deleteMyMessageCommand<T extends ChatContext>(KVStore store) => BotCommand.command(
     "deletemessage", "Delete my message.",
@@ -87,7 +87,7 @@ class MessagesPlugin extends BotPluginLegacy {
         context.respondWithError("Unable to delete message.", level: ResponseLevel.private);
       }
     },
-    CommandAttributes(category: "Bot"),
+    CommandAttributes(category: "Util"),
   );
 
   BotCommand editMyMessageCommand<T extends ChatContext>(KVStore store) => BotCommand.command(
@@ -114,7 +114,7 @@ class MessagesPlugin extends BotPluginLegacy {
         context.respondWithError("Unable to edit message.", level: ResponseLevel.private);
       }
     },
-    CommandAttributes(category: "Bot"),
+    CommandAttributes(category: "Util"),
   );
 
   BotCommand messageMe<T extends ChatContext>() => BotCommand.command("messageme", "Make me DM you.", (T context) async {
@@ -131,5 +131,5 @@ class MessagesPlugin extends BotPluginLegacy {
     }
 
     await context.respond(MessageBuilder(content: dmSuccessful ? "<@${context.user.id}>, I have DMed you." : "<@${context.user.id}>, I was **not** able to DM you."), level: ResponseLevel.hint);
-  }, CommandAttributes(category: "Bot"));
+  }, CommandAttributes(category: "User"));
 }

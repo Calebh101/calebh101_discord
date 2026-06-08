@@ -347,7 +347,7 @@ class AdminPlugin extends BotPluginLegacy {
           Logger.warn("Commands.Claim", "User $mainAdmin not found: $e");
         }
       }
-    }, CommandAttributes(category: "Bot")),
+    }, CommandAttributes(category: "Admin")),
     BotCommand.command("unclaim", "Step down as king of the bot. This will not be made known to others.", (T context) async {
       if (context.guild == null || context.member == null) return context.respondWithError("No guild/member found.");
       final settings = ServerSettings(store, context.guild!.id);
@@ -440,7 +440,7 @@ class AdminPlugin extends BotPluginLegacy {
           }),
         ),
       ]));
-    }, CommandAttributes(category: "Bot")),
+    }, CommandAttributes(category: "Admin")),
     BotCommand.command("attributes", "See your attributes.", (T context, [@Description('The member to check') User? user]) async {
       final u = user ?? context.user;
       final m = await userToMember(u, guild: context.guild);

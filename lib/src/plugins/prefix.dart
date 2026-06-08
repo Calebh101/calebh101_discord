@@ -17,7 +17,7 @@ class PrefixPlugin extends BotPluginLegacy {
       await context.respond(MessageBuilder(
         content: "Prefix is currently set to `$prefix`.",
       ));
-    }, CommandAttributes(category: "Bot")),
+    }, CommandAttributes(category: "Server")),
     BotCommand.command("setprefix", "Set the bot's prefix.", (T context, String prefix) async {
       if (context.guild == null || context.member == null) return context.respondWithError("No guild/member found.");
       final settings = getSettings.call(context.guild!);
@@ -44,7 +44,7 @@ class PrefixPlugin extends BotPluginLegacy {
       await context.respond(MessageBuilder(
         content: "Prefix set to `$prefix`!",
       ));
-    }, CommandAttributes(category: "Bot", permissionsRequired: BotCommandPermissions.admin)),
+    }, CommandAttributes(category: "Server", permissionsRequired: BotCommandPermissions.admin)),
     BotCommand.command("resetprefix", "Reset the bot's prefix for this server.", (T context) async {
       if (context.guild == null || context.member == null) return context.respondWithError("No guild/member found.");
       final settings = getSettings.call(context.guild!);
@@ -71,6 +71,6 @@ class PrefixPlugin extends BotPluginLegacy {
       context.respond(MessageBuilder(
         content: "Prefix set to `$defaultPrefix`!",
       ));
-    }, CommandAttributes(category: "Bot", permissionsRequired: BotCommandPermissions.admin))
+    }, CommandAttributes(category: "Server", permissionsRequired: BotCommandPermissions.admin))
   ];
 }

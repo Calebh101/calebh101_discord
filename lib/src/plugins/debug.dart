@@ -44,7 +44,7 @@ class DebugPlugin extends BotPlugin {
         }
       }, permissionsRequired: BotCommandPermissions.owner),
       BotCommand("printemojis", "Debug", "Emojis.", (ChatContext context, [int? required]) async {
-        final results = await askForEmojis(context, required);
+        final results = await askForEmojis(context, required: required);
         final m = await context.respond(MessageBuilder(content: results != null ? "Found **${results.emojis.length}** emojis." : "No emojis found."));
 
         for (final Emoji emoji in results?.emojis ?? []) {

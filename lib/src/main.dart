@@ -117,7 +117,7 @@ Future<BotContext?> load({required BotSettings settings, required FutureOr<Patte
 
   Precheck.addPrecheck(Precheck((event) {
     final settings = BotSettings(store);
-    final userId = event.getData((x) => x.user?.id ?? x.member?.id, (x) => x.message.author.id, (x) => x.user?.id ?? x.member?.id, (x) => x.user?.id ?? x.member?.id);
+    final userId = event.getData((x) => x.interaction.user?.id ?? x.interaction.member?.id, (x) => x.message.author.id, (x) => x.interaction.user?.id ?? x.interaction.member?.id, (x) => x.interaction.user?.id ?? x.interaction.member?.id);
 
     if (userId == null) Logger.warn("Precheck", "User ID was null for event ${event.runtimeType}");
     return userId == null || !isIgnored(store, userId);
@@ -125,14 +125,14 @@ Future<BotContext?> load({required BotSettings settings, required FutureOr<Patte
 
   Precheck.addPrecheck(Precheck((event) async {
     final settings = BotSettings(store);
-    final ids = event.getData((x) => (x.guildId, x.user?.id ?? x.member?.id), (x) => (x.guildId, x.message.author.id), (x) => (x.guildId, x.user?.id ?? x.member?.id), (x) => (x.guildId, x.user?.id ?? x.member?.id));
+    final ids = event.getData((x) => (x.interaction.guildId, x.interaction.user?.id ?? x.interaction.member?.id), (x) => (x.guildId, x.message.author.id), (x) => (x.interaction.guildId, x.interaction.user?.id ?? x.interaction.member?.id), (x) => (x.interaction.guildId, x.interaction.user?.id ?? x.interaction.member?.id));
 
     final blocked = settings.blockedGuilds.get().contains(ids.$1);
     final blockedOwner = settings.blockedGuildOwners.get().contains(ids.$2);
 
     if (blocked || blockedOwner) {
       Logger.warn("Bot", "Blocked: ${blocked ? "guild" : "0"}, ${blockedOwner ? "owner" : "0"} (ids: $ids)");
-      final guild = await event.getData((x) => x.guild?.get(), (x) => x.guild?.get(), (x) => x.guild?.get(), (x) => x.guild?.get());
+      final guild = await event.getData((x) => x.interaction.guild?.get(), (x) => x.guild?.get(), (x) => x.interaction.guild?.get(), (x) => x.interaction.guild?.get());
       if (guild == null) throw Exception("No guild.");
       await guild.leave();
       return false;
@@ -187,9 +187,19 @@ Future<BotContext?> load({required BotSettings settings, required FutureOr<Patte
   for (final x in BotCommand.getFromRegistry(cmd)) {
     try {
       cmd.addCommand(x);
-    } catch (_) {
-      Logger.warn("load", "Command: ${x.name} (${x.runtimeType})");
-      rethrow;
+    } catch (e) {
+      Logger.error("load", "Command: ${x.name} (${x.runtimeType})\n$e");
+    }
+  }
+
+  for (final category in BotCommand.commandRegistry.entries.where((x) => !x.value.noGroup).map((x) => x.value.category).toSet()) {
+    final commands = BotCommand.commandRegistry.entries.where((x) => x.value.category == category);
+    final tooMuch = commands.length > 25;
+
+    if (tooMuch) {
+      Logger.warn("Categories", "$category: ${commands.length} commands");
+    } else {
+      Logger.print("Categories", "$category: ${commands.length} commands");
     }
   }
 

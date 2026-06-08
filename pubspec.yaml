@@ -20,12 +20,12 @@ dependencies:
 
   nyxx_commands:
     git:
-      url: https://github.com/Calebh101/nyxx_commands
+      url: https://github.com/Calebh101/nyxx_commands.git
       ref: main
 
   nyxx_extensions:
     git:
-      url: https://github.com/Calebh101/nyxx_extensions
+      url: https://github.com/Calebh101/nyxx_extensions.git
       ref: main
 
   dotenv: ^4.2.0
