@@ -13,7 +13,9 @@ class QuotePlugin extends BotPluginLegacy {
       client.onMessageReactionAdd.listen((event) async {
         if (isIgnored(context.store, event.userId)) return;
         if (event.guildId == null || event.member == null) return;
+
         final settings = QuoteSettings(context.store, event.guildId!);
+        if (settings.quotedMessages.get().contains(event.messageId)) return;
 
         final guild = await event.guild!.get();
         final emoji = await settings.getQuoteEmoji(client: client, guild: guild);
@@ -51,6 +53,10 @@ class QuotePlugin extends BotPluginLegacy {
           final users = reaction?.value.where((x) => !x.isBot && !x.isSystem) ?? [];
           if (isMod(settings: settings, member: event.member!) && settings.quoteAdminImmediate.get()) {} else if (users.length < count) return;
         }
+
+        final current = settings.quotedMessages.get();
+        current.add(event.messageId);
+        settings.quotedMessages.set(current);
 
         await channel.sendMessage(MessageBuilder(embeds: [EmbedBuilder(
           author: author is User ? EmbedAuthorBuilder(name: author.username, iconUrl: author.avatar.url) : null,
@@ -91,6 +97,19 @@ class QuotePlugin extends BotPluginLegacy {
           "Quote channel: ${settings.quoteChannel.get()?.value.toChannel() ?? "Not set"}"
         ].join("\n")));
       }, needsGuild: true),
+      BotCommand("remquote", "Quote", "Remove a message ID from the quoted list.", (T context, Snowflake id) async {
+        final settings = QuoteSettings(store, context.guildId!);
+        final current = settings.quotedMessages.get();
+        final contains = current.contains(id);
+
+        if (contains) {
+          current.remove(id);
+          settings.quotedMessages.set(current);
+          await context.respond(MessageBuilder(content: "Message `$id` removed from quoted list."));
+        } else {
+          await context.respond(MessageBuilder(content: "This message was not quoted."));
+        }
+      }, needsGuild: true, permissionsRequired: .admin),
       BotCommand("quote", "Quote", "Instantly quote a message.", (T context, [Snowflake? id]) async {
         final settings = QuoteSettings(store, context.guild!.id);
         final emoji = await settings.getQuoteEmoji(client: context.client, guild: context.guild);
@@ -160,6 +179,7 @@ class QuoteSettings extends ServerSettings {
   SettingsObjectNotNull<int> get quoteCount => SettingsObjectNotNull(this, "quoteCount", defaultFunction: () => 5);
   SettingsObjectNotNull<bool> get quoteAdminImmediate => SettingsObjectNotNull(this, "quoteAdminImmediate", defaultFunction: () => false);
   SettingsObject<Snowflake> get quoteChannel => SettingsObject.snowflake(this, "quoteChannel");
+  SettingsObjectNotNull<List<Snowflake>> get quotedMessages => SettingsObject.listSnowflake(this, "quotedMessages");
 
   Future<Emoji?> getQuoteEmoji({required NyxxGateway client, required Guild? guild}) async {
     final e = quoteEmoji.get();
