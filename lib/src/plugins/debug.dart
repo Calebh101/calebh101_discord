@@ -21,6 +21,7 @@ class DebugPlugin extends BotPlugin {
     return [
       confirmationTest(),
       ...chooseDebug(),
+      GreedyGuildTextChannelList.debugCommand(),
 
       BotCommand("wait", "Debug", "Wait X amount of seconds before responding.", (ChatContext context, int seconds) async {
         await Future.delayed(Duration(seconds: seconds));

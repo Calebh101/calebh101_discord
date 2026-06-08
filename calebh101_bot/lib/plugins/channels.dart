@@ -28,7 +28,7 @@ class ChannelsPlugin extends BotPlugin {
         await channel.update(GuildChannelUpdateBuilder(name: output));
       }, needsGuild: true, permissionsRequired: .admin),
 
-      BotCommand("iconsetup", "Channels", description, (MessageChatContext context, GreedyGuildTextChannelList channels) async {
+      BotCommand("iconsetup", "Channels", "Run through a list of channels, asking for their icons. Use allInGuild for all channels, or allInCategory:name for whole categories.", (MessageChatContext context, GreedyGuildTextChannelList channels) async {
         int updated = 0;
 
         for (int i = 0; i < channels.input.length; i++) {

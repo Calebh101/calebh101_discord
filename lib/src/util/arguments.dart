@@ -195,6 +195,8 @@ class GreedyMemberList extends ConverterType {
 
 class GreedyGuildTextChannelList extends ConverterType {
   final List<GuildTextChannel> input;
+  List<GuildTextChannel> get data => input;
+
   const GreedyGuildTextChannelList(this.input);
 
   @override
@@ -214,6 +216,16 @@ class GreedyGuildTextChannelList extends ConverterType {
       List<GuildTextChannel> results = [];
 
       while (value.remaining.trim().isNotEmpty) {
+        if (value.quotedWord.startsWith("allInCategory:") && context.guild != null) {
+          final word = value.getQuotedWord().replaceFirst("allInCategory:", "");
+          final all = await context.guild!.fetchChannels();
+          final withParent = await Future.wait(all.whereType<GuildTextChannel>().where((x) => x.parent != null).map((x) async => (x, await x.parent!.get() as GuildCategory)));
+
+          final channels = withParent.where((x) => x.$2.name == word);
+          results.addAll(channels.map((x) => x.$1));
+          continue;
+        }
+
         try {
           final channel = await converter.convert.call(value, context);
           results.add(channel!);
@@ -224,6 +236,10 @@ class GreedyGuildTextChannelList extends ConverterType {
       return GreedyGuildTextChannelList(results);
     }));
   }
+
+  static BotCommand debugCommand() => BotCommand("greedyguildtextchannellistdebug", "Debug", "GreedyGuildTextChannelList", (ChatContext context, GreedyGuildTextChannelList channels) async {
+    await context.respond(MessageBuilder(content: channels.data.map((x) => x.mention).join(", ")));
+  }, permissionsRequired: .admin);
 }
 
 BotConverter<Duration> durationConverter() {
@@ -279,5 +295,11 @@ class Or<A, B> extends ConverterType {
 
       return a != null || b != null ? Or<A, B>(a, b) : null;
     }));
+  }
+}
+
+extension on StringView {
+  String get quotedWord {
+    return copy().getQuotedWord();
   }
 }
