@@ -159,6 +159,12 @@ void main(List<String> arguments) => wrap(() async {
 
         await context.respond(MessageBuilder(content: parts.join("")));
       }),
+
+      BotCommand("murder", "Fun", "Murder someone.", (T context, Member member) async {
+        final weapon = ["candlestick", "dagger", "lead pipe", "revolver", "rope", "wrench"].ro();
+        if (Random().nextInt(100) == 0) return await context.respond(MessageBuilder(content: "${context.user.toMention()} tried to murder ${member.toMention()} with a *$weapon*, but they failed and accidentally murdered *themselves*.", allowedMentions: AllowedMentions(repliedUser: true)));
+        await context.respond(MessageBuilder(content: "${member.toMention()} was *murdered* with a *$weapon*.", allowedMentions: AllowedMentions(repliedUser: true)));
+      }, needsGuild: true),
     ],
   );
 
