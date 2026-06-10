@@ -27,7 +27,7 @@ class MemberRolePlugin extends BotPluginLegacy {
   @override
   FutureOr<List<BotCommand<Function>>> commands<T extends ChatContext>(CommandsPlugin plugin, KVStore store) {
     return [
-      BotCommand("setmemberrole", "MemberRole", "Set member roles. There can be more than one.", (T context, [GreedyRoleList? roles]) async {
+      BotCommand("setmemberroles", "MemberRole", "Set member roles. There can be more than one.", (T context, [GreedyRoleList? roles]) async {
         final settings = MemberRoleSettings(store, context.guild!.id);
 
         if (roles == null || roles.input.isEmpty) {
@@ -39,7 +39,7 @@ class MemberRolePlugin extends BotPluginLegacy {
         final all = roles.input;
         settings.memberRoles.set(all.map((x) => x.id).toList());
         await context.respond(MessageBuilder(content: "Member roles updated.\n\n${(await Future.wait(all.map((x) async => "- ${await roleToString(x)}"))).join("\n")}"));
-      }, permissionsRequired: BotCommandPermissions.admin, needsGuild: true, aliases: ["setmemberroles"]),
+      }, permissionsRequired: BotCommandPermissions.admin, needsGuild: true, aliases: ["setmemberrole"]),
       BotCommand("memberroles", "MemberRole", "Get member roles.", (T context) async {
         final settings = MemberRoleSettings(store, context.guild!.id);
         final roles = settings.memberRoles.get() ?? [];
