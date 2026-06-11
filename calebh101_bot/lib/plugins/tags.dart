@@ -52,7 +52,7 @@ class TagsPlugin extends BotPluginLegacy {
         settings.tags.set(tags);
         await context.respond(MessageBuilder(content: "${exists ? "Deleted" : "Couldn't find"} server tag `$name`."));
       }, permissionsRequired: BotCommandPermissions.admin),
-      BotCommand("remptag", "Tags", "Delete a oersibak tag.", (T context, String name) async {
+      BotCommand("remptag", "Tags", "Delete a personal tag.", (T context, String name) async {
         final settings = TagsServerPersonalSettings(store, context.guild!.id);
         final tags = settings.tags.get() ?? {};
         final exists = tags.containsKey(name);
@@ -164,7 +164,7 @@ class TagsPlugin extends BotPluginLegacy {
 
         await channel.update(GuildTextChannelUpdateBuilder(topic: tag.value.trim()));
         await context.respond(MessageBuilder(content: "Set topic of ${channel.toMention()} to ${isServer ? "server" : "personal"} tag ${tag.key.toDiscordCodeString()}."));
-      }),
+      }, permissionsRequired: .admin),
     ];
   }
 }

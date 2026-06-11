@@ -34,6 +34,6 @@ class IgnorePlugin extends BotPluginLegacy {
       final settings = BotSettings(store);
       final current = settings.ignored.get() ?? [];
       await context.respond(MessageBuilder(content: "${await userToString(user)} is currently ${isIgnored(store, user.id) ? "**ignored**" : "**not** ignored"}."));
-    }),
+    }, permissionsRequired: .owner),
   ];
 }

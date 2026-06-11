@@ -157,7 +157,7 @@ class AdminPlugin extends BotPluginLegacy {
       ));
     }, CommandAttributes(permissionsRequired: BotCommandPermissions.admin, category: "Admin")),
 
-    BotCommand.command("addmoduser", "Add an admin user.", (T context, User user) async {
+    BotCommand.command("addmoduser", "Add a user as mod.", (T context, User user) async {
       if (context.guild == null || context.member == null) return context.respondWithError("No guild/member found.");
       final settings = ServerSettings(store, context.guild!.id);
       if (await context.assurePerms(BotCommandPermissions.admin, settings) == false) return;

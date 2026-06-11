@@ -4,12 +4,13 @@ import 'package:calebh101_bot/main.dart';
 import 'package:calebh101_discord/calebh101_discord.dart';
 import 'package:collection/collection.dart';
 
-Future<Map<int, String>> parseRules(String text, KVStore store) async {
-  final settings = RulesBotSettings(store);
+Future<Map<int, String>> parseRules(String text, KVStore store, Snowflake guildId) async {
+  final settings = Calebh101BotServerSettings(store, guildId);
   final regex = settings.rulesRegex.get() ?? RegExp(r'^(?:Rule\s+)?(\d+)\.\s+', multiLine: true);
   Logger.print("Rules", "Using pattern: $regex");
 
-  final matches = regex.allMatches(text).toList();
+  final matches = await safematch(regex, (x) => x.allMatches(text).toList());
+  if (matches == null) throw Exception("Regex ran too long.");
   final Map<int, String> rules = {};
 
   for (int i = 0; i < matches.length; i++) {
@@ -73,11 +74,11 @@ class RulesPlugin extends BotPluginLegacy {
       BotCommand("setrules", "Rules", "Set the rules.", (T context, GreedyString input) async {
         if (await context.assureGuild() == false) return;
         final settings = Calebh101BotServerSettings(store, context.guild!.id);
-        final rules = await parseRules(input.data, store);
+        final rules = await parseRules(input.data, store, context.guildId!);
         if (rules.isEmpty) return context.respondWithError("No rules were able to be parsed.");
         settings.rules.set(rules);
         await context.respond(MessageBuilder(content: "**${rules.length}** rules set. Run `rules` to view."));
-      }),
+      }, permissionsRequired: .admin, needsGuild: true),
       BotCommand("setrulesfrom", "Rules", "Set a rule from a message ID.", (T context, Snowflake messageId, [Snowflake? channelId]) async {
         if (await context.assureGuild() == false) return;
         final settings = Calebh101BotServerSettings(store, context.guild!.id);
@@ -95,11 +96,11 @@ class RulesPlugin extends BotPluginLegacy {
         });
 
         if (message == null) return;
-        final rules = await parseRules(message.content, store);
+        final rules = await parseRules(message.content, store, context.guildId!);
         if (rules.isEmpty) return context.respondWithError("No rules were able to be parsed.");
         settings.rules.set(rules);
         await context.respond(MessageBuilder(content: "**${rules.length}** rules set. Run `rules` to view."));
-      }),
+      }, permissionsRequired: .admin, needsGuild: true),
       BotCommand("setrulesfromall", "Rules", "Set a rule from messages in a range..", (T context, GuildTextChannel? channel, [Snowflake? after, Snowflake? before]) async {
         if (await context.assureGuild() == false) return;
         final settings = Calebh101BotServerSettings(store, context.guild!.id);
@@ -120,41 +121,35 @@ class RulesPlugin extends BotPluginLegacy {
         final content = message.sorted((a, b) => a.timestamp.compareTo(b.timestamp)).map((x) => x.content).join("\n");
         if (dev) Logger.print("Rules", "Content ($before-$after):\n$content");
 
-        final rules = await parseRules(content, store);
+        final rules = await parseRules(content, store, context.guildId!);
         if (rules.isEmpty) return context.respondWithError("No rules were able to be parsed.");
         settings.rules.set(rules);
         await context.respond(MessageBuilder(content: "**${rules.length}** rules set. Run `rules` to view."));
-      }),
+      }, permissionsRequired: .admin, needsGuild: true),
       BotCommand("rulesregex", "Rules", "Get the current rules regex.", (T context) async {
-        final settings = RulesBotSettings(store);
+        final settings = Calebh101BotServerSettings(store, context.guildId!);
         final pattern = settings.rulesRegex.get();
 
         await context.respond(MessageBuilder(
           content: pattern != null ? "Rules pattern:\n${pattern.pattern.toDiscordCodeBlock()}" : "No rules regex set.",
         ));
-      }),
+      }, needsGuild: true),
       BotCommand("setrulesregex", "Rules", "Set the current rules regex.", (T context, GreedyString pattern) async {
-        final settings = RulesBotSettings(store);
+        final settings = Calebh101BotServerSettings(store, context.guildId!);
         settings.rulesRegex.set(RegExp(pattern.data));
 
         await context.respond(MessageBuilder(
           content: "Rules pattern set:\n${pattern.toDiscordCodeBlock()}",
         ));
-      }, permissionsRequired: BotCommandPermissions.owner),
+      }, permissionsRequired: BotCommandPermissions.owner, needsGuild: true),
       BotCommand("resetrulesregex", "Rules", "Set the current rules regex.", (T context) async {
-        final settings = RulesBotSettings(store);
+        final settings = Calebh101BotServerSettings(store, context.guildId!);
         settings.rulesRegex.delete();
 
         await context.respond(MessageBuilder(
           content: "Rules regex set.",
         ));
-      }, permissionsRequired: BotCommandPermissions.owner),
+      }, permissionsRequired: BotCommandPermissions.owner, needsGuild: true),
     ];
   }
-}
-
-class RulesBotSettings extends BotSettings {
-  RulesBotSettings(super.store);
-
-  SettingsObject<RegExp> get rulesRegex => SettingsObject(this, "rulesRegex", encodeFunction: (input) => input.pattern.replaceAll("\\\\", "\\"), decodeFunction: (input) => input != null ? RegExp(input, multiLine: true, dotAll: false) : null);
 }

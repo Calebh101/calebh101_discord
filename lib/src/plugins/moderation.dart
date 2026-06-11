@@ -215,7 +215,7 @@ class ModerationPlugin extends BotPluginLegacy {
             ].whereType<EmbedFieldBuilder>().toList(),
           ),
         ]));
-      }),
+      }, permissionsRequired: .mod),
       BotCommand("softban", "Moderation", "Ban then unban a user.", (T context, Member member, [GreedyString? reason]) async {
         try {
           if (await confirm(context, "softban ${await confirmstringify(member, context.client)}") == false) return;
@@ -710,7 +710,28 @@ class ModerationPlugin extends BotPluginLegacy {
           "Soft-ban message removal: **${sbDuration?.prettyDetailed() ?? "Not set"}**",
         ].join("\n")));
       }),
+      BotCommand("pin", "Moderation", "Pin a message.", (MessageChatContext context, [GreedyString? reason]) async {
+        if (context.member != null && context.channel is GuildTextChannel) {
+          final perms = await (context.channel as GuildTextChannel).computePermissionsFor(context.member!);
+          if (!perms.canPinMessages) return context.respondWithError("You can't pin messages here!");
+        } else {
+          return context.respondWithError("No member or valid channel found.");
+        }
+
+        final reply = context.message.referencedMessage;
+        if (reply == null) return context.respondWithError("No message found.");
+
+        await reply.pin(auditLogReason: reason?.data);
+        await context.message.react(ReactionBuilder(name: "✅", id: null));
+      }, needsGuild: true, triggerTyping: false, options: BotCommandOptions(type: CommandType.textOnly), permissionsRequired: .mod),
       BotCommand("delete", "Moderation", "Delete a message.", (ChatContext context, [Snowflake? id]) async {
+        if (context.member != null && context.channel is GuildTextChannel) {
+          final perms = await (context.channel as GuildTextChannel).computePermissionsFor(context.member!);
+          if (!perms.canManageMessages) return context.respondWithError("You can't delete messages here!");
+        } else {
+          return context.respondWithError("No member or valid channel found.");
+        }
+
         Message? message;
 
         if (id == null && context is MessageChatContext) {

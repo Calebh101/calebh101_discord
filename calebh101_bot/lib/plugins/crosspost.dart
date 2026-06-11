@@ -18,7 +18,7 @@ class CrosspostPlugin extends BotPluginLegacy {
         final settings = CrosspostServerSettings(store, context.guild!.id);
         settings.enabled.set(value);
         await context.respond(MessageBuilder(content: "Anti-crossposting rules will now ${value ? "be **enforced**" : "**not** be enforced"}."));
-      }),
+      }, permissionsRequired: .admin),
       BotCommand("crosspostchannels", "Admin", "Set how many channels someone has to crosspost in to trigger the warning. Defaults to $defaultMinChannels.", (T context, [int? value]) async {
         if (await context.assureGuild() == false) return;
         value ??= defaultMinChannels;
@@ -26,7 +26,7 @@ class CrosspostPlugin extends BotPluginLegacy {
         final settings = CrosspostServerSettings(store, context.guild!.id);
         settings.amount.set(value);
         await context.respond(MessageBuilder(content: "A crossposting warning will now be shown when the user crossposts in **$value** channels."));
-      }),
+      }, permissionsRequired: .admin),
     ];
   }
 

@@ -227,6 +227,7 @@ class Calebh101BotServerSettings extends ServerSettings {
   SettingsObject<DateTime> get lastMath => SettingsObject(this, "lastMath", encodeFunction: (input) => input.millisecondsSinceEpoch, decodeFunction: (input) => DateTime.fromMillisecondsSinceEpoch(input));
   SettingsObject<List<String>> get allowedMathTypes => SettingsObject(this, "allowedMathTypes", encodeFunction: (input) => input as List?, decodeFunction: (input) => RecursiveCaster.cast<List<String>>(input));
   SettingsObject<Map<int, String>> get rules => SettingsObject(this, "rules", encodeFunction: (input) => input.map((k, v) => MapEntry(k.toString(), v)), decodeFunction: (input) => input is Map ? input.map((k, v) => MapEntry(int.parse(k), v)) : null);
+  SettingsObject<RegExp> get rulesRegex => SettingsObject(this, "rulesRegex", encodeFunction: (input) => input.pattern.replaceAll("\\\\", "\\"), decodeFunction: (input) => input != null ? RegExp(input, multiLine: true, dotAll: false) : null);
 
   Calebh101BotServerSettings(super.store, super.id);
 }
