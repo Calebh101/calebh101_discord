@@ -19,6 +19,7 @@ class StatsPlugin extends BotPluginLegacy {
   BotCommand aboutCommand<T extends ChatContext>(KVStore? store) => BotCommand.command("about", "See stats about this bot.", (T context) async {
     final settings = store != null && context.guild != null ? ServerSettings(store, context.guild!.id) : null;
     final prefix = settings?.prefix.get() ?? defaultPrefix;
+    final guilds = await Future.wait(context.client.guilds.cache.values.map((x) async => (guild: await x.fetch(withCounts: true), owner: await tryCatchA(() => x.owner.get()))));;
 
     await context.respond(MessageBuilder(
       content: [
@@ -27,6 +28,9 @@ class StatsPlugin extends BotPluginLegacy {
         null,
         "Current prefix: `$prefix`",
         "To see all commands, run `help`.",
+        null,
+        "**${BotCommand.commandRegistry.length}** commands, **${BotCommand.commandRegistry.mapTo((k, v) => v.category).toSet().length}** categories",
+        "**${guilds.length}** guilds",
         null,
         [
           "${SysInfo.operatingSystemName} ${SysInfo.kernelArchitecture} ${SysInfo.operatingSystemVersion}".trim(),
