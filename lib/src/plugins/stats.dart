@@ -13,6 +13,13 @@ class StatsPlugin extends BotPluginLegacy {
       aboutCommand<T>(store),
       statusCommand<T>(),
       pingCommand<T>(),
+
+      BotCommand("support", "Bot", "Check out support resources.", (T context) async {
+        await context.respond(MessageBuilder(content: [
+          if (globalHomepage != null) "Home page: $globalHomepage",
+          if (globalSupportServer != null) "Support server: ${globalSupportServer!.invite}",
+        ].nullIfEmpty?.join("\n") ?? "No support resources are available."));
+      }),
     ];
   }
 
@@ -29,8 +36,9 @@ class StatsPlugin extends BotPluginLegacy {
         "Current prefix: `$prefix`",
         "To see all commands, run `help`.",
         null,
-        "**${BotCommand.commandRegistry.length}** commands, **${BotCommand.commandRegistry.mapTo((k, v) => v.category).toSet().length}** categories",
-        "**${guilds.length}** guilds",
+        "I have **${BotCommand.commandRegistry.length}** commands (**${BotCommand.commandRegistry.mapTo((k, v) => v.category).toSet().length}** categories)",
+        "I'm in **${guilds.length}** guilds",
+        "I know **${context.client.users.cache.length}** people",
         null,
         [
           "${SysInfo.operatingSystemName} ${SysInfo.kernelArchitecture} ${SysInfo.operatingSystemVersion}".trim(),
@@ -43,7 +51,6 @@ class StatsPlugin extends BotPluginLegacy {
         null,
         "Built with [nyxx](<https://pub.dev/packages/nyxx>), running on Dart:",
         Platform.version.trim().toDiscordCodeBlock(),
-        if (globalSupportServer != null) ...["For support: ${globalSupportServer!.invite}"],
       ].map((x) => x ?? "").join("\n"),
     ));
   }, CommandAttributes(category: "Bot"));

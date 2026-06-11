@@ -74,6 +74,7 @@ void main(List<String> arguments) => wrap(() async {
   final context = await load(
     botName: "Kyle",
     version: Version.parse("1.0.0A"),
+    homepage: Uri.parse("https://github.com/Calebh101/calebh101_discord"),
 
     owners: [calebh101],
     supportServer: calebh101Server,

@@ -468,6 +468,7 @@ enum IsAdminType {
 
 List<DefinedUser>? globalOwners;
 DefinedServer? globalSupportServer;
+Uri? globalHomepage;
 late String globalBotName;
 
 /// First parameter is calling user's ID.
