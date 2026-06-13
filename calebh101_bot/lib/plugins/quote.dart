@@ -50,7 +50,7 @@ class QuotePlugin extends BotPluginLegacy {
         if (reaction?.value.any((x) => x.id == client.user.id) ?? false) {
           await message.deleteOwnReaction(ReactionBuilder.fromEmoji(emoji));
         } else {
-          final users = reaction?.value.where((x) => !x.isBot && !x.isSystem) ?? [];
+          final users = reaction?.value.where((x) => !x.isBot && !x.isSystem && message.author.id != x.id) ?? [];
           if (isMod(settings: settings, member: event.member!) && settings.quoteAdminImmediate.get()) {} else if (users.length < count) return;
         }
 
