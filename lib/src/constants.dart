@@ -27,3 +27,5 @@ final Map<String? Function(MessageCreateEvent event), num> pingPhrases = {
 };
 
 const maxUniqueReactionsPerMessage = 20;
+
+final checkmark = ReactionBuilder(name: "✅", id: null);

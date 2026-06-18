@@ -205,6 +205,12 @@ class SettingsObject<T> {
     }).toList(), defaultFunction: () => []);
   }
 
+  static SettingsObjectNotNull<Map<K, V>> map<K, V>(EntitySettings obj, String key, {K Function(dynamic input)? decodeKey, dynamic Function(K)? encodeKey, V Function(dynamic input)? decodeValue, dynamic Function(V)? encodeValue}) {
+    return SettingsObjectNotNull(obj, key, encodeFunction: (input) => input.map((k, v) => MapEntry(encodeKey?.call(k) ?? k, encodeValue?.call(v) ?? v)), decodeFunction: (input) => (input as Map?)?.map((k, v) {
+      return MapEntry(decodeKey?.call(k) ?? k as K, decodeValue?.call(v) ?? v as V);
+    }), defaultFunction: () => {});
+  }
+
   static SettingsObjectNotNull<List<Snowflake>> listSnowflake<T>(EntitySettings obj, String key) {
     return list<Snowflake>(obj, key, encodeFunction: (input) => input.value, decodeFunction: (input) => input != null ? Snowflake(input) : input);
   }
