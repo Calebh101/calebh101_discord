@@ -29,10 +29,12 @@ class RemindPlugin extends BotPluginLegacy {
           }
         }
 
-        reminders.add(Reminder(name: name.data, time: time, id: settings.getNextReminderId(), clientId: context.client.user.id.value, sentChannelId: context.channel.id.value, sentGuildId: context.guild?.id.value, sentMessageId: message.value));
+        final reminder = Reminder(name: name.data, time: time, id: settings.getNextReminderId(), clientId: context.client.user.id.value, sentChannelId: context.channel.id.value, sentGuildId: context.guild?.id.value, sentMessageId: message.value);
+
+        reminders.add(reminder);
         settings.reminders.set(reminders);
-        await context.respond(MessageBuilder(content: "Reminder set for ${time.toDiscordTimestamp(DiscordTimestamp.longDateTime)}! I'll remind you in DMs."));
-      }, noGroup: true),
+        await context.respond(MessageBuilder(content: "Reminder set for ${time.toDiscordTimestamp(DiscordTimestamp.longDateTime)}! I'll remind you in DMs.\nReminder ID: `#${reminder.id}`"));
+      }, noGroup: true, aliases: ["remindme"]),
       BotCommand("remindhere", "Reminders", "Remind you later, in this channel.", (T context, Duration wait, GreedyString name) async {
         if (await context.assureGuild() == false) return;
         final serverSettings = RemindServerSettings(store, context.guild!.id);
@@ -54,9 +56,11 @@ class RemindPlugin extends BotPluginLegacy {
           }
         }
 
-        reminders.add(Reminder(name: name.data, time: time, channelId: context.channel.id.value, id: settings.getNextReminderId(), clientId: context.client.user.id.value, sentChannelId: context.channel.id.value, sentGuildId: context.guild?.id.value, sentMessageId: message.value));
+        final reminder = Reminder(name: name.data, time: time, channelId: context.channel.id.value, id: settings.getNextReminderId(), clientId: context.client.user.id.value, sentChannelId: context.channel.id.value, sentGuildId: context.guild?.id.value, sentMessageId: message.value);
+
+        reminders.add(reminder);
         settings.reminders.set(reminders);
-        await context.respond(MessageBuilder(content: "Reminder set for ${time.toDiscordTimestamp(DiscordTimestamp.longDateTime)}! I'll remind you in ${context.channel.toMention()}."));
+        await context.respond(MessageBuilder(content: "Reminder set for ${time.toDiscordTimestamp(DiscordTimestamp.longDateTime)}! I'll remind you in ${context.channel.toMention()}.\nReminder ID: `#${reminder.id}`"));
       }),
       BotCommand("reminders", "Reminders", "View all reminders.", (T context, [User? user]) async {
         if (user != null && await context.assureOwner() == false) return;
