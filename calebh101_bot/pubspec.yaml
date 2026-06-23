@@ -20,6 +20,7 @@ dependencies:
   unicode: ^1.1.9
   http: ^1.6.0
   math_expressions: ^3.1.0
+  image: ^4.9.1
 
 dev_dependencies:
   build_runner: ^2.4.13

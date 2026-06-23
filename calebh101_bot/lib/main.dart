@@ -10,6 +10,7 @@ import 'package:calebh101_bot/plugins/crosspost.dart';
 import 'package:calebh101_bot/plugins/github.dart';
 import 'package:calebh101_bot/plugins/math.dart';
 import 'package:calebh101_bot/plugins/memberrole.dart';
+import 'package:calebh101_bot/plugins/mrbeast.dart';
 import 'package:calebh101_bot/plugins/numbers.dart';
 import 'package:calebh101_bot/plugins/quote.dart';
 import 'package:calebh101_bot/plugins/remind.dart';
@@ -67,6 +68,7 @@ void main(List<String> arguments) => wrap(() async {
     Calebh101Bet(),
     ChannelsPlugin(),
     CountersPlugin(),
+    MrBeastPlugin(),
     MultiplayerPlugin(),
 
     GuessTheNumberPlugin(),

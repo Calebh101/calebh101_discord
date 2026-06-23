@@ -260,6 +260,20 @@ BotConverter<num> numConverter() {
   return BotConverter("num", (plugin) => plugin.getConverter(RuntimeType<num>()));
 }
 
+BotConverter<Uri> uriConverter() {
+  return BotConverter("uri", (plugin) => Converter<Uri>((value, context) {
+    final word = value.quotedWord;
+    final uri = Uri.tryParse(word);
+
+    if (uri == null || uri.scheme.isEmpty || !word.contains("://")) {
+      return null;
+    }
+
+    value.getQuotedWord();
+    return uri;
+  }));
+}
+
 class Or<A, B> extends ConverterType {
   final A? $1;
   final B? $2;
