@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math';
 
 import 'package:calebh101_bot/main.dart';
@@ -13,6 +14,13 @@ final double Function(int length) xpPerMessage = (length) => (double.parse(min(l
 
 class XPPlugin extends BotPluginLegacy {
   XPPlugin() : super(id: "xp", version: Version.parse("1.0.0A"));
+
+  @override
+  FutureOr<List<BotConverter<dynamic>>> converters(CommandsPlugin plugin, KVStore store) {
+    return [
+      GreedyMemberList.converter(),
+    ];
+  }
 
   @override
   commands<T extends ChatContext>(CommandsPlugin plugin, KVStore store) {
@@ -219,7 +227,7 @@ class XPPlugin extends BotPluginLegacy {
       await context.respond(MessageBuilder(content: "XP updates channel ${id != null ? "is set to ${id.toChannel()}" : "not set"}."));
     }, CommandAttributes(category: "XP", permissionsRequired: BotCommandPermissions.admin)),
 
-    BotCommand.command("reassignxp", "Reassign everyone's XP levels.", (T context) async {
+    BotCommand.command("reassignxp", "Reassign everyone's XP levels, or specific users'.", (T context, [GreedyMemberList? input]) async {
       if (context.guild == null) return context.respondWithError("No guild found.");
       final settings = Calebh101BotServerSettings(store, context.guild!.id);
       if (await context.assurePerms(BotCommandPermissions.admin, settings) == false) return;
@@ -229,27 +237,14 @@ class XPPlugin extends BotPluginLegacy {
       }
 
       final m = await context.respond(MessageBuilder(content: getMessage(0)));
-      final members = await getAllMembers(context.guild!);
+      final members = input?.input ?? await getAllMembers(context.guild!);
 
       for (int i = 0; i < members.length; i++) {
         try {
           final member = members[i];
           final userSettings = Calebh101BotUserPerServerSettings(store, context.guild!.id, member.id);
-          final newLevel = levelFromXp(settings.xpLevels.get() ?? [], getRoundedXp(userSettings));
-          final newRole = newLevel != null ? await getRole(context.guild!, Snowflake(newLevel.roleId)) : null;
 
-          for (final XPLevel x in settings.xpLevels.get() ?? []) {
-            final role = await getRole(context.guild!, Snowflake(x.roleId));
-            if (role == null) continue;
-            if (!member.roleIds.contains(role.id)) continue;
-            await member.removeRole(role.id);
-          }
-
-          if (newRole != null) await member.addRole(newRole.id);
-
-          if (i % 100 == 0) {
-            await context.updateMessage(m, MessageUpdateBuilder(content: getMessage(((i + 1) / members.length).floor())));
-          }
+          await evalXpRoles(guild: context.guild!, member: member, xp: userSettings.xp.get() ?? 0);
         } catch (e) {
           final member = members[i];
           Logger.warn("ReassignXP", "Error with user $i (${member.id}): $e");
@@ -299,21 +294,8 @@ class XPPlugin extends BotPluginLegacy {
 
       final userSettings = Calebh101BotUserPerServerSettings(store, context.guild!.id, user.id);
       userSettings.xp.set(amount);
-
-      final newLevel = levelFromXp(settings.xpLevels.get() ?? [], roundXp(amount.toDouble()));
-      final newRole = newLevel != null ? await getRole(context.guild!, Snowflake(newLevel.roleId)) : null;
-
-      if (member != null) {
-        for (final XPLevel x in settings.xpLevels.get() ?? []) {
-          final role = await getRole(context.guild!, Snowflake(x.roleId));
-          if (role == null) continue;
-          if (!member.roleIds.contains(role.id)) continue;
-          await member.removeRole(role.id);
-        }
-      }
-
-      if (newRole != null) await member?.addRole(newRole.id);
-      await context.respond(MessageBuilder(content: "Set ${await memberToString(member, client: context.client)}'s XP to **$amount**.\nNew role: **${newRole?.name ?? null.toDiscordCodeString()}**"));
+      await evalXpRoles(guild: context.guild!, member: member, xp: amount);
+      await context.respond(MessageBuilder(content: "Set ${await memberToString(member, client: context.client)}'s XP to **$amount**."));
     }, CommandAttributes(category: "XP", permissionsRequired: BotCommandPermissions.admin)),
 
     BotCommand.command("addxp", "Add to someone's XP.", (T context, User user, double amount, [bool overrideXpPerHour = true]) async {
@@ -441,9 +423,9 @@ class XPPlugin extends BotPluginLegacy {
 The XP system is a system to show how active you are in the community.
 The way it works, is you get XP from each message you send and reaction you add. You can either save this up, or you can gamble it away with the `gamble` command for a chance to win big!
 
-- XP per message: ${xpPerMessage(2000)}
-- XP per reaction $xpPerReaction
-- Max XP per hour: $maxXpPerHour
+- XP per message: up to **${xpPerMessage(2000)} XP**
+- XP per reaction $xpPerReaction XP**
+- Max XP per hour: **$maxXpPerHour XP**
 
 ${levels != null ? "You can also get these roles from getting XP:\n\n${levels.map((level) {
   return "- ${level.roleId.toRoleMention()}: **${level.requiredXp}** XP";
@@ -452,6 +434,39 @@ ${levels != null ? "You can also get these roles from getting XP:\n\n${levels.ma
 
       await context.respond(MessageBuilder(content: content, allowedMentions: AllowedMentions(repliedUser: true)));
     }),
+
+    BotCommand("xpignoredchannels", "XP", "Get all channels where XP is *not* added.", (T context) async {
+      final settings = Calebh101BotServerSettings(store, context.guildId!);
+      final ids = settings.xpIgnoredChannels.get();
+
+      await context.respond(MessageBuilder(content: ids.nullIfEmpty?.map((id) {
+        return "- ${id.value.toChannel()} (`$id`)";
+      }).join("\n") ?? "No channels ignored."));
+    }, needsGuild: true),
+
+    BotCommand("addxpignoredchannels", "XP", "Add channels where XP is *not* added.", (T context, GreedyGuildTextChannelList channels) async {
+      final settings = Calebh101BotServerSettings(store, context.guildId!);
+      final ids = settings.xpIgnoredChannels.get();
+
+      ids.addAll(channels.data.map((x) => x.id));
+      settings.xpIgnoredChannels.set(ids);
+      await context.respond(MessageBuilder(content: "Added ${channels.data.map((x) => x.toMention()).join(", ")}."));
+    }, needsGuild: true, permissionsRequired: .admin, aliases: ["addxpignoredchannel"]),
+
+    BotCommand("removexpignoredchannels", "XP", "Remove channels where XP is *not* added.", (T context, GreedyGuildTextChannelList channels) async {
+      final settings = Calebh101BotServerSettings(store, context.guildId!);
+      final ids = settings.xpIgnoredChannels.get();
+
+      ids.removeWhere((x) => channels.data.any((y) => x == y.id));
+      settings.xpIgnoredChannels.set(ids);
+      await context.respond(MessageBuilder(content: "Removed ${channels.data.map((x) => x.toMention()).join(", ")}."));
+    }, needsGuild: true, permissionsRequired: .admin, aliases: ["removexpignoredchannel"]),
+
+    BotCommand("resetxpignoredchannels", "XP", "Reset all channels where XP is *not* added.", (T context) async {
+      final settings = Calebh101BotServerSettings(store, context.guildId!);
+      settings.xpIgnoredChannels.delete();
+      await context.respond(MessageBuilder(content: "Reset ignored channels."));
+    }, needsGuild: true, permissionsRequired: .admin),
   ];
 
   bool checkIsValidForXp(User? user) {
@@ -468,6 +483,24 @@ ${levels != null ? "You can also get these roles from getting XP:\n\n${levels.ma
 
   bool xpEnabled(Calebh101BotServerSettings settings) {
     return settings.xpEnabled.get() ?? false;
+  }
+
+  Future<void> evalXpRoles({required Guild guild, required Member? member, required double xp}) async {
+    final settings = Calebh101BotServerSettings(store, guild.id);
+    final qualifiedRoleIds = levelsFromXp(settings.xpLevels.get() ?? [], roundXp(xp)).map((x) => x.roleId).toSet();
+
+    for (final XPLevel x in settings.xpLevels.get() ?? []) {
+      if (member == null) continue;
+      final role = await getRole(guild, Snowflake(x.roleId));
+      if (role == null) continue;
+      final shouldHave = qualifiedRoleIds.contains(x.roleId);
+      final has = member.roleIds.contains(role.id);
+      if (shouldHave && !has) {
+        await member.addRole(role.id);
+      } else if (!shouldHave && has) {
+        await member.removeRole(role.id);
+      }
+    }
   }
 
   Future<AddXPResult?> addXp(GatewayEvent? event, Guild guild, User user, double toAdd, {bool overrideXpPerHour = false, required NyxxGateway client}) async {
@@ -502,15 +535,7 @@ ${levels != null ? "You can also get these roles from getting XP:\n\n${levels.ma
     final levelUp = toAdd > 0 && oldLevel?.roleId != newLevel?.roleId && newLevel != null;
     final member = await userToMember(user, guild: guild);
 
-    for (final XPLevel x in serverSettings.xpLevels.get() ?? []) {
-      if (member == null) continue;
-      final role = await getRole(guild, Snowflake(x.roleId));
-      if (role == null) continue;
-      if (!member.roleIds.contains(role.id)) continue;
-      await member.removeRole(role.id);
-    }
-
-    if (newRole != null) await member?.addRole(newRole.id);
+    await evalXpRoles(guild: guild, member: member, xp: newValue);
 
     Modlog.add(ModlogEvent(
       "xp.add",
@@ -574,6 +599,11 @@ ${levels != null ? "You can also get these roles from getting XP:\n\n${levels.ma
     return null;
   }
 
+  List<XPLevel> levelsFromXp(List<XPLevel> levels, int xp) {
+    final sorted = List<XPLevel>.from(levels)..sort((a, b) => b.requiredXp.compareTo(a.requiredXp));
+    return sorted.where((level) => xp >= level.requiredXp).toList();
+  }
+
   @override
   Future<void> onClientLoad(BotContext context) async {
     context.clients.run((client) => client.onMessageCreate.listen((event) async {
@@ -582,9 +612,11 @@ ${levels != null ? "You can also get these roles from getting XP:\n\n${levels.ma
       final user = await client.users.get(event.message.author.id);
       if (guild == null || !checkIsValidForXp(user)) return;
 
-      final prefix = ServerSettings(store, guild.id).prefix.get();
+      final serverSettings = Calebh101BotServerSettings(store, guild.id);
+      final prefix = serverSettings.prefix.get();
       final u = client.user.id;
-      final isValidContent = !event.message.content.startsWith(prefix) && !event.message.content.startsWith("<@$u>");
+
+      final isValidContent = !event.message.content.startsWith(prefix) && !event.message.content.startsWith("<@$u>") && !serverSettings.xpIgnoredChannels.get().contains(event.message.channelId);
       if (isValidContent) addXp(event, guild, user, xpPerMessage.call(event.message.content.length), client: event.gateway.client);
     }));
 
@@ -593,8 +625,17 @@ ${levels != null ? "You can also get these roles from getting XP:\n\n${levels.ma
       final guild = await event.guild?.get();
       final user = await event.user.get();
 
-      if (guild == null || !checkIsValidForXp(user)) return;
+      if (guild == null) return;
+      final serverSettings = Calebh101BotServerSettings(store, guild.id);
+      if (!checkIsValidForXp(user) || !serverSettings.xpIgnoredChannels.get().contains(event.channelId)) return;
+
       addXp(event, guild, user, xpPerReaction, client: event.gateway.client);
+    }));
+
+    context.clients.run((client) => client.onGuildMemberAdd.listen((event) async {
+      if (isIgnored(store, event.member.id)) return;
+      final settings = Calebh101BotUserPerServerSettings(store, event.guildId, event.member.id);
+      await evalXpRoles(guild: await event.guild.get(), member: event.member, xp: settings.xp.get() ?? 0);
     }));
   }
 }

@@ -10,6 +10,7 @@ import 'package:calebh101_bot/plugins/crosspost.dart';
 import 'package:calebh101_bot/plugins/github.dart';
 import 'package:calebh101_bot/plugins/math.dart';
 import 'package:calebh101_bot/plugins/memberrole.dart';
+import 'package:calebh101_bot/plugins/modmail.dart';
 import 'package:calebh101_bot/plugins/mrbeast.dart';
 import 'package:calebh101_bot/plugins/numbers.dart';
 import 'package:calebh101_bot/plugins/quote.dart';
@@ -69,6 +70,7 @@ void main(List<String> arguments) => wrap(() async {
     ChannelsPlugin(),
     CountersPlugin(),
     MrBeastPlugin(),
+    ModMailPlugin(),
     MultiplayerPlugin(),
 
     GuessTheNumberPlugin(),
@@ -77,7 +79,7 @@ void main(List<String> arguments) => wrap(() async {
 
   final context = await load(
     botName: "Kyle",
-    version: Version.parse("1.0.0A"),
+    version: Version.parse("1.1.0A"),
     homepage: Uri.parse("https://github.com/Calebh101/calebh101_discord"),
 
     owners: [calebh101],
@@ -233,6 +235,7 @@ class Calebh101BotServerSettings extends ServerSettings {
   SettingsObject<List<String>> get allowedMathTypes => SettingsObject(this, "allowedMathTypes", encodeFunction: (input) => input as List?, decodeFunction: (input) => RecursiveCaster.cast<List<String>>(input));
   SettingsObject<Map<int, String>> get rules => SettingsObject(this, "rules", encodeFunction: (input) => input.map((k, v) => MapEntry(k.toString(), v)), decodeFunction: (input) => input is Map ? input.map((k, v) => MapEntry(int.parse(k), v)) : null);
   SettingsObject<RegExp> get rulesRegex => SettingsObject(this, "rulesRegex", encodeFunction: (input) => input.pattern.replaceAll("\\\\", "\\"), decodeFunction: (input) => input != null ? RegExp(input, multiLine: true, dotAll: false) : null);
+  SettingsObjectNotNull<List<Snowflake>> get xpIgnoredChannels => SettingsObject.listSnowflake(this, "xpIgnoredChannels");
 
   Calebh101BotServerSettings(super.store, super.id);
 }

@@ -195,10 +195,10 @@ List<BotCommand> modLogCommandsX<T extends ChatContext>(KVStore store) => [
     final id = settings.modlogChannel.get();
     await context.respond(MessageBuilder(content: "Modlog channel is currently ${id != null ? "set to ${id.toChannel()}" : "**not set**"}."));
   }),
-  BotCommand.command("modlogscopes", "Select scopes to log.", (T context, [GreedyString? data]) async {
+  BotCommand("modlogscopes", "Modlog", "Select scopes to log.", (T context, [GreedyString? data]) async {
     final input = data?.data;
-    if (Modlog.events.isEmpty) return context.respondWithError("Modlog is not enabled.\n-# No events allowed. Did you forget to call `Modlog()`?");
-    if (context.guild == null || context.member == null) return context.respondWithError("No guild/member found.");
+    if (Modlog.events.isEmpty) return context.respondWithError("Modlog is not enabled.\n-# No events registered. Did you forget to call `Modlog()`?");
+
     final settings = context.guild != null ? ServerSettings(store, context.guild!.id) : null;
     if (settings == null) return context.respondWithError("No settings found.");
     if (await context.assurePerms(BotCommandPermissions.admin, settings) == false) return;
@@ -242,7 +242,7 @@ List<BotCommand> modLogCommandsX<T extends ChatContext>(KVStore store) => [
         "-# **${Modlog.events.length}** ${Word.fromCount(Modlog.events.length, singular: Word("scope"))} available: ${Modlog.events.map((x) => "`$x`").join(", ")}",
       ].join("\n"),
     ));
-  }, CommandAttributes(permissionsRequired: BotCommandPermissions.admin, category: "Modlog")),
+  }, permissionsRequired: BotCommandPermissions.admin, aliases: ["setmodlogscopes"], needsGuild: true),
   BotCommand.command("modlogtest", "Send a modlog message.", (T context, String title, String message) async {
     final settings = context.guild != null ? ServerSettings(store, context.guild!.id) : null;
     if (settings == null) return context.respondWithError("No settings found.");

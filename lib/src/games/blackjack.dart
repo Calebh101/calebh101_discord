@@ -95,7 +95,7 @@ class BlackjackProfile extends GameProfile {
   int? get biggestPossibleScore => possibleScores.nullIfEmpty?.reduce((a, b) => a > b ? a : b);
   bool get blackjackIn2 => biggestPossibleScore == 21 && cards.length == 2;
 
-  BlackjackProfile({required super.user, required super.channel});
+  BlackjackProfile({required super.details});
 
   bool won(Dealer dealer) {
     final busted = dealer.possibleScores.isEmpty;
@@ -108,7 +108,7 @@ abstract class BlackjackBettingPlugin<T extends num> {
   BlackjackBettingPlugin();
 
   void add(BlackjackProfile player, T input);
-  T get({required User user});
+  T get({required User? user, required BotPlayerDetails? bot});
   String getName(T amount);
 
   T get lowBet;
@@ -152,16 +152,16 @@ abstract class Blackjack extends MultiplayerGame<BlackjackProfile> {
 
   @override
   BlackjackProfile newGameProfile(NewGameProfileDetails details) {
-    return BlackjackProfile(user: details.user, channel: details.channel);
+    return BlackjackProfile(details: details.details);
   }
 
   @override
   FutureOr<String?> onJoin(context) {
     if (this.started) return "This game has already been started.";
-    Logger.print("BJ", "Checking user ${context.user.id}: betting=${betting.runtimeType}, amount=${betting?.get(user: context.user)}, needed=${betting?.lowBet}*$rounds");
+    Logger.print("BJ", "Checking user ${context.user.id}: betting=${betting.runtimeType}, amount=${betting?.get(user: context.user, bot: null)}, needed=${betting?.lowBet}*$rounds");
 
     if (betting != null) {
-      final amount = betting!.get(user: context.user);
+      final amount = betting!.get(user: context.user, bot: null);
       final needed = betting!.lowBet * rounds;
 
       if (amount < needed) {
@@ -173,13 +173,20 @@ abstract class Blackjack extends MultiplayerGame<BlackjackProfile> {
   }
 
   @override
+  FutureOr<String?> onJoinBot() {
+    if (this.started) return "This game has already been started.";
+    if (betting != null) return "Bots can't be added to Blackjack games when betting is allowed, as bots don't have ${betting?.getName(0)}.";
+    return null;
+  }
+
+  @override
   FutureOr<void> onTurn(GameContext<BlackjackProfile> context) async {
     final player = context.player;
     player?.cards.add(getCard(allCardsX));
 
     Future<void> updateNotYourTurn() async {
       await runForAllButCurrentPlayer(context, (player) async {
-        player.notYourTurnMessage ??= await player.channel.sendMessage(MessageBuilder(content: "Loading..."));
+        player.notYourTurnMessage ??= await player.channel?.sendMessage(MessageBuilder(content: "Loading..."));
         final length = context.player?.cards.length;
 
         await player.notYourTurnMessage?.edit(MessageUpdateBuilder(content: "", embeds: [
@@ -224,7 +231,7 @@ abstract class Blackjack extends MultiplayerGame<BlackjackProfile> {
       }
 
       final messages = await runForAllPlayers((profile) async {
-        return await profile.channel.sendMessage(MessageBuilder(embeds: [
+        return await profile.channel?.sendMessage(MessageBuilder(embeds: [
           EmbedBuilder(
             description: getDealerMessage(null),
             color: Severity.blue.color,
@@ -234,7 +241,7 @@ abstract class Blackjack extends MultiplayerGame<BlackjackProfile> {
 
       Future<void> update(String? action) async {
         await Future.wait(messages.map((message) async {
-          await message.edit(MessageUpdateBuilder(embeds: [
+          await message?.edit(MessageUpdateBuilder(embeds: [
             EmbedBuilder(
               description: getDealerMessage(null),
               color: Severity.blue.color,
@@ -295,7 +302,7 @@ abstract class Blackjack extends MultiplayerGame<BlackjackProfile> {
       await runForAllPlayers((player) async {
         player.done = false;
 
-        await player.channel.sendMessage(MessageBuilder(
+        await player.channel?.sendMessage(MessageBuilder(
           embeds: [
             EmbedBuilder(
               description: "# Round ${round + 1}/$rounds is over!\nHere are the results!\n\n$scoreList\n- The dealer: **${dealer.possibleScores.nullIfEmpty?.reduce((a, b) => a > b ? a : b) ?? "Busted!"}**\n\nWinners:\n$winnersList\n\nScoreboard:\n$scoreboardX\n\nContinuing in **10** seconds...",
@@ -357,7 +364,7 @@ abstract class Blackjack extends MultiplayerGame<BlackjackProfile> {
         }).join("\n");
 
         await runForAllPlayers((player) async {
-          await player.channel.sendMessage(MessageBuilder(embeds: [
+          await player.channel?.sendMessage(MessageBuilder(embeds: [
             EmbedBuilder(
               description: "# The game is over!\n\n$winnersListX\n\n$scoreListX\n\nThanks for playing!",
               color: Severity.good.color,
@@ -401,113 +408,130 @@ abstract class Blackjack extends MultiplayerGame<BlackjackProfile> {
     Future<void> eval() async {
       final isBetting = betting != null && player.bet == null;
       await updateNotYourTurn();
-      Message message = await context.player!.channel.sendMessage(MessageBuilder(content: "Loading..."));
 
-      String? getMessage() {
-        final scores = getAllScores(cards: myCards);
-        return "# It's your turn!\nRound ${round + 1}/$rounds\n\nYour cards: **${myCards.map((x) => cards[x]).join(", ")}**\nYour possible scores: ${scores.mapIndexed((i, x) => "${i == 0 || x == 21 ? "**" : ""}$x${i == 0 || x == 21 ? "**" : ""}").join(", ")}\n\n:one:: Hit\n:two:: Pass";
-      }
-
-      final timeLimit = Duration(minutes: 1);
-      int secondsRemaining = timeLimit.inSeconds;
+      Message? message = await context.player!.channel?.sendMessage(MessageBuilder(content: "Loading..."));
       bool hit = false;
 
-      Future<void> Function() onTimeUp = () async {
-        Logger.warn("BJ", "BJ session with user ${player.user.id} has not set onTimeUp at this point. The confirmation will appear broken.");
-      };
+      if (context.player!.isUser) {
 
-      final countdown = Timer.periodic(Duration(seconds: 1), (timer) {
-        secondsRemaining--;
-
-        if (secondsRemaining <= 0) {
-          Logger.print("BJ", "BJ session with user ${player.user.id} hit time limit.");
-          onTimeUp.call();
-          timer.cancel();
+        String? getMessage() {
+          final scores = getAllScores(cards: myCards);
+          return "# It's your turn!\nRound ${round + 1}/$rounds\n\nYour cards: **${myCards.map((x) => cards[x]).join(", ")}**\nYour possible scores: ${scores.mapIndexed((i, x) => "${i == 0 || x == 21 ? "**" : ""}$x${i == 0 || x == 21 ? "**" : ""}").join(", ")}\n\n:one:: Hit\n:two:: Pass";
         }
-      });
 
-      bool availableForHighBet() {
-        if (betting == null) return false;
-        final roundsLeft = rounds - (round + 1);
-        return betting!.get(user: player.user) >= betting!.highBet * roundsLeft;
-      }
+        final timeLimit = Duration(minutes: 1);
+        int secondsRemaining = timeLimit.inSeconds;
 
-      await message.edit(MessageUpdateBuilder(content: "", embeds: [
-        EmbedBuilder(
-          description: isBetting ? "Select how much you will bet.\nYou have **${betting?.get(user: player.user)}** ${betting?.getName(betting?.get(user: player.user) ?? 0)}.\nYour first card: **${cards[myCards.firstOrNull]}**\n\n1️⃣ **${betting?.lowBet}** ${betting?.getName(betting!.lowBet)}\n2️⃣ **${betting?.highBet}** ${betting?.getName(betting!.highBet)} (**${availableForHighBet() ? "available" : "unavailable"}**)" : getMessage(),
-          color: Severity.warning.color,
-        ),
-      ]));
-
-      await message.react(ReactionBuilder(name: "1️⃣", id: null));
-      if (!isBetting || availableForHighBet()) await message.react(ReactionBuilder(name: "2️⃣", id: null));
-
-      try {
-        final controller = StreamController<MessageReactionAddEvent>();
-        client.onMessageReactionAdd.listen((x) => controller.isClosed ? null : controller.sink.add(x));
-
-        onTimeUp = () async {
-          countdown.cancel();
-          controller.close();
+        Future<void> Function() onTimeUp = () async {
+          Logger.warn("BJ", "BJ session with user ${player.id} has not set onTimeUp at this point. The confirmation will appear broken.");
         };
 
-        await for (final event in controller.stream) {
-          if (event.messageId != message.id) continue;
-          if (event.message.channelId != player.channel.id) continue;
-          if (event.userId != context.player!.user.id) continue;
+        final countdown = Timer.periodic(Duration(seconds: 1), (timer) {
+          secondsRemaining--;
 
-          hit = event.emoji.name == "1️⃣"; // in betting, means low bet
-          break;
+          if (secondsRemaining <= 0) {
+            Logger.print("BJ", "BJ session with user ${player.id} hit time limit.");
+            onTimeUp.call();
+            timer.cancel();
+          }
+        });
+
+        bool availableForHighBet() {
+          if (betting == null) return false;
+          final roundsLeft = rounds - (round + 1);
+          return betting!.get(user: player.user, bot: null) >= betting!.highBet * roundsLeft;
         }
-      } catch (e) {
-        Logger.warn("BJ", "Error: $e");
-      }
 
-      countdown.cancel();
-
-      if (isBetting) {
-        final bet = !hit && availableForHighBet() ? betting!.highBet : betting!.lowBet;
-        betting?.add(player, bet);
-        context.player!.bet = bet;
-
-        await context.player!.channel.sendMessage(MessageBuilder(embeds: [
+        await message?.edit(MessageUpdateBuilder(content: "", embeds: [
           EmbedBuilder(
-            description: "# You Bet:\n**$bet** ${betting?.getName(bet)}",
-            color: Severity.blue.color,
+            description: isBetting ? "Select how much you will bet.\nYou have **${betting?.get(user: player.user, bot: null)}** ${betting?.getName(betting?.get(user: player.user, bot: null) ?? 0)}.\nYour first card: **${cards[myCards.firstOrNull]}**\n\n1️⃣ **${betting?.lowBet}** ${betting?.getName(betting!.lowBet)}\n2️⃣ **${betting?.highBet}** ${betting?.getName(betting!.highBet)} (**${availableForHighBet() ? "available" : "unavailable"}**)" : getMessage(),
+            color: Severity.warning.color,
           ),
         ]));
-        await eval();
-        return;
+
+        await message?.react(ReactionBuilder(name: "1️⃣", id: null));
+        if (!isBetting || availableForHighBet()) await message?.react(ReactionBuilder(name: "2️⃣", id: null));
+
+        try {
+          final controller = StreamController<MessageReactionAddEvent>();
+          client.onMessageReactionAdd.listen((x) => controller.isClosed ? null : controller.sink.add(x));
+
+          onTimeUp = () async {
+            countdown.cancel();
+            controller.close();
+          };
+
+          await for (final event in controller.stream) {
+            if (event.messageId != message?.id) continue;
+            if (event.message.channelId != player.channel?.id) continue;
+            if (event.userId != context.player!.id) continue;
+
+            hit = event.emoji.name == "1️⃣"; // in betting, means low bet
+            break;
+          }
+        } catch (e) {
+          Logger.warn("BJ", "Error: $e");
+        }
+
+        countdown.cancel();
+
+        if (isBetting) {
+          final bet = !hit && availableForHighBet() ? betting!.highBet : betting!.lowBet;
+          betting?.add(player, bet);
+          context.player!.bet = bet;
+
+          await context.player!.channel?.sendMessage(MessageBuilder(embeds: [
+            EmbedBuilder(
+              description: "# You Bet:\n**$bet** ${betting?.getName(bet)}",
+              color: Severity.blue.color,
+            ),
+          ]));
+
+          await eval();
+          return;
+        }
+      } else {
+        final personality = (player.details as BotPlayerDetails).personality;
+
+        hit = (player.biggestPossibleScore ?? 0) < switch (personality) {
+          .safe => 14,
+          .average => 16,
+          .risky => 18,
+        };
+
+        await Future.delayed(Duration(seconds: 3));
       }
 
       if (hit) {
         myCards.add(getCard(allCardsX));
 
         if (context.player?.biggestPossibleScore == null) {
-          await context.player!.channel.sendMessage(MessageBuilder(embeds: [
+          await context.player!.channel?.sendMessage(MessageBuilder(embeds: [
             EmbedBuilder(
               description: "# You busted!\nYour cards: **${myCards.map((x) => cards[x]).join(", ")}**",
               color: Severity.severe.color,
             ),
           ]));
+
           return;
         } else {
           if (player.biggestPossibleScore == 21) {
-            await context.player!.channel.sendMessage(MessageBuilder(embeds: [
+            await context.player!.channel?.sendMessage(MessageBuilder(embeds: [
               EmbedBuilder(
                 description: "# You got a blackjack!\nYour cards: **${myCards.map((x) => cards[x]).join(", ")}**",
                 color: Severity.good.color,
               ),
             ]));
+
             return;
           } else {
-            await message.delete();
+            await message?.delete();
             await eval();
             return;
           }
         }
       } else {
-        await context.player!.channel.sendMessage(MessageBuilder(embeds: [
+        await context.player!.channel?.sendMessage(MessageBuilder(embeds: [
           EmbedBuilder(
             description: "Your score: **${context.player?.biggestPossibleScore}**\nYour cards: **${myCards.map((x) => cards[x]).join(", ")}**",
             color: Severity.warning.color,

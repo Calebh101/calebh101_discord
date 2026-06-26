@@ -213,7 +213,7 @@ abstract class BetPlugin<N extends num> extends BotPlugin {
 
         await message.edit(MessageUpdateBuilder(embeds: [bet.toEmbed(await getColor(context.member), context.getPrintablePrefix(store: store))]));
         await context.message.react(ReactionBuilder(name: "✅", id: null));
-      }, options: BotCommandOptions(type: .textOnly), permissionsRequired: .admin, needsGuild: true, triggerTyping: false),
+      }, options: BotCommandOptions(type: .textOnly), permissionsRequired: .admin, needsGuild: true, triggerTyping: false, aliases: ["updatebet"]),
     ];
   }
 }

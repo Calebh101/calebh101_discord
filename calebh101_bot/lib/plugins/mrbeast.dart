@@ -88,11 +88,15 @@ class MrBeastPlugin extends BotPlugin {
 
           final response = await http.get(uri);
           if (response.statusCode > 210 || response.statusCode < 200) throw Exception("Invalid status code (uri=$uri): ${response.statusCode}");
-          var base = decodeImage(response.bodyBytes)!;
+          var base = decodeImage(response.bodyBytes);
 
           final response2 = await http.get(thumbnail.url);
           if (response2.statusCode > 210 || response2.statusCode < 200) throw Exception("Invalid status code (uri=${thumbnail.url}): ${response.statusCode}");
-          final overlay = decodeImage(response2.bodyBytes)!;
+          final overlay = decodeImage(response2.bodyBytes);
+
+          if (base == null || overlay == null) {
+            throw Exception("Couldn't decode an image.\nbase=${base.runtimeType}, overlay=${overlay.runtimeType}\n\nresponse: ${response.statusCode}, ${response.headers["content-type"]}\nresponse2: ${response2.statusCode} ${response.headers["content-type"]}");
+          }
 
           final resizedOverlay = copyResize(
             overlay,

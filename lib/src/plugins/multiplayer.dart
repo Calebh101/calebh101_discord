@@ -28,7 +28,7 @@ class MultiplayerPlugin extends BotPlugin {
       BotCommand("joingame", "Games", "Join a game by code.", (T context, String code) async {
         if (isBanned(context.user)) return context.respondWithError("You can't join this game.");
 
-        final existing = MultiplayerPlugin.games.entries.firstWhereOrNull((x) => !x.value.ended && x.value.players.any((y) => context.user.id == y.user.id))?.value;
+        final existing = MultiplayerPlugin.games.entries.firstWhereOrNull((x) => !x.value.ended && x.value.players.any((y) => context.user.id == y.id))?.value;
         if (existing != null) return context.respondWithError("You're already playing a game of **${existing.name}**!");
 
         final game = games[code];
@@ -39,14 +39,14 @@ class MultiplayerPlugin extends BotPlugin {
       }),
 
       BotCommand("kickgame", "Games", "Make someone leave any games they're in.", (T context, User user) async {
-        final game = games.entries.firstWhereOrNull((x) => x.value.players.any((y) => y.user.id == user.id))?.value;
+        final game = games.entries.firstWhereOrNull((x) => x.value.players.any((y) => y.user?.id == user.id))?.value;
         if (game == null) return context.respondWithError("This user is not in any games!");
         await game.leave(context, user);
       }, permissionsRequired: .owner),
 
       BotCommand("leavegame", "Games", "Leave any games you're in.", (T context) async {
         final user = context.user;
-        final game = games.entries.firstWhereOrNull((x) => x.value.players.any((y) => y.user.id == user.id))?.value;
+        final game = games.entries.firstWhereOrNull((x) => x.value.players.any((y) => y.user?.id == user.id))?.value;
 
         if (game == null) return context.respondWithError("This user is not in any games!");
         await game.leave(context, user);
@@ -108,7 +108,7 @@ class MultiplayerPlugin extends BotPlugin {
         game.setStopped();
 
         await game.runForAllPlayers((player) async {
-          await player.channel.sendMessage(MessageBuilder(content: "This game has been stopped."));
+          await player.channel?.sendMessage(MessageBuilder(content: "This game has been stopped."));
         });
 
         await context.respond(MessageBuilder(content: "Game stopped."));
@@ -146,12 +146,39 @@ class MultiplayerPlugin extends BotPlugin {
           ),
         ]));
       }),
+
+      BotCommand("addbot", "Games", "Add a bot to a game.", (T context, String code) async {
+        final game = games[code];
+        if (game == null || game.ended) return context.respondWithError("Invalid code.");
+        if (!isOwner(id: context.user.id) && context.userId != game.owner.id) return context.respondWithError("You're not the owner of this game!");
+
+        final result = await game.joinBot();
+        if (result.$1 == false) return context.respondWithError(result.$2 ?? "There was an error adding the bot.");
+
+        await context.respond(MessageBuilder(
+          content: "Bot added!\nName: **${result.$2}**",
+        ));
+      }),
+
+      BotCommand("rembot", "Games", "Remove a bot from a game by name.", (T context, String code, GreedyString name) async {
+        final game = games[code];
+        if (game == null || game.ended) return context.respondWithError("Invalid code.");
+        if (!isOwner(id: context.user.id) && context.userId != game.owner.id) return context.respondWithError("You're not the owner of this game!");
+        final player = game.players.firstWhereOrNull((x) => x.isBot && (x.details as BotPlayerDetails).name == name.data.trim());
+
+        if (player == null) {
+          return context.respondWithError("We couldn't find a bot by the name of `$name`.");
+        }
+
+        await game.leaveBot(player);
+        await context.respond(MessageBuilder(content: "Removed bot **$name**."));
+      }),
     ];
   }
 }
 
 Future<void> newGame<T extends MultiplayerGame>(ChatContext context, {required KVStore store, required T Function() newGame}) async {
-  final existing = MultiplayerPlugin.games.entries.firstWhereOrNull((x) => !x.value.ended && x.value.players.any((y) => context.user.id == y.user.id))?.value;
+  final existing = MultiplayerPlugin.games.entries.firstWhereOrNull((x) => !x.value.ended && x.value.players.any((y) => context.user.id == y.user?.id))?.value;
   if (existing != null) return context.respondWithError("You're already playing a game of **${existing.name}**!");
 
   final perms = BotCommandPermissions.owner;

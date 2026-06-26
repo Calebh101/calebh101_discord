@@ -58,12 +58,15 @@ class GuessTheNumber extends MultiplayerGame {
   FutureOr<String?> onJoin(_) => null;
 
   @override
+  FutureOr<String?> onJoinBot() => null;
+
+  @override
   Future<void> onTurn(GameContext context) async {
     final player = context.player;
     if (player == null) throw Exception();
 
     await runForAllButCurrentPlayer(context, (player) async {
-      await player.channel.sendMessage(MessageBuilder(embeds: [
+      await player.channel?.sendMessage(MessageBuilder(embeds: [
         EmbedBuilder(
           description: "It's ${context.player?.formattedDisplayName}'s turn! (${context.turnIndex + 1}/${players.length})",
           color: Severity.blue.color,
@@ -80,75 +83,84 @@ class GuessTheNumber extends MultiplayerGame {
       ),
     ]));
 
-    await player.channel.sendMessage(MessageBuilder(embeds: [
-      EmbedBuilder(
-        description: "**It's your turn!**\n\nType your number of choice below. Reminder: The number is in between 1-$highest (inclusive).\nType `skip` to skip your turn.\nCurrent range: **${hints.range.low}-${hints.range.high}**\n\n${hints.join("\n")}".trim(),
-        color: Severity.warning.color,
-      ),
-    ]));
-
-    final timeLimit = Duration(minutes: 1);
-    int secondsRemaining = timeLimit.inSeconds;
-    int? chosen;
     turn++;
+    int? chosen;
 
-    Future<void> Function() onTimeUp = () async {
-      Logger.warn("GTN", "GTN session with user ${player.user.id} has not set onTimeUp at this point. The confirmation will appear broken.");
-    };
+    if (player.isBot) {
+      final range = hints.range;
+      final n = (range.high - range.low) / 2;
 
-    final countdown = Timer.periodic(Duration(seconds: 1), (timer) {
-      secondsRemaining--;
+      chosen = n.ceil() + range.low;
+      await Future.delayed(Duration(seconds: 3));
+    } else {
+      await player.channel?.sendMessage(MessageBuilder(embeds: [
+        EmbedBuilder(
+          description: "**It's your turn!**\n\nType your number of choice below. Reminder: The number is in between 1-$highest (inclusive).\nType `skip` to skip your turn.\nCurrent range: **${hints.range.low}-${hints.range.high}**\n\n${hints.join("\n")}".trim(),
+          color: Severity.warning.color,
+        ),
+      ]));
 
-      if (secondsRemaining <= 0) {
-        Logger.print("GTN", "GTN session with user ${player.user.id} hit time limit.");
-        onTimeUp.call();
-        timer.cancel();
-      }
-    });
+      final timeLimit = Duration(minutes: 1);
+      int secondsRemaining = timeLimit.inSeconds;
 
-    try {
-      final controller = StreamController<MessageCreateEvent>();
-      client.onMessageCreate.listen((x) => controller.isClosed ? null : controller.sink.add(x));
-
-      onTimeUp = () async {
-        countdown.cancel();
-        controller.close();
+      Future<void> Function() onTimeUp = () async {
+        Logger.warn("GTN", "GTN session with user ${player.id} has not set onTimeUp at this point. The confirmation will appear broken.");
       };
 
-      await for (final event in controller.stream) {
-        if (event.message.channelId != player.channel.id) continue;
-        if (event.message.author.id != player.user.id) continue;
-        if (event.message.author is! User) continue;
+      final countdown = Timer.periodic(Duration(seconds: 1), (timer) {
+        secondsRemaining--;
 
-        if (["skip"].contains(event.message.content.trim().toLowerCase())) {
+        if (secondsRemaining <= 0) {
+          Logger.print("GTN", "GTN session with user ${player.id} hit time limit.");
+          onTimeUp.call();
+          timer.cancel();
+        }
+      });
+
+      try {
+        final controller = StreamController<MessageCreateEvent>();
+        client.onMessageCreate.listen((x) => controller.isClosed ? null : controller.sink.add(x));
+
+        onTimeUp = () async {
+          countdown.cancel();
+          controller.close();
+        };
+
+        await for (final event in controller.stream) {
+          if (event.message.channelId != player.channel?.id) continue;
+          if (event.message.author.id != player.user?.id) continue;
+          if (event.message.author is! User) continue;
+
+          if (["skip"].contains(event.message.content.trim().toLowerCase())) {
+            await onTimeUp();
+            break;
+          }
+
+          final result = int.tryParse(event.message.content);
+          if (result == null) continue;
+          chosen = result;
+
           await onTimeUp();
           break;
         }
-
-        final result = int.tryParse(event.message.content);
-        if (result == null) continue;
-        chosen = result;
-
-        await onTimeUp();
-        break;
+      } catch (e) {
+        Logger.warn("GTN", "Error: $e");
       }
-    } catch (e) {
-      Logger.warn("GTN", "Error: $e");
-    }
 
-    if (chosen == null) {
-      await runForAllPlayers((player) async {
-        await player.channel.sendMessage(MessageBuilder(content: "${context.player?.formattedDisplayName} skipped."));
-      });
+      if (chosen == null) {
+        await runForAllPlayers((player) async {
+          await player.channel?.sendMessage(MessageBuilder(content: "${context.player?.formattedDisplayName} skipped."));
+        });
 
-      await Future.delayed(Duration(seconds: 5));
-      await nextTurn(context);
-      return;
+        await Future.delayed(Duration(seconds: 5));
+        await nextTurn(context);
+        return;
+      }
     }
 
     if (chosen == number) {
       await runForAllPlayers((player) async {
-        await player.channel.sendMessage(MessageBuilder(embeds: [
+        await player.channel?.sendMessage(MessageBuilder(embeds: [
           EmbedBuilder(
             description: "**${context.player?.formattedDisplayName} won!**\n\n${context.player?.formattedDisplayName} guessed the number correctly, which was **$number**.",
             color: Severity.good.color,
@@ -171,7 +183,7 @@ class GuessTheNumber extends MultiplayerGame {
     }
 
     await runForAllPlayers((player) async {
-      await player.channel.sendMessage(MessageBuilder(embeds: [
+      await player.channel?.sendMessage(MessageBuilder(embeds: [
         EmbedBuilder(
           description: "${context.player?.formattedDisplayName} guessed **$chosen** and was wrong. The actual number is **${number > chosen! ? "higher" : "lower"}**.",
           color: Severity.severe.color,
@@ -186,7 +198,7 @@ class GuessTheNumber extends MultiplayerGame {
 
   @override
   GameProfile newGameProfile(NewGameProfileDetails details) {
-    return GameProfile(user: details.user, channel: details.channel);
+    return GameProfile(details: details.details);
   }
 }
 

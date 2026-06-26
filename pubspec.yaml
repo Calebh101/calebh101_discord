@@ -11,7 +11,7 @@ dependencies:
   localpkg:
     git:
       url: https://github.com/Calebh101/localpkg-dart.git
-      ref: 440a4e8d416a2a47d6f2b1c2ca2372b146109c58
+      ref: 95b95887c425dbb09e79934c81d3428768e6a7c5
 
   nyxx:
     git:
