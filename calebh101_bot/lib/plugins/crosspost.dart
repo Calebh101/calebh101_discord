@@ -3,7 +3,7 @@ import 'dart:async';
 import 'package:calebh101_discord/calebh101_discord.dart';
 
 const int defaultMinChannels = 3;
-const Duration window = Duration(seconds: 10);
+const Duration window = Duration(seconds: 30);
 
 final Map<Snowflake, List<({String content, Snowflake channelId, DateTime timestamp})>> messages = {};
 
@@ -102,7 +102,7 @@ Future<void> handle({
           message.author.id.value.toMention(),
           "Please don't crosspost your message in multiple channels.",
           "If you'd like to move a message to a different channel, first delete the original message.",
-          "-# Channel #${channels.length}: ${message.channelId.value.toChannel()}, guild `${guild.id}`"
+          "-# Channel #${channels.length}: ${message.channelId.value.toChannel()}"
         ].join("\n"),
       ));
     }

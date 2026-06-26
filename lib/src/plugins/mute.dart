@@ -152,6 +152,20 @@ class MutePlugin extends BotPluginLegacy {
           ]));
         }
       }, needsGuild: true, permissionsRequired: BotCommandPermissions.mod, aliases: ["m"]),
+      BotCommand("mutes", "Moderation", "List all current mutes.", (T context) async {
+        final settings = MuteServerSettings(store, context.guildId!);
+        final mutes = settings.mutes.get() ?? [];
+        if (mutes.isEmpty) return context.respondWithError("No mutes.");
+
+        await respondWithPagination(context, PaginatedEmbedBuilder(
+          title: "Current Mutes for ${context.guild?.name}",
+          color: await getColor(context.member),
+          footer: ElementBasedEmbedFooterBuilder(elements: ["${mutes.length} Mutes"]),
+          pages: EmbedPage.generate(mutes.mapToList((mute) {
+            return EmbedFieldBuilder(name: "Mute #${mute.id}", value: "${mute.user.toMention()}\nExpires: ${mute.time?.toDiscordTimestamp(DiscordTimestamp.shortDateTime) ?? "Never"}\nReason: ${mute.reason ?? "No reason provided"}", isInline: false);
+          })),
+        ), settings: settings);
+      }, permissionsRequired: .mod, needsGuild: true),
     ];
   }
 
@@ -162,8 +176,6 @@ class MutePlugin extends BotPluginLegacy {
 
       for (final entry in values.entries) {
         for (final mute in entry.value) {
-          Logger.print("Mute", "Scanning mute ${entry.key}${mute.id} (${mute.user})");
-
           if (mute.time != null && DateTime.now().toUtc().isAfter(mute.time!)) {
             Logger.print("Mute", "Auto-unmuting user ${mute.user} (ID=${mute.id})");
 
