@@ -165,7 +165,7 @@ abstract class MultiplayerGame<T extends GameProfile> {
     final channel = await tryCatchA(() => client.users.createDm(owner.id));
     if (channel == null) return "We couldn't send you a DM.";
 
-    final message = await tryCatchA(() => channel.sendMessage(MessageBuilder(content: "Waiting for you to start the game!\nUse `${getPrintablePrefix(store: store, guildId: null)}startgame $code` to start it.\n\nCode: `$code`\nPlayers: $minPlayers-$maxPlayers")));
+    final message = await tryCatchA(() => channel.sendMessage(MessageBuilder(content: "Waiting for you to start the game!\nUse `${getPrintablePrefix(store: store, guildId: null)}startgame $code` to start it.\n\nCode: `$code`\nPlayers: **${[minPlayers, ?maxPlayers].join("-")}**")));
     if (message == null) return "We couldn't send you a message in your DMs.";
 
     players.add(newGameProfile(NewGameProfileDetails.user(user: owner, channel: channel)));
@@ -182,7 +182,7 @@ abstract class MultiplayerGame<T extends GameProfile> {
   bool initialized = false;
 
   int get minPlayers;
-  int get maxPlayers;
+  int? get maxPlayers;
 
   String get name;
   String get description;
@@ -320,7 +320,7 @@ abstract class MultiplayerGame<T extends GameProfile> {
   @nonVirtual
   Future<String?> join(ChatContext context) async {
     if (stopped) return "This game is not available.";
-    if (players.length + 1 > maxPlayers) return "Maximum number of players reached.";
+    if (maxPlayers != null && players.length + 1 > maxPlayers!) return "Maximum number of players reached.";
 
     final result = await onJoin(context);
     if (result != null) return result;
@@ -331,7 +331,7 @@ abstract class MultiplayerGame<T extends GameProfile> {
     final message = await tryCatchA(() => channel.sendMessage(MessageBuilder(content: "Loading...")));
     if (message == null) return "We couldn't send you a message in your DMs.";
 
-    if (players.length + 1 > maxPlayers) {
+    if (maxPlayers != null && players.length + 1 > maxPlayers!) {
       await message.edit(MessageUpdateBuilder(content: "Maximum number of players reached."));
       return "Maximum number of players reached.";
     }
@@ -340,23 +340,23 @@ abstract class MultiplayerGame<T extends GameProfile> {
     players.add(player);
 
     await message.edit(MessageUpdateBuilder(content: "Waiting for ${ownerPlayer.formattedDisplayName} to start the game!"));
-    await ownerPlayer.channel?.sendMessage(MessageBuilder(content: "**${player.formattedDisplayName}** joined!\nPlayers: **${players.length}/$maxPlayers**"));
+    await ownerPlayer.channel?.sendMessage(MessageBuilder(content: "**${player.formattedDisplayName}** joined!\nPlayers: **${[players.length, ?maxPlayers].join("/")}**"));
     return null;
   }
 
   @nonVirtual
-  Future<(bool, String?)> joinBot() async {
+  Future<(bool, String?)> joinBot({bool alert = true}) async {
     if (stopped) return (false, "This game is not available.");
-    if (players.length + 1 > maxPlayers) return  (false, "Maximum number of players reached.");
+    if (maxPlayers != null && players.length + 1 > maxPlayers!) return (false, "Maximum number of players reached.");
 
     final result = await onJoinBot();
-    if (result != null) return  (false, result);
-    if (players.length + 1 > maxPlayers) return  (false, "Maximum number of players reached.");
+    if (result != null) return (false, result);
+    if (maxPlayers != null && players.length + 1 > maxPlayers!) return (false, "Maximum number of players reached.");
 
     final player = newGameProfile(NewGameProfileDetails.bot());
     players.add(player);
 
-    await ownerPlayer.channel?.sendMessage(MessageBuilder(content: "**${player.formattedDisplayName}** joined!\nPlayers: **${players.length}/$maxPlayers**"));
+    if (alert) await ownerPlayer.channel?.sendMessage(MessageBuilder(content: "**${player.formattedDisplayName}** joined!\nPlayers: **${[players.length, ?maxPlayers].join("/")}**"));
     return (true, (player.details as BotPlayerDetails).name);
   }
 

@@ -145,7 +145,7 @@ abstract class Blackjack extends MultiplayerGame<BlackjackProfile> {
   int get minPlayers => 1;
 
   @override
-  int get maxPlayers => 12;
+  int? get maxPlayers => 12;
 
   @override
   String get name => "Blackjack";

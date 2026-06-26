@@ -3,7 +3,7 @@ import 'dart:math';
 
 import 'package:calebh101_discord/calebh101_discord.dart';
 
-const highest = 1000;
+const highest = 1_000_000;
 
 class GTNEntry {
   final bool higher;
@@ -42,7 +42,7 @@ class GuessTheNumber extends MultiplayerGame {
   int get minPlayers => 1;
 
   @override
-  int get maxPlayers => 8;
+  int? get maxPlayers => null;
 
   List<GTNEntry> hints = [];
   int turn = 0;

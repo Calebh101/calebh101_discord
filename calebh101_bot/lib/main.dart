@@ -5,6 +5,7 @@ import 'package:calebh101_bot/games/guessthenumber.dart';
 import 'package:calebh101_bot/plugins/bet.dart';
 import 'package:calebh101_bot/plugins/botchat.dart';
 import 'package:calebh101_bot/plugins/channels.dart';
+import 'package:calebh101_bot/plugins/comics.dart';
 import 'package:calebh101_bot/plugins/counters.dart';
 import 'package:calebh101_bot/plugins/crosspost.dart';
 import 'package:calebh101_bot/plugins/github.dart';
@@ -71,6 +72,7 @@ void main(List<String> arguments) => wrap(() async {
     CountersPlugin(),
     MrBeastPlugin(),
     ModMailPlugin(),
+    ComicsPlugin(),
     MultiplayerPlugin(),
 
     GuessTheNumberPlugin(),

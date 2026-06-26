@@ -78,7 +78,7 @@ class MultiplayerPlugin extends BotPlugin {
         if (game == null || game.ended) return context.respondWithError("Invalid code.");
 
         if (!isOwner(id: context.user.id) && context.userId != game.owner.id) return context.respondWithError("You're not the owner of this game!");
-        if (game.players.length < game.minPlayers) return context.respondWithError("Not enough players! You need **${game.minPlayers}-${game.maxPlayers}**, and you currently have **${game.players.length}**.");
+        if (game.players.length < game.minPlayers) return context.respondWithError("Not enough players! You need **${game.minPlayers}**, and you currently have **${game.players.length}**.");
 
         await context.respond(MessageBuilder(content: "Game **$code** started."));
         await game.start(context);
@@ -158,6 +158,31 @@ class MultiplayerPlugin extends BotPlugin {
         await context.respond(MessageBuilder(
           content: "Bot added!\nName: **${result.$2}**",
         ));
+      }),
+
+      BotCommand("addbots", "Games", "Add a bot to a game.", (T context, String code, int amount) async {
+        final game = games[code];
+        if (game == null || game.ended) return context.respondWithError("Invalid code.");
+        if (!isOwner(id: context.user.id) && context.userId != game.owner.id) return context.respondWithError("You're not the owner of this game!");
+
+        List<String> names = [];
+        List<(int, String?)> errors = [];
+
+        final results = await Future.wait(List.generate(amount, (i) async {
+          final result = await game.joinBot(alert: false);
+
+          if (result.$1) {
+            names.add(result.$2!);
+          } else {
+            errors.add((i, result.$2));
+          }
+        }));
+
+        await context.respond(MessageBuilder(
+          content: "**${names.length}/$amount** bots added!\n**${errors.length}** errors\n\n${errors.map((x) => "- ${x.$1}. ${x.$2}").join("\n")}",
+        ));
+
+        await game.ownerPlayer.channel?.sendMessage(MessageBuilder(content: "Added **${names.length}** bots."));
       }),
 
       BotCommand("rembot", "Games", "Remove a bot from a game by name.", (T context, String code, GreedyString name) async {
