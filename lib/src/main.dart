@@ -268,6 +268,8 @@ Future<BotContext?> load({required BotSettings settings, required FutureOr<Patte
     } else if (e is UncaughtException) {
       if (e.message.contains("BASE_TYPE_MAX_LENGTH")) {
         return handleError(e, "The response generated was too long.");
+      } else if (e.message.contains("Missing Permissions")) {
+        return handleError(e, "Whoops! I don't have permission to do something. Make sure that my perms allow me to do what I'm trying to do.");
       }
     }
 
@@ -275,6 +277,10 @@ Future<BotContext?> load({required BotSettings settings, required FutureOr<Patte
       await (e.context as MessageChatContext).respond(MessageBuilder(
         content: "An unknown error has occurred.\n```${e.runtimeType}```",
       ));
+    }
+
+    if (e is UnhandledInteractionException) {
+      return;
     }
 
     for (final o in owners) {

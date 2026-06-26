@@ -19,6 +19,7 @@ import 'package:calebh101_bot/plugins/remind.dart';
 import 'package:calebh101_bot/plugins/rules.dart';
 import 'package:calebh101_bot/plugins/selfreact.dart';
 import 'package:calebh101_bot/plugins/stickyroles.dart';
+import 'package:calebh101_bot/plugins/support.dart';
 import 'package:calebh101_bot/plugins/tags.dart';
 import 'package:calebh101_bot/plugins/welcome.dart';
 import 'package:calebh101_bot/plugins/xp.dart';
@@ -73,6 +74,7 @@ void main(List<String> arguments) => wrap(() async {
     MrBeastPlugin(),
     ModMailPlugin(),
     ComicsPlugin(),
+    SupportPlugin(),
     MultiplayerPlugin(),
 
     GuessTheNumberPlugin(),
@@ -238,6 +240,7 @@ class Calebh101BotServerSettings extends ServerSettings {
   SettingsObject<Map<int, String>> get rules => SettingsObject(this, "rules", encodeFunction: (input) => input.map((k, v) => MapEntry(k.toString(), v)), decodeFunction: (input) => input is Map ? input.map((k, v) => MapEntry(int.parse(k), v)) : null);
   SettingsObject<RegExp> get rulesRegex => SettingsObject(this, "rulesRegex", encodeFunction: (input) => input.pattern.replaceAll("\\\\", "\\"), decodeFunction: (input) => input != null ? RegExp(input, multiLine: true, dotAll: false) : null);
   SettingsObjectNotNull<List<Snowflake>> get xpIgnoredChannels => SettingsObject.listSnowflake(this, "xpIgnoredChannels");
+  SettingsObjectNotNull<List<Snowflake>> get supportChannels => SettingsObject.listSnowflake(this, "supportChannels");
 
   Calebh101BotServerSettings(super.store, super.id);
 }

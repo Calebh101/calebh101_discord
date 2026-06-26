@@ -1,4 +1,5 @@
 import 'package:calebh101_discord/calebh101_discord.dart';
+import 'package:collection/collection.dart';
 
 abstract class ConverterType {
   const ConverterType();
@@ -233,11 +234,60 @@ class GreedyGuildTextChannelList extends ConverterType {
       }
 
       value.index = value.end;
-      return GreedyGuildTextChannelList(results);
+      return GreedyGuildTextChannelList(results.sorted((a, b) => a.position.compareTo(b.position)));
     }));
   }
 
   static BotCommand debugCommand() => BotCommand("greedyguildtextchannellistdebug", "Debug", "GreedyGuildTextChannelList", (ChatContext context, GreedyGuildTextChannelList channels) async {
+    await context.respond(MessageBuilder(content: channels.data.map((x) => x.mention).join(", ")));
+  }, permissionsRequired: .admin);
+}
+
+class GreedyGuildChannelList extends ConverterType {
+  final List<GuildChannel> input;
+  List<GuildChannel> get data => input;
+
+  const GreedyGuildChannelList(this.input);
+
+  @override
+  String get name => "Greedy list of channels";
+
+  @override
+  String get info => "List of channels.";
+
+  static BotConverter converter() {
+    return BotConverter("GreedyChannelList", (plugin) => Converter<GreedyGuildChannelList>((value, context) async {
+      if (value.remaining.trim() == "allInGuild" && context.guild != null) {
+        value.index = value.end;
+        return GreedyGuildChannelList((await context.guild!.fetchChannels()).whereType<GuildChannel>().toList());
+      }
+
+      final converter = plugin.getConverter(RuntimeType<GuildChannel>())!;
+      List<GuildChannel> results = [];
+
+      while (value.remaining.trim().isNotEmpty) {
+        if (value.quotedWord.startsWith("allInCategory:") && context.guild != null) {
+          final word = value.getQuotedWord().replaceFirst("allInCategory:", "");
+          final all = await context.guild!.fetchChannels();
+          final withParent = await Future.wait(all.where((x) => x.parent != null).map((x) async => (x, await x.parent!.get() as GuildCategory)));
+
+          final channels = withParent.where((x) => x.$2.name == word);
+          results.addAll(channels.map((x) => x.$1));
+          continue;
+        }
+
+        try {
+          final channel = await converter.convert.call(value, context);
+          results.add(channel!);
+        } catch (_) {}
+      }
+
+      value.index = value.end;
+      return GreedyGuildChannelList(results.sorted((a, b) => a.position.compareTo(b.position)));
+    }));
+  }
+
+  static BotCommand debugCommand() => BotCommand("greedyguildchannellistdebug", "Debug", "GreedyChannelList", (ChatContext context, GreedyGuildChannelList channels) async {
     await context.respond(MessageBuilder(content: channels.data.map((x) => x.mention).join(", ")));
   }, permissionsRequired: .admin);
 }
