@@ -107,8 +107,8 @@ class BlackjackProfile extends GameProfile {
 abstract class BlackjackBettingPlugin<T extends num> {
   BlackjackBettingPlugin();
 
-  void add(BlackjackProfile player, T input);
-  T get({required User? user, required BotPlayerDetails? bot});
+  void add(User user, T input);
+  T get(User user);
   String getName(T amount);
 
   T get lowBet;
@@ -158,10 +158,10 @@ abstract class Blackjack extends MultiplayerGame<BlackjackProfile> {
   @override
   FutureOr<String?> onJoin(context) {
     if (this.started) return "This game has already been started.";
-    Logger.print("BJ", "Checking user ${context.user.id}: betting=${betting.runtimeType}, amount=${betting?.get(user: context.user, bot: null)}, needed=${betting?.lowBet}*$rounds");
+    Logger.print("BJ", "Checking user ${context.user.id}: betting=${betting.runtimeType}, amount=${betting?.get(context.user)}, needed=${betting?.lowBet}*$rounds");
 
     if (betting != null) {
-      final amount = betting!.get(user: context.user, bot: null);
+      final amount = betting!.get(context.user);
       final needed = betting!.lowBet * rounds;
 
       if (amount < needed) {
@@ -326,12 +326,12 @@ abstract class Blackjack extends MultiplayerGame<BlackjackProfile> {
       ]));
 
       for (final p in players) {
-        if (p.bet != null && betting != null) {
+        if (p.isUser && p.bet != null && betting != null) {
           final bet = p.bet!;
 
           if (p.won(dealer)) {
             final gained = bet * (p.blackjackIn2 ? 3 : 2);
-            betting!.add(p, gained);
+            betting!.add(p.user!, gained);
             p.gained += gained - bet;
           } else {
             p.gained -= bet;
@@ -439,12 +439,12 @@ abstract class Blackjack extends MultiplayerGame<BlackjackProfile> {
         bool availableForHighBet() {
           if (betting == null) return false;
           final roundsLeft = rounds - (round + 1);
-          return betting!.get(user: player.user, bot: null) >= betting!.highBet * roundsLeft;
+          return betting!.get(player.user!) >= betting!.highBet * roundsLeft;
         }
 
         await message?.edit(MessageUpdateBuilder(content: "", embeds: [
           EmbedBuilder(
-            description: isBetting ? "Select how much you will bet.\nYou have **${betting?.get(user: player.user, bot: null)}** ${betting?.getName(betting?.get(user: player.user, bot: null) ?? 0)}.\nYour first card: **${cards[myCards.firstOrNull]}**\n\n1️⃣ **${betting?.lowBet}** ${betting?.getName(betting!.lowBet)}\n2️⃣ **${betting?.highBet}** ${betting?.getName(betting!.highBet)} (**${availableForHighBet() ? "available" : "unavailable"}**)" : getMessage(),
+            description: isBetting ? "Select how much you will bet.\nYou have **${betting?.get(player.user!)}** ${betting?.getName(betting?.get(player.user!) ?? 0)}.\nYour first card: **${cards[myCards.firstOrNull]}**\n\n1️⃣ **${betting?.lowBet}** ${betting?.getName(betting!.lowBet)}\n2️⃣ **${betting?.highBet}** ${betting?.getName(betting!.highBet)} (**${availableForHighBet() ? "available" : "unavailable"}**)" : getMessage(),
             color: Severity.warning.color,
           ),
         ]));
@@ -477,7 +477,7 @@ abstract class Blackjack extends MultiplayerGame<BlackjackProfile> {
 
         if (isBetting) {
           final bet = !hit && availableForHighBet() ? betting!.highBet : betting!.lowBet;
-          betting?.add(player, bet);
+          betting?.add(player.user!, bet);
           context.player!.bet = bet;
 
           await context.player!.channel?.sendMessage(MessageBuilder(embeds: [

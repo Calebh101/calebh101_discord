@@ -6,9 +6,9 @@ extension CommandContextHelper on CommandContext {
   Snowflake get userId => user.id;
   Snowflake? get guildId => guild?.id;
 
-  void respondWithError(String message, {ResponseLevel? level}) async {
+  void respondWithError(String message, {ResponseLevel? level, AllowedMentions? allowedMentions}) async {
     try {
-      await respond(MessageBuilder(content: message), level: level);
+      await respond(MessageBuilder(content: message, allowedMentions: allowedMentions), level: level);
     } catch (e) {
       Logger.warn("respondWithError", "Unable to respond with error '$message': $e");
     }

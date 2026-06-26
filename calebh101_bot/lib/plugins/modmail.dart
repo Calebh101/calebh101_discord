@@ -82,6 +82,8 @@ class ModMailPlugin extends BotPlugin {
           await thread.addThreadMember(user.id);
 
           await thread.sendMessage(MessageBuilder(
+            content: "@everyone",
+            allowedMentions: AllowedMentions(parse: ["everyone"]),
             embeds: [
               EmbedBuilder(
                 title: "ModMail Thread #$id",
@@ -164,6 +166,42 @@ Click the button below to create a new ticket!
         await channel.update(ThreadUpdateBuilder(name: channel.name.replaceFirst("❌", "✅"), isLocked: true, isArchived: true));
         await context.respond(MessageBuilder(content: "ModMail ticket **#$id** resolved."));
       }, permissionsRequired: .admin, needsGuild: true, aliases: ["mmresolve", "resolvemm", "resolvemodmail"]),
+
+      BotCommand("modmailblock", "ModMail", "Block a user from opening ModMail tickets.", (T context, Member member) async {
+        final settings = ModMailServerSettings(store, context.guildId!);
+        final ids = settings.modmailBlocked.get();
+
+        if (ids.contains(member.id)) {
+          return context.respondWithError("${member.toMention()} is already blocked.", allowedMentions: AllowedMentions(repliedUser: true));
+        }
+
+        ids.add(member.id);
+        settings.modmailBlocked.set(ids);
+
+        await context.respond(MessageBuilder(content: "Blocked user ${member.toMention()}.", allowedMentions: AllowedMentions(repliedUser: true)));
+      }, needsGuild: true, permissionsRequired: .admin, aliases: ["mmblock", "blockmm"]),
+
+      BotCommand("modmailunblock", "ModMail", "Unblock a user from opening ModMail tickets.", (T context, Member member) async {
+        final settings = ModMailServerSettings(store, context.guildId!);
+        final ids = settings.modmailBlocked.get();
+
+        if (!ids.contains(member.id)) {
+          return context.respondWithError("${member.toMention()} is already not blocked.", allowedMentions: AllowedMentions(repliedUser: true));
+        }
+
+        ids.remove(member.id);
+        settings.modmailBlocked.set(ids);
+
+        await context.respond(MessageBuilder(content: "Unblocked user ${member.toMention()}.", allowedMentions: AllowedMentions(repliedUser: true)));
+      }, needsGuild: true, permissionsRequired: .admin, aliases: ["mmunblock", "unblockmm"]),
+
+      BotCommand("modmailblocked", "ModMail", "See if a user is blocked from opening ModMail tickets.", (T context, Member member) async {
+        final settings = ModMailServerSettings(store, context.guildId!);
+        final ids = settings.modmailBlocked.get();
+        final blocked = ids.contains(member.id);
+
+        await context.respond(MessageBuilder(content: "User ${member.toMention()} is currently **${blocked ? "blocked" : "unblocked"}** from opening ModMail tickets.", allowedMentions: AllowedMentions(repliedUser: true)));
+      }, needsGuild: true, aliases: ["mmblocked", "blockedmm"]),
     ];
   }
 }
