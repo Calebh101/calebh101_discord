@@ -82,7 +82,7 @@ class ModMailPlugin extends BotPlugin {
           await thread.addThreadMember(user.id);
 
           await thread.sendMessage(MessageBuilder(
-            content: "@everyone",
+            content: settings.roleToPing.get()?.value.toRoleMention(),
             allowedMentions: AllowedMentions(parse: ["everyone"]),
             embeds: [
               EmbedBuilder(
@@ -130,8 +130,8 @@ class ModMailPlugin extends BotPlugin {
           EmbedBuilder(
             title: "ModMail Info for ${context.guild?.name}",
             description: """
-This thing is used for when you need to contact mods in private!
-Reminder: **do not DM mods** if this is an option.
+ModMail is used for when you need to contact mods in private!
+Reminder: **Do not DM mods** if ModMail is an option.
 
 ## ModMail Rules
 ${modmailRules.map((x) => "- $x").join("\n")}
@@ -202,6 +202,20 @@ Click the button below to create a new ticket!
 
         await context.respond(MessageBuilder(content: "User ${member.toMention()} is currently **${blocked ? "blocked" : "unblocked"}** from opening ModMail tickets.", allowedMentions: AllowedMentions(repliedUser: true)));
       }, needsGuild: true, aliases: ["mmblocked", "blockedmm"]),
+
+      BotCommand("mmroletoping", "ModMail", "Get the role that will be pinged on new ModMails.", (T context) async {
+        final settings = ModMailServerSettings(store, context.guildId!);
+        final id = settings.roleToPing.get();
+
+        await context.respond(MessageBuilder(content: id?.value.toRoleMention() ?? "Not set.", allowedMentions: AllowedMentions(repliedUser: true)));
+      }, needsGuild: true),
+
+      BotCommand("mmsetroletoping", "ModMail", "Set the role that will be pinged on new ModMails.", (T context, [Role? role]) async {
+        final settings = ModMailServerSettings(store, context.guildId!);
+        settings.roleToPing.set(role?.id);
+
+        await context.respond(MessageBuilder(content: role?.toMention() ?? "Unset.", allowedMentions: AllowedMentions(repliedUser: true)));
+      }, needsGuild: true, permissionsRequired: .admin),
     ];
   }
 }
@@ -210,6 +224,7 @@ class ModMailServerSettings extends ServerSettings {
   ModMailServerSettings(super.store, super.id);
 
   SettingsObject<Snowflake> get modmailChannel => SettingsObject.snowflake(this, "modmailChannel");
+  SettingsObject<Snowflake> get roleToPing => SettingsObject.snowflake(this, "roleToPing");
   SettingsObjectNotNull<int> get modmailId => SettingsObjectNotNull(this, "modmailId", defaultFunction: () => 0);
   SettingsObjectNotNull<List<Snowflake>> get modmailBlocked => SettingsObject.listSnowflake(this, "modmailBlocked");
 
