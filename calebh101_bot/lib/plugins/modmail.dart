@@ -11,6 +11,46 @@ class ModMailPlugin extends BotPlugin {
     "We do not moderate things that happen outside of this server. Don't report anything from other servers/platforms. This also applies to DMs unless the user is scamming or soliciting, or is otherwise related to this server.",
   ];
 
+  Future<String> openModmail({required NyxxGateway client, required User user, required Member? member, required Guild guild, required ModMailServerSettings settings}) async {
+    Logger.print("ModMail", "Opening ticket for user ${user.username} (${user.id}) and guild ${guild.id}");
+    final blocked = settings.modmailBlocked.get().contains(user.id);
+
+    if (blocked) {
+      return "You are currently blocked from ModMail.";
+    }
+
+    final id = settings.nextModmailId();
+    late GuildTextChannel channel;
+
+    try {
+      channel = await client.channels.get(settings.modmailChannel.get()!) as GuildTextChannel;
+    } catch (e) {
+      Logger.warn("ModMail", "Unable to get ModMail channel for guild ${guild.id} and channel ID ${settings.modmailChannel.get()} (user=${user.id}): $e");
+      return "We couldn't create a ModMail ticket.";
+    }
+
+    final thread = await channel.createThread(ThreadBuilder.privateThread(
+      name: "❌ #$id: ${member?.nick ?? user.globalName ?? user.username} (${user.username})",
+      invitable: false,
+    )) as PrivateThread;
+
+    await thread.addThreadMember(user.id);
+
+    await thread.sendMessage(MessageBuilder(
+      content: [?settings.roleToPing.get()?.value.toRoleMention(), user.mention].join(" "),
+      embeds: [
+        EmbedBuilder(
+          title: "ModMail Thread #$id",
+          description: "**Hey there, ${user.mention}! This is your ModMail thread!**\nYou may now send any messages and add any attachments that you need to.\nA mod will be with you shortly!",
+          color: await getColor(member),
+          timestamp: DateTime.now().toUtc(),
+        ),
+      ],
+    ));
+
+    return "ModMail ticket **#$id** for ${user.mention} opened.";
+  }
+
   @override
   FutureOr<void> onClientLoad(BotContext context) {
     context.clients.run((client) {
@@ -52,52 +92,8 @@ class ModMailPlugin extends BotPlugin {
         }
 
         if (interaction is ModalSubmitInteraction && interaction.data.customId == "modmail_modal") {
-          Logger.print("ModMail", "Opening ticket for user ${user.username} (${user.id}) and guild ${guild.id}");
-
-          if (blocked) {
-            await interaction.respond(MessageBuilder(
-              content: "You are currently blocked from ModMail.",
-              flags: MessageFlags.ephemeral,
-            ));
-
-            return;
-          }
-
-          final id = settings.nextModmailId();
-          late GuildTextChannel channel;
-
-          try {
-            channel = await client.channels.get(settings.modmailChannel.get()!) as GuildTextChannel;
-          } catch (e) {
-            Logger.warn("ModMail", "Unable to get ModMail channel for guild ${guild.id} and channel ID ${settings.modmailChannel.get()} (user=${user.id}): $e");
-            await interaction.respond(MessageBuilder(content: "We couldn't create a ModMail ticket.", flags: MessageFlags.ephemeral));
-            return;
-          }
-
-          final thread = await channel.createThread(ThreadBuilder.privateThread(
-            name: "❌ #$id: ${member?.nick ?? user.globalName ?? user.username} (${user.username})",
-            invitable: false,
-          )) as PrivateThread;
-
-          await thread.addThreadMember(user.id);
-
-          await thread.sendMessage(MessageBuilder(
-            content: settings.roleToPing.get()?.value.toRoleMention(),
-            allowedMentions: AllowedMentions(parse: ["everyone"]),
-            embeds: [
-              EmbedBuilder(
-                title: "ModMail Thread #$id",
-                description: "**Hey there, ${user.mention}! This is your ModMail thread!**\nYou may now send any messages and add any attachments that you need to.\nA mod will be with you shortly!",
-                color: await getColor(member),
-                timestamp: DateTime.now().toUtc(),
-              ),
-            ],
-          ));
-
-          await interaction.respond(MessageBuilder(
-            flags: MessageFlags.ephemeral,
-            content: "ModMail ticket **#$id** for ${user.mention} opened.",
-          ));
+          final content = await openModmail(client: client, user: user, member: member, guild: guild, settings: settings);
+          await interaction.respond(MessageBuilder(content: content, flags: MessageFlags.ephemeral));
         }
       });
     });
@@ -208,14 +204,22 @@ Click the button below to create a new ticket!
         final id = settings.roleToPing.get();
 
         await context.respond(MessageBuilder(content: id?.value.toRoleMention() ?? "Not set.", allowedMentions: AllowedMentions(repliedUser: true)));
-      }, needsGuild: true),
+      }, needsGuild: true, aliases: ["modmailroletoping"]),
 
       BotCommand("mmsetroletoping", "ModMail", "Set the role that will be pinged on new ModMails.", (T context, [Role? role]) async {
         final settings = ModMailServerSettings(store, context.guildId!);
         settings.roleToPing.set(role?.id);
 
         await context.respond(MessageBuilder(content: role?.toMention() ?? "Unset.", allowedMentions: AllowedMentions(repliedUser: true)));
-      }, needsGuild: true, permissionsRequired: .admin),
+      }, needsGuild: true, permissionsRequired: .admin, aliases: ["modmailsetroletoping"]),
+
+      BotCommand("modmailfor", "ModMail", "Open a ModMail ticket for someone.", (T context, Member member) async {
+        final user = member.user ?? await context.client.users.get(member.id);
+        final settings = ModMailServerSettings(store, context.guildId!);
+
+        final result = await openModmail(client: context.client, user: user, member: member, guild: context.guild!, settings: settings);
+        await context.respond(MessageBuilder(content: result));
+      }, needsGuild: true, permissionsRequired: .mod),
     ];
   }
 }
