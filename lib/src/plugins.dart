@@ -33,6 +33,12 @@ class PluginStore {
     Logger.print("PluginStore", "Found ${results.length} converters: ${results.join(", ")}");
     return results;
   }
+
+  Future<List<TerminalCommand>> terminalCommands(KVStore store) async {
+    final results = (await Future.wait(plugins.map((x) => x.terminalCommands(store).toFuture()))).flatten().toList();
+    Logger.print("PluginStore", "Found ${results.length} terminal commands: ${results.join(", ")}");
+    return results;
+  }
 }
 
 class BotPluginInfo {
@@ -41,11 +47,6 @@ class BotPluginInfo {
   final Version version;
 
   const BotPluginInfo({required this.id, required this.version, required this.description});
-}
-
-abstract class BotCommandRegisterable {
-  FutureOr<List<BotCommand>> commands<T extends ChatContext>(CommandsPlugin plugin, KVStore store) => [];
-  FutureOr<List<BotConverter>> converters(CommandsPlugin plugin, KVStore store) => [];
 }
 
 @Deprecated("Use BotPlugin and define getInfo.")
@@ -61,7 +62,7 @@ abstract class BotPluginLegacy extends BotPlugin {
   }
 }
 
-abstract class BotPlugin extends BotCommandRegisterable {
+abstract class BotPlugin {
   late String className;
   late PluginStore pluginStore;
 
@@ -72,6 +73,9 @@ abstract class BotPlugin extends BotCommandRegisterable {
   BotPluginInfo get info;
   FutureOr<void> onRegister() async {}
   FutureOr<void> onClientLoad(BotContext context) async {}
+  FutureOr<List<BotCommand>> commands<T extends ChatContext>(CommandsPlugin plugin, KVStore store) => [];
+  FutureOr<List<BotConverter>> converters(CommandsPlugin plugin, KVStore store) => [];
+  FutureOr<List<TerminalCommand>> terminalCommands(KVStore store) => [];
 
   String get id => info.id;
   Version get version => info.version;

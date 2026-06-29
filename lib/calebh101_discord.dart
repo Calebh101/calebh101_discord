@@ -39,7 +39,7 @@ export 'src/plugins/multiplayer.dart';
 
 export 'src/games/blackjack.dart';
 
-export 'package:nyxx/nyxx.dart' hide Logger;
+export 'package:nyxx/nyxx.dart' hide Logger, HttpRequest, HttpResponse;
 export 'package:nyxx_commands/nyxx_commands.dart';
 export 'package:nyxx_extensions/nyxx_extensions.dart';
 export 'package:localpkg/localpkg.dart';

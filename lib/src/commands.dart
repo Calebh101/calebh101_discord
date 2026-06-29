@@ -232,7 +232,7 @@ class CommandAttributes {
 BotCommand defaultCheck(KVStore store) => BotCommand.check((plugin) {
   return Check((context) async {
     if (isIgnored(store, context.user.id)) return false;
-    final command = BotCommand.getCommand(context.command.name/*.replaceFirst("dev_", "")*/);
+    final command = BotCommand.getCommand(context.command.name);
 
     if (command == null) {
       Logger.error("Check", "Invalid command: ${context.command.name}");
@@ -264,7 +264,7 @@ BotCommand defaultCheck(KVStore store) => BotCommand.check((plugin) {
     final pass = restrictPass != null;
 
     if (!pass) {
-      if (context is MessageChatContext) await context.message.react(ReactionBuilder(name: "🚫", id: null));
+      if (context is MessageChatContext && (ifGuild(store, context.guildId, (id) => RestrictServerSettings(store, id))?.restrictionsReact.get() ?? true)) await context.message.react(ReactionBuilder(name: "🚫", id: null));
       if (context is InteractionChatContext) await context.respond(MessageBuilder(content: "Command is disabled.\nRun `checkcommand \"${command.name}\"` to learn more."), level: ResponseLevel.hint);
       return false;
     }

@@ -68,27 +68,51 @@ class RestrictCommandsPlugin extends BotPluginLegacy {
       }
     }
 
-    final disabled = (settings.disabled.get() ?? {})[command/*.replaceFirst("dev_", "")*/] ?? false;
+    final disabled = (settings.disabled.get() ?? {})[command] ?? false;
     if (disabled) return null;
 
-    final restrictions = settings.restrictions.get()?.firstWhereOrNull((x) => x.command/*.replaceFirst("dev_", "")*/ == command/*.replaceFirst("dev_", "")*/);
-    if (restrictions == null) return "No restrictions";
+    final restrictionsOld = settings.restrictions.get()?.firstWhereOrNull((x) => x.command == command);
+    final restrictions = settings.restrictionsAdvanced.get().firstWhereOrNull((x) => x.command == command);
+    final totalRestrictions = (restrictionsOld?.data.length ?? 0) + (restrictions?.ors.map((x) => x.length).sum ?? 0);
 
-    final conditions = await Future.wait(restrictions.data.map((x) async => switch (x.type) {
-      Restriction.channel => x.data == channelId.value,
-      Restriction.notChannel => x.data != channelId.value,
-      Restriction.role => (await getRoleIds()).any((y) => x.data == y.value),
-      Restriction.notRole => !(await getRoleIds()).any((y) => x.data == y.value),
-      Restriction.user => x.data == userId.value,
-      Restriction.notUser => x.data != userId.value,
-    }));
+    Future<List<bool>> checkConditions(List<RestrictionData> data) async {
+      return await Future.wait(data.map((x) async => switch (x.type) {
+        Restriction.channel => x.data == channelId.value,
+        Restriction.notChannel => x.data != channelId.value,
+        Restriction.role => (await getRoleIds()).any((y) => x.data == y.value),
+        Restriction.notRole => !(await getRoleIds()).any((y) => x.data == y.value),
+        Restriction.user => x.data == userId.value,
+        Restriction.notUser => x.data != userId.value,
+      }));
+    }
 
-    final pass = switch (restrictions.combination) {
-      RestrictionCombination.and => conditions.every,
-      RestrictionCombination.or => conditions.any,
-    }((x) => x);
+    if (restrictionsOld != null) {
+      final restrictions = restrictionsOld;
+      final conditions = await checkConditions(restrictions.data);
 
-    return pass ? "Passed ${conditions.length} ${restrictions.combination.name} conditions" : null;
+      final pass = switch (restrictions.combination) {
+        RestrictionCombination.and => conditions.every,
+        RestrictionCombination.or => conditions.any,
+      }((x) => x);
+
+      if (!pass) return null;
+    }
+
+    if (restrictions == null) return "No advanced restrictions";
+    bool passed = false;
+    String? passedConditions;
+
+    for (final ands in restrictions.ors) {
+      final conditions = await checkConditions(ands);
+
+      if (conditions.every((x) => x)) {
+        passedConditions = ands.join(" and ");
+        passed = true;
+        break;
+      }
+    }
+
+    return passed ? "Passed condition: `$passedConditions`" : null;
   }
 
   static bool canAdminUseDisabledCommands(RestrictServerSettings settings) {
@@ -97,7 +121,7 @@ class RestrictCommandsPlugin extends BotPluginLegacy {
 
   static Future<bool> assureCanEditRestrictions(ChatContext context, RestrictServerSettings settings) async {
     if (!canAdminUseDisabledCommands(settings)) {
-      if (await context.assurePerms(BotCommandPermissions.claimer, settings)) {
+      if (!context.verifyPerms(BotCommandPermissions.claimer, settings)) {
         await context.respond(MessageBuilder(content: "Due to current permissions, only the bot claimer can set command restrictions."));
         return false;
       }
@@ -128,9 +152,14 @@ class RestrictCommandsPlugin extends BotPluginLegacy {
         if (await context.assureGuild() == false) return;
         final settings = RestrictServerSettings(store, context.guild!.id);
         if (await assureCanEditRestrictions(context, settings) == false) return;
+        final found = BotCommand.getCommand(command);
 
-        if (BotCommand.getCommand(command) == null) {
+        if (found == null) {
           return context.respondWithError("Command not found: `$command`");
+        }
+
+        if (found.permissionsRequired == .owner) {
+          return context.respondWithError("You can't override this command.");
         }
 
         final current = settings.overrideDefaultPermissions.get() ?? {};
@@ -150,8 +179,7 @@ class RestrictCommandsPlugin extends BotPluginLegacy {
         final restrictions = () {
           if (context.guild == null) return null;
           final settings = RestrictServerSettings(store, context.guild!.id);
-          final restrictions = settings.restrictions.get()?.firstWhereOrNull((x) => x.command/*.replaceFirst("dev_", "")*/ == command/*.replaceFirst("dev_", "")*/);
-          return restrictions;
+          return [settings.restrictions.get()?.firstWhereOrNull((x) => x.command == command), settings.restrictionsAdvanced.get().firstWhereOrNull((x) => x.command == command)].whereType<BaseCommandRestrictions>().join(", ");
         }();
 
         final override = getOverrideDefaultPermissions(store: store, command: command, guildId: context.guild?.id);
@@ -165,7 +193,7 @@ class RestrictCommandsPlugin extends BotPluginLegacy {
           ].join("\n"),
         ));
       }, permissionsRequired: BotCommandPermissions.admin),
-      BotCommand("setrestrictions", "Restrictions", "Set command restrictions", (T context, String command, RestrictionCombination mode, GreedyString input) async {
+      BotCommand("setrestrictions", "Restrictions", "Set command restrictions", (T context, String command, GreedyStringList input) async {
         if (await context.assureGuild() == false) return;
         final settings = RestrictServerSettings(store, context.guild!.id);
         if (await assureCanEditRestrictions(context, settings) == false) return;
@@ -174,13 +202,18 @@ class RestrictCommandsPlugin extends BotPluginLegacy {
           return context.respondWithError("Command not found: `$command`");
         }
 
-        final restrictions = RestrictionData.tryParse(input.data) ?? [];
-        final data = CommandRestrictions(command: command, data: restrictions, combination: mode);
+        final restrictions = RestrictionData.tryParse(input.data);
+        final data = AdvancedCommandRestrictions(command: command, ors: restrictions);
+        Logger.print("Restrictions", "Found restrictions from input: $input\n$data");
 
-        final current = settings.restrictions.get() ?? [];
+        final current = settings.restrictionsAdvanced.get();
         current.removeWhere((x) => x.command == command);
         current.add(data);
-        settings.restrictions.set(current);
+        settings.restrictionsAdvanced.set(current);
+
+        final currentOld = settings.restrictions.get() ?? [];
+        currentOld.removeWhere((x) => x.command == command);
+        settings.restrictions.set(currentOld);
 
         await context.respond(MessageBuilder(content: "Found ${restrictions.length} restrictions:\n${data.toDiscordCodeBlock()}"));
       }, permissionsRequired: BotCommandPermissions.admin, extendedDescription: "The first input (and, or) determines if all the restrictions for a command need to be entirely true, or only one of them needs to be true. The input after that are the actual restrictions, which can be the following operators, where `<id>` is an integer:\n\n${[Restriction.values.map((x) {
@@ -199,13 +232,20 @@ class RestrictCommandsPlugin extends BotPluginLegacy {
         current.removeWhere((x) => x.command == command);
         settings.restrictions.set(current);
 
+        final currentOld = settings.restrictions.get() ?? [];
+        currentOld.removeWhere((x) => x.command == command);
+        settings.restrictions.set(currentOld);
+
         await context.respond(MessageBuilder(content: "Removed all restrictions for command `$command`."));
       }, permissionsRequired: BotCommandPermissions.admin),
       BotCommand("allrestrictions", "Restrictions", "View all restrictions for all commands.", (ChatContext context) async {
         if (await context.assureGuild() == false) return;
         final settings = RestrictServerSettings(store, context.guild!.id);
-        final data = settings.restrictions.get() ?? [];
-        Map<String, String?> results = Map.fromEntries(BotCommand.commandRegistry.keys.map((x) => MapEntry(x, data.firstWhereOrNull((y) => y.command == x)?.serialize())).where((x) => x.value != null));
+
+        final restrictions = settings.restrictions.get() ?? [];
+        final advanced = settings.restrictionsAdvanced.get();
+
+        Map<String, String?> results = Map.fromEntries(BotCommand.commandRegistry.keys.map((x) => MapEntry(x, advanced.firstWhereOrNull((y) => y.command == x)?.serialize())).where((x) => x.value != null));
 
         await context.respond(MessageBuilder(content: "Found **${results.length}** commands, of which **${results.values.whereType<String>().length}** had restrictions.", attachments: [
           AttachmentBuilder(data: utf8.encode(jsonEncode(results)), fileName: "restrictions.txt"),
@@ -214,14 +254,25 @@ class RestrictCommandsPlugin extends BotPluginLegacy {
       BotCommand("clearrestrictions", "Restrictions", "Clear all restrictions for all commands, after dumping them.", (ChatContext context) async {
         if (await context.assureGuild() == false) return;
         final settings = RestrictServerSettings(store, context.guild!.id);
-        final data = settings.restrictions.get() ?? [];
-        Map<String, String?> results = Map.fromEntries(BotCommand.commandRegistry.keys.map((x) => MapEntry(x, data.firstWhereOrNull((y) => y.command == x)?.serialize())));
+
+        final restrictions = settings.restrictions.get() ?? [];
+        final advanced = settings.restrictionsAdvanced.get();
+
+        Map<String, String?> results = Map.fromEntries(BotCommand.commandRegistry.keys.map((x) => MapEntry(x, advanced.firstWhereOrNull((y) => y.command == x)?.serialize())).where((x) => x.value != null));
+
         settings.restrictions.delete();
+        settings.restrictionsAdvanced.delete();
 
         await context.respond(MessageBuilder(content: "Found **${results.length}** commands, of which **${results.values.whereType<String>().length}** had restrictions.\nAll restrictions have been deleted.", attachments: [
           AttachmentBuilder(data: utf8.encode(jsonEncode(results)), fileName: "restrictions.txt"),
         ]));
       }, permissionsRequired: BotCommandPermissions.admin),
+      BotCommand("restrictionsreact", "Restrictions", "Whether to react :no_entry_sign: when a user uses commands that are restricted.", (T context, bool value) async {
+        final settings = RestrictServerSettings(store, context.guild!.id);
+        settings.restrictionsReact.set(value);
+        await context.respond(MessageBuilder(content: "Restriction reacts **${value ? "enabled" : "disabled"}**."));
+      }, needsGuild: true, permissionsRequired: .admin),
+
       BotCommand("loadrestrictions", "Restrictions", "Load restrictions from a JSON input.", (ChatContext context) async {
         String? attachment;
         Map<String, String>? input;
@@ -255,20 +306,19 @@ class RestrictCommandsPlugin extends BotPluginLegacy {
 
         if (await context.assureGuild() == false) return;
         final settings = RestrictServerSettings(store, context.guild!.id);
-        final results = <CommandRestrictions>[];
+        final results = <AdvancedCommandRestrictions>[];
 
         for (final entry in input.entries) {
           try {
             if (BotCommand.getCommand(entry.key) == null) continue;
-            final items = entry.value.split(" ");
-            final combination = RestrictionCombination.values.firstWhere((x) => x.name == items.first.trim());
-            results.add(CommandRestrictions(command: entry.key, data: RestrictionData.tryParse(items[1])!, combination: combination));
+            final items = entry.value.split(",");
+            results.add(AdvancedCommandRestrictions(command: entry.key, ors: RestrictionData.tryParse(items)));
           } catch (e) {
             Logger.print("LoadRestrictions", "Unable to parse command ${entry.key}: $e");
           }
         }
 
-        settings.restrictions.set(results);
+        settings.restrictionsAdvanced.set(results);
         await context.respond(MessageBuilder(content: "Imported **${results.length}** restrictions from **${input.length}** entries."));
       }, permissionsRequired: BotCommandPermissions.admin),
 
@@ -327,6 +377,8 @@ class RestrictServerSettings extends ServerSettings {
   SettingsObject<Map<String, bool>> get disabled => SettingsObject(this, "disabled", decodeFunction: (input) => input == null ? null : RecursiveCaster.cast<Map<String, bool>>(input));
   SettingsObject<Map<String, bool>> get overrideDefaultPermissions => SettingsObject(this, "overrideDefaultPermissions", decodeFunction: (input) => input == null ? null : RecursiveCaster.cast<Map<String, bool>>(input));
   SettingsObject<List<CommandRestrictions>> get restrictions => SettingsObject(this, "restrictions", encodeFunction: (input) => input.map((x) => x.toJson()).toList(), decodeFunction: (input) => (input as List?)?.map((x) => CommandRestrictions.fromJson(x)).toList());
+  SettingsObjectNotNull<List<AdvancedCommandRestrictions>> get restrictionsAdvanced => SettingsObject.list(this, "restrictionsA", encodeFunction: (x) => x.toJson(), decodeFunction: (x) => AdvancedCommandRestrictions.fromJson(x));
+  SettingsObjectNotNull<bool> get restrictionsReact => SettingsObjectNotNull(this, "restrictionsReact", defaultFunction: () => true);
 }
 
 enum Restriction {
@@ -356,29 +408,31 @@ class RestrictionData {
   factory RestrictionData.fromJson(Map json) => _$RestrictionDataFromJson(json);
   Map<String, dynamic> toJson() => _$RestrictionDataToJson(this);
 
-  static List<RestrictionData>? tryParse(String input) {
-    final elements = input.trim().split(" ").map((x) => x.trim()).toList();
-    if (elements.isEmpty) return null;
-    List<RestrictionData> results = [];
+  static List<List<RestrictionData>> tryParse(List<String> input) {
+    return input.mapToList((data) {
+      final elements = data.trim().split(" ").map((x) => x.trim()).toList();
+      if (elements.isEmpty) return null;
+      List<RestrictionData> results = [];
 
-    outer: for (var element in elements) {
-      for (final x in Restriction.values) {
-        if (element.startsWith(x.operator)) {
-          final o = element;
-          element = element.replaceFirst(x.operator, "");
-          final value = int.tryParse(element);
+      outer: for (var element in elements) {
+        for (final x in Restriction.values) {
+          if (element.startsWith(x.operator)) {
+            final o = element;
+            element = element.replaceFirst(x.operator, "");
+            final value = int.tryParse(element);
 
-          if (value != null) {
-            results.add(RestrictionData(type: x, data: value));
-            continue outer;
-          } else {
-            Logger.warn("Restrictions", "Invalid restriction: ${x.operator} (from: $o)");
+            if (value != null) {
+              results.add(RestrictionData(type: x, data: value));
+              continue outer;
+            } else {
+              Logger.warn("Restrictions", "Invalid restriction: ${x.operator} (from: $o)");
+            }
           }
         }
       }
-    }
 
-    return results.isEmpty ? null : results;
+      return results.isEmpty ? null : results;
+    }).whereType<List<RestrictionData>>().toList();
   }
 
   @override
@@ -387,13 +441,21 @@ class RestrictionData {
   }
 }
 
-@JsonSerializable(anyMap: true)
-class CommandRestrictions {
+abstract class BaseCommandRestrictions {
   final String command;
+
+  const BaseCommandRestrictions({required this.command});
+
+  String serialize();
+}
+
+@Deprecated("Use AdvancedCommandRestrictions instead.")
+@JsonSerializable(anyMap: true)
+class CommandRestrictions extends BaseCommandRestrictions {
   final List<RestrictionData> data;
   final RestrictionCombination combination;
 
-  const CommandRestrictions({required this.command, required this.data, required this.combination});
+  const CommandRestrictions({required super.command, required this.data, required this.combination});
   factory CommandRestrictions.fromJson(Map json) => _$CommandRestrictionsFromJson(json);
   Map<String, dynamic> toJson() => _$CommandRestrictionsToJson(this);
 
@@ -402,7 +464,27 @@ class CommandRestrictions {
     return data.map((x) => x.toString()).join(" ${combination.name} ");
   }
 
+  @override
   String serialize() {
     return "${combination.name} ${data.map((x) => x.toString()).join(",")}";
+  }
+}
+
+@JsonSerializable(anyMap: true)
+class AdvancedCommandRestrictions extends BaseCommandRestrictions {
+  final List<List<RestrictionData>> ors;
+
+  const AdvancedCommandRestrictions({required super.command, required this.ors});
+  factory AdvancedCommandRestrictions.fromJson(Map json) => _$AdvancedCommandRestrictionsFromJson(json);
+  Map<String, dynamic> toJson() => _$AdvancedCommandRestrictionsToJson(this);
+
+  @override
+  String toString() {
+    return ors.map((ands) => "(${ands.join(" and ")})").join(" or ");
+  }
+
+  @override
+  String serialize() {
+    return ors.map((ands) => ands.join(" ")).join(",");
   }
 }

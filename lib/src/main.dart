@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:io';
 import 'dart:math';
 
@@ -73,10 +74,60 @@ class TerminalCommand {
   const TerminalCommand(this.key, this.callback);
 }
 
+class HttpStreamDetails {
+  final HttpRequest request;
+  final String path;
+  final Map body;
+
+  HttpResponse get response => request.response;
+
+  HttpStreamDetails({required this.request, required this.path, required this.body});
+}
+
 late Future<Never> Function([int code]) close;
+late StreamController<HttpStreamDetails> controller;
 
 bool stdinInitialized = false;
 NyxxGateway? primaryClient;
+
+Future<void> httpListener(HttpServer server) async {
+  controller = StreamController<HttpStreamDetails>.broadcast();
+
+  await for (final request in server) {
+    Logger.print("Server", "Received request ${request.uri.path} from client ${request.connectionInfo?.remoteAddress}:${request.connectionInfo?.remotePort}");
+
+    if (request.method != "POST") {
+      request.response.statusCode = 405;
+      request.response.close();
+      continue;
+    }
+
+    final body = await tryCatchA(() async => jsonDecode(await utf8.decoder.bind(request).join()) as Map, onError: (e) {
+      Logger.warn("Server", "Unable to decode body from client ${request.connectionInfo?.remoteAddress}: $e");
+    });
+
+    if (body == null) {
+      request.response.statusCode = 400;
+      request.response.close();
+      continue;
+    }
+
+    controller.sink.add(HttpStreamDetails(request: request, path: request.uri.path, body: body));
+  }
+}
+
+StreamSubscription<HttpStreamDetails> httpListen(String path, FutureOr<void> Function(HttpStreamDetails data, void Function([int? code]) close) onData) {
+  if (!path.startsWith("/")) path = "/$path";
+
+  return controller.stream.listen((data) async {
+    if (data.path != path) return;
+
+    await onData(data, ([code]) {
+      if (code != null) data.response.statusCode = code;
+      data.response.close();
+    });
+  });
+}
 
 /// Create a new gateway and bot.
 ///
@@ -89,7 +140,7 @@ NyxxGateway? primaryClient;
 /// [permissions] is a list of permissions. For bot apps, you should start out with `[...GatewayIntents.allUnprivileged, GatewayIntents.messageContent]`.
 ///
 /// [createBot] will create a bot user using `client.user.get()` if true.
-Future<BotContext?> load({required BotSettings settings, required FutureOr<Pattern> Function(MessageCreateEvent)? prefix, List<BotCommand>? Function<T extends ChatContext>(CommandsPlugin plugin)? commands, List<BotConverter>? Function(CommandsPlugin plugin)? converters, required List<Flag<GatewayIntents>> permissions, bool createBot = true, List<TerminalCommand> terminalCommands = const [], required List<DefinedUser> owners, required DefinedServer? supportServer, required KVStore store, required DiscordColor primaryColor, required String botName, required Version version, required List<String> args, required ArgParser Function(ArgParser parser) argParser, required Map<String, String> tokens, required PluginStore plugins, Uri? homepage}) async {
+Future<BotContext?> load({required BotSettings settings, required FutureOr<Pattern> Function(MessageCreateEvent)? prefix, List<BotCommand>? Function<T extends ChatContext>(CommandsPlugin plugin)? commands, List<BotConverter>? Function(CommandsPlugin plugin)? converters, required List<Flag<GatewayIntents>> permissions, bool createBot = true, List<TerminalCommand> terminalCommands = const [], required List<DefinedUser> owners, required DefinedServer? supportServer, required KVStore store, required DiscordColor primaryColor, required String botName, required Version version, required List<String> args, required ArgParser Function(ArgParser parser) argParser, required Map<String, String> tokens, required PluginStore plugins, Uri? homepage, required int httpListenerPort}) async {
   late ArgResults results;
   final parser = argParser.call(defaultArgParser());
 
@@ -107,10 +158,20 @@ Future<BotContext?> load({required BotSettings settings, required FutureOr<Patte
   primaryBotColor = primaryColor;
   globalSupportServer = supportServer;
   globalHomepage = homepage;
+  globalHttpListenerPort = httpListenerPort;
 
   if (!(await settings.initCore())) return null;
   if (!(await settings.init())) return null;
   loggerOverride();
+
+  final server = await HttpServer.bind(InternetAddress.loopbackIPv4, httpListenerPort);
+  Logger.print("Server", "Running server at http://${server.address}:${server.port}");
+  httpListener(server);
+
+  httpListen("/test", (data, close) {
+    Logger.print("Server", "Received test ${data.path} with data: ${jsonEncode(data.body)}");
+    close();
+  });
 
   Flags<GatewayIntents> intents = Flag(0);
   List<String> existingConverters = [];
@@ -420,7 +481,7 @@ Future<BotContext?> load({required BotSettings settings, required FutureOr<Patte
       final status = await getStatus();
       if (status != null) Logger.print("Status", status);
     }),
-  ], ...terminalCommands];
+  ], ...terminalCommands, ...await plugins.terminalCommands(store)];
 
   stdin.echoMode = false;
   stdin.lineMode = false;

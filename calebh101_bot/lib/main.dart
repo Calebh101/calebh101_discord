@@ -97,6 +97,7 @@ void main(List<String> arguments) => wrap(() async {
     primaryColor: DiscordColor.parseHexString("#00FFF0"),
     prefix: mentionOr(prefixFromServerSettings((x) => Calebh101BotServerSettings(store, x.id))),
     permissions: [...GatewayIntents.all],
+    httpListenerPort: 9003,
 
     store: store,
     settings: BotSettings(store),

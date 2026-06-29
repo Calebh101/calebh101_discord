@@ -50,3 +50,19 @@ const _$RestrictionCombinationEnumMap = {
   RestrictionCombination.and: 'and',
   RestrictionCombination.or: 'or',
 };
+
+AdvancedCommandRestrictions _$AdvancedCommandRestrictionsFromJson(Map json) =>
+    AdvancedCommandRestrictions(
+      command: json['command'] as String,
+      ors: (json['ors'] as List<dynamic>)
+          .map(
+            (e) => (e as List<dynamic>)
+                .map((e) => RestrictionData.fromJson(e as Map))
+                .toList(),
+          )
+          .toList(),
+    );
+
+Map<String, dynamic> _$AdvancedCommandRestrictionsToJson(
+  AdvancedCommandRestrictions instance,
+) => <String, dynamic>{'command': instance.command, 'ors': instance.ors};

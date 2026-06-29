@@ -476,6 +476,7 @@ List<DefinedUser>? globalOwners;
 DefinedServer? globalSupportServer;
 Uri? globalHomepage;
 late String globalBotName;
+late int globalHttpListenerPort;
 
 /// First parameter is calling user's ID.
 Future<void> Function(Snowflake id, Object? e, {NyxxGateway? client})? onCommandErrorDm;
