@@ -27,6 +27,9 @@ class DebugPlugin extends BotPlugin {
         await Future.delayed(Duration(seconds: seconds));
         await context.respond(MessageBuilder(content: "Waited **$seconds** seconds."), level: ResponseLevel.hint);
       }, permissionsRequired: BotCommandPermissions.owner),
+      BotCommand("teststring", "Debug", "$String", (T context, [String? string]) async {
+        await context.respond(MessageBuilder(content: string ?? "0"));
+      }),
       BotCommand("throw", "Debug", "Throw an exception.", (ChatContext context, [int type = 0, GreedyString? message]) async {
         switch (type) {
           case 0:

@@ -1,9 +1,38 @@
 import 'dart:async';
 
+import 'package:calebh101_bot/main.dart';
 import 'package:calebh101_discord/calebh101_discord.dart';
 
 class ChannelsPlugin extends BotPlugin {
   @override get info => BotPluginInfo(id: "channels", version: Version.parse("1.0.0A"), description: "Channel utilities.");
+
+  @override
+  FutureOr<void> onClientLoad(BotContext context) {
+    context.clients.run((client) {
+      client.onMessageCreate.listen((event) async {
+        if (event.guildId == null || event.member == null) return;
+
+        final channel = event.message.channel;
+        final user = event.message.author;
+        final channelSettings = ChannelSettings(store, channel.id);
+        final serverSettings = Calebh101BotServerSettings(store, event.guildId!);
+
+        if (user is! User || user.isBot || user.isSystem) return;
+        if (channelSettings.mediaOnly.get() == false) return;
+        if (event.message.attachments.isNotEmpty || event.message.embeds.isNotEmpty) return;
+
+        final member = await event.member!.get();
+        if (isAdmin(settings: serverSettings, member: member)) return;
+        if (serverSettings.modsBypassMediaOnly.get() && isMod(settings: serverSettings, member: member)) return;
+
+        Logger.print("Channels", "Handling message ${event.message.id} in media-only channel ${channel.id} from user ${member.id}");
+
+        await tryCatchA(() => event.message.delete(), onCatch: (e) {
+          Logger.warn("Channels", "Unable to delete message ${event.message.id}: $e");
+        },);
+      });
+    });
+  }
 
   @override
   FutureOr<List<BotConverter<dynamic>>> converters(CommandsPlugin plugin, KVStore store) {
@@ -51,6 +80,20 @@ class ChannelsPlugin extends BotPlugin {
 
         await context.respond(MessageBuilder(content: "Updated **$updated/${channels.input.length}** channels."));
       }, permissionsRequired: .admin, needsGuild: true, options: BotCommandOptions(type: .textOnly), aliases: ["seticons"]),
+
+      BotCommand("mediaonly", "Channels", "Set if this channels should be media only. Media counts as any attachments or embeds. Messages without attachments or embeds will be deleted.", (T context, bool value) async {
+        final settings = ChannelSettings(store, context.channelId);
+        settings.mediaOnly.set(value);
+
+        await context.respond(MessageBuilder(content: "Channel is ${value ? "**media-only**" : "**not** media only"}."));
+      }, needsGuild: true, permissionsRequired: .admin),
+
+      BotCommand("modsbypassmediaonly", "Channels", "Set if mods bypass restrictions in media-only channels. Defaults to true.", (T context, bool value) async {
+        final settings = Calebh101BotServerSettings(store, context.guildId!);
+        settings.modsBypassMediaOnly.set(value);
+
+        await context.respond(MessageBuilder(content: "Mods ${value ? "**will**" : "will **not**"} be able to bypass media-only channels."));
+      }, needsGuild: true, permissionsRequired: .admin),
     ];
   }
 }

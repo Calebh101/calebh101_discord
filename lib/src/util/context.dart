@@ -5,6 +5,7 @@ import 'package:calebh101_discord/calebh101_discord.dart';
 extension CommandContextHelper on CommandContext {
   Snowflake get userId => user.id;
   Snowflake? get guildId => guild?.id;
+  Snowflake get channelId => channel.id;
 
   void respondWithError(String message, {ResponseLevel? level, AllowedMentions? allowedMentions}) async {
     try {

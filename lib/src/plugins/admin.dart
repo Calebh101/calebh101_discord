@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:calebh101_discord/calebh101_discord.dart';
 import 'package:collection/collection.dart';
@@ -170,7 +171,7 @@ class AdminPlugin extends BotPluginLegacy {
       }
 
       admins.add({"type": "user", "id": user.id.toString()});
-      settings.admins.set(admins);
+      settings.mods.set(admins);
 
       Modlog.add(ModlogEvent(
         "moduser.add",
@@ -253,7 +254,7 @@ class AdminPlugin extends BotPluginLegacy {
       }
 
       context.respond(MessageBuilder(
-        content: found ? "Removed ${await userToString(user)} from mod." : "${await userToString(user)} is not currently an mod.",
+        content: found ? "Removed ${await userToString(user)} from mod." : "${await userToString(user)} is not currently a mod.",
       ));
     }, CommandAttributes(permissionsRequired: BotCommandPermissions.admin, category: "Admin")),
     BotCommand.command("removemodrole", "Remove a role from mod.", (T context, Role role) async {
@@ -553,10 +554,26 @@ class AdminPlugin extends BotPluginLegacy {
       if (context.guild == null || context.member == null) return context.respondWithError("No guild/member found.");
       final settings = ServerSettings(store, context.guild!.id);
       if (await context.assurePerms(BotCommandPermissions.admin, settings) == false) return;
-      final all = settings.getAll().entries;
 
-      context.respond(MessageBuilder(
-        content: "All settings for *${context.guild?.name}*:\n${all.map((x) => "- `${x.key}`: `${x.value}`").join("\n")}",
+      final all = settings.getAll();
+      Logger.print("AllSettings", "Found ${all.length} settings");
+
+      await context.respond(MessageBuilder(
+        content: "All **${all.length}** settings for *${context.guild?.name}*:",
+        attachments: [
+          AttachmentBuilder(data: utf8.encode("""
+# All settings for *${context.guild?.name}* (${all.length} settings)
+
+${all.mapTo((k, v) {
+  if (v is List || v is Map) v = jsonEncode(v);
+
+  return """
+**`$k` (`${v.runtimeType}`)**
+${v.toString().toDiscordCodeBlock()}
+""".trim();
+}).join("\n\n")}
+""".trim()), fileName: "${context.guild?.name}-settings.md"),
+        ],
       ), level: ResponseLevel.private);
     }, CommandAttributes(permissionsRequired: BotCommandPermissions.admin, category: "Admin")),
     BotCommand("listadmin", "Admin", "List all admin roles/users.", (T context) async {

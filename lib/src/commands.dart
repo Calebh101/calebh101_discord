@@ -10,6 +10,10 @@ CommandType get commandType => switch (_commandType.internalType) {
   _ => CommandType.all,
 };
 
+bool isCommand(String command) {
+  return BotCommand.commandRegistry.containsKey(command);
+}
+
 class BotCommandOptions {
   /// Whether to automatically acknowledge interactions before they expire.
   ///
@@ -256,6 +260,23 @@ BotCommand defaultCheck(KVStore store) => BotCommand.check((plugin) {
           if (await context.assureGuild() == false) return false;
           final settings = ServerSettings(store, context.guild!.id);
           if (await context.assurePerms(command.permissionsRequired, settings) == false) return false;
+        }
+      }
+    }
+
+    if (context.guild != null && context.member != null) {
+      final settings = ServerSettings(store, context.guild!.id);
+      final channelSettings = ChannelSettings(store, context.channelId);
+
+      if (channelSettings.mediaOnly.get() && !isAdmin(settings: settings, member: context.member!)) {
+        if (settings.modsBypassMediaOnly.get() && isMod(settings: settings, member: context.member!)) {} else {
+          try {
+            if (context is InteractionChatContext) await context.respond(MessageBuilder(content: "You can't use commands here."), level: .private);
+            if (context is MessageChatContext) await context.message.delete();
+          } catch (_) {}
+
+          Logger.print("Check", "User ${context.userId} tried to use command in media-only channel ${context.channelId}");
+          return false;
         }
       }
     }

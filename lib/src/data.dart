@@ -12,15 +12,11 @@ enum Scope {
   server,
   user,
   userPerServer,
+  channel,
 }
 
 String scopeToString(Scope scope) {
-  return switch (scope) {
-    Scope.bot => "bot",
-    Scope.server => "server",
-    Scope.user => "user",
-    Scope.userPerServer => "userPerServer",
-  };
+  return scope.name;
 }
 
 bool isStdinLocked = false;
@@ -376,10 +372,17 @@ class ServerSettings extends EntitySettings {
   SettingsObject<int> get warningChannel => SettingsObject(this, "warningChannel");
   SettingsObjectNotNull<List<Snowflake>> get lockAllow => SettingsObject.listSnowflake(this, "lockAllow");
   SettingsObjectNotNull<List<Snowflake>> get lockAllowIgnore => SettingsObject.listSnowflake(this, "lockAllowIgnore");
+  SettingsObjectNotNull<bool> get modsBypassMediaOnly => SettingsObjectNotNull(this, "modsBypassMediaOnly", defaultFunction: () => true);
 }
 
 class UserSettings extends EntitySettings {
   UserSettings(super.store, Snowflake id) : super(id: id.toString(), scope: Scope.user);
+}
+
+class ChannelSettings extends EntitySettings {
+  ChannelSettings(super.store, Snowflake id) : super(id: id.toString(), scope: Scope.user);
+
+  SettingsObjectNotNull<bool> get mediaOnly => SettingsObjectNotNull(this, "mediaOnly", defaultFunction: () => false);
 }
 
 class UserPerServerSettings extends EntitySettings {
@@ -507,12 +510,10 @@ bool isMod({required ServerSettings settings, required Member member}) {
   for (final x in settings.mods.get() ?? []) {
     if (x["type"] == "user") {
       if (x["id"] == member.id.toString()) {
-        Logger.print("isMod", "User ID ${x["id"]} matched member ${member.id}");
         return true;
       }
     } else if (x["type"] == "role") {
       if (member.roleIds.any((y) => y.toString() == x["id"])) {
-        Logger.print("isMod", "Role ID ${x["id"]} matched member ${member.id} (${member.roleIds})");
         return true;
       }
     }
