@@ -823,6 +823,7 @@ class ModerationPlugin extends BotPluginLegacy {
 
         final thisChannel = channel == null;
         channel ??= context.channel as GuildTextChannel;
+
         final role = context.guild!.id;
         final ignored = settings.lockAllowIgnore.get().contains(channel.id);
 
@@ -882,7 +883,12 @@ class ModerationPlugin extends BotPluginLegacy {
       BotCommand("unlock", "Moderation", "Re-enable certain permissions for @everyone.", (T context, [GuildTextChannel? channel]) async {
         final thisChannel = channel == null;
         channel ??= context.channel as GuildTextChannel;
+
+        final settings = ServerSettings(store, context.guildId!);
         final role = context.guild!.id;
+
+        final roles = settings.lockAllow.get();
+        final ignored = settings.lockAllowIgnore.get().contains(channel.id);
 
         final existingOverwrite = channel.permissionOverwrites.firstWhereOrNull(
           (x) => x.id == role && x.type == PermissionOverwriteType.role,
@@ -906,6 +912,24 @@ class ModerationPlugin extends BotPluginLegacy {
             allow: existingOverwrite?.allow,
           ),
         );
+
+        if (!ignored) for (final role in roles) {
+          final existingOverwrite = channel.permissionOverwrites.firstWhereOrNull(
+            (x) => x.id == role && x.type == PermissionOverwriteType.role,
+          );
+
+          final currentDeny = existingOverwrite?.deny ?? Permissions(0);
+          final currentAllow = existingOverwrite?.allow ?? Permissions(0);
+
+          await channel.updatePermissionOverwrite(
+            PermissionOverwriteBuilder(
+              id: role,
+              type: PermissionOverwriteType.role,
+              deny: Permissions(currentDeny.value & ~permissionsToUnlock.value),
+              allow: currentAllow,
+            ),
+          );
+        }
 
         await context.respond(MessageBuilder(content: "${thisChannel ? "Channel" : channel.toMention()} unlocked."));
       }, permissionsRequired: BotCommandPermissions.mod, needsGuild: true, extendedDescription: "The following permissions will be re-enabled for `@everyone`:\n${[
