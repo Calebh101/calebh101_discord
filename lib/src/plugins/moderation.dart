@@ -757,7 +757,7 @@ class ModerationPlugin extends BotPluginLegacy {
           await context.respond(MessageBuilder(content: "Message `${message.id}` deleted."), level: ResponseLevel.hint);
         }
       }, permissionsRequired: BotCommandPermissions.mod, aliases: ["d"]),
-      BotCommand("lock", "Moderation", "Disable certain permissions for @everyone.", (T context, [GuildTextChannel? channel]) async {
+      BotCommand("lock", "Moderation", "Disable certain permissions for @everyone, excluding specific roles.", (T context, [GuildTextChannel? channel]) async {
         final settings = ServerSettings(store, context.guild!.id);
         final roles = settings.lockAllow.get();
 
@@ -809,6 +809,47 @@ class ModerationPlugin extends BotPluginLegacy {
         }
 
         await context.respond(MessageBuilder(content: "${thisChannel ? "Channel" : channel.toMention()} locked.\n-# Allowed ${ignored ? 0 : roles.length} roles."));
+      }, permissionsRequired: BotCommandPermissions.mod, needsGuild: true, extendedDescription: "The following permissions will be disabled for `@everyone`:\n${[
+        "Send messages (including in threads)",
+        "Create public/private threads",
+        "Add reactions",
+        "Speak/request to speak",
+        "Stream",
+        "Use soundboard",
+      ].map((x) => "- $x").join("\n")}"),
+      BotCommand("lockall", "Moderation", "Disable certain permissions for @everyone.", (T context, [GuildTextChannel? channel]) async {
+        final settings = ServerSettings(store, context.guild!.id);
+        final roles = settings.lockAllow.get();
+
+        final thisChannel = channel == null;
+        channel ??= context.channel as GuildTextChannel;
+        final role = context.guild!.id;
+        final ignored = settings.lockAllowIgnore.get().contains(channel.id);
+
+        final existingOverwrite = channel.permissionOverwrites.firstWhereOrNull(
+          (x) => x.id == role && x.type == PermissionOverwriteType.role,
+        );
+
+        final lockPermissions = Permissions.addReactions |
+          Permissions.sendMessages |
+          Permissions.sendMessagesInThreads |
+          Permissions.createPublicThreads |
+          Permissions.createPrivateThreads |
+          Permissions.speak |
+          Permissions.requestToSpeak |
+          Permissions.stream |
+          Permissions.useSoundboard;
+
+        await channel.updatePermissionOverwrite(
+          PermissionOverwriteBuilder(
+            id: role,
+            type: PermissionOverwriteType.role,
+            deny: (existingOverwrite?.deny ?? Permissions(0)) | lockPermissions,
+            allow: existingOverwrite?.allow,
+          ),
+        );
+
+        await context.respond(MessageBuilder(content: "${thisChannel ? "Channel" : channel.toMention()} locked.\n-# Allowed 0 roles."));
       }, permissionsRequired: BotCommandPermissions.mod, needsGuild: true, extendedDescription: "The following permissions will be disabled for `@everyone`:\n${[
         "Send messages (including in threads)",
         "Create public/private threads",
