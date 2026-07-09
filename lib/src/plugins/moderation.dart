@@ -849,6 +849,27 @@ class ModerationPlugin extends BotPluginLegacy {
           ),
         );
 
+        if (!ignored) for (final role in roles) {
+          final existingOverwrite = channel.permissionOverwrites.firstWhereOrNull(
+            (x) => x.id == role && x.type == PermissionOverwriteType.role,
+          );
+
+          final currentDeny = existingOverwrite?.deny ?? Permissions(0);
+          final currentAllow = existingOverwrite?.allow ?? Permissions(0);
+
+          final toDeny = Permissions(currentDeny.value | lockPermissions.value);
+          final toAllow = Permissions(currentAllow.value & ~lockPermissions.value);
+
+          await channel.updatePermissionOverwrite(
+            PermissionOverwriteBuilder(
+              id: role,
+              type: PermissionOverwriteType.role,
+              deny: toDeny,
+              allow: toAllow,
+            ),
+          );
+        }
+
         await context.respond(MessageBuilder(content: "${thisChannel ? "Channel" : channel.toMention()} locked.\n-# Allowed 0 roles."));
       }, permissionsRequired: BotCommandPermissions.mod, needsGuild: true, extendedDescription: "The following permissions will be disabled for `@everyone`:\n${[
         "Send messages (including in threads)",
