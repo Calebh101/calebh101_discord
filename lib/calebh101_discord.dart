@@ -36,6 +36,7 @@ export 'src/plugins/mute.dart';
 export 'src/plugins/debug.dart';
 export 'src/plugins/bet.dart';
 export 'src/plugins/multiplayer.dart';
+export 'src/plugins/status.dart';
 
 export 'src/games/blackjack.dart';
 

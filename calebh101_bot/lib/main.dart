@@ -75,6 +75,7 @@ void main(List<String> arguments) => wrap(() async {
     ModMailPlugin(),
     ComicsPlugin(),
     SupportPlugin(),
+    StatusPlugin(),
     MultiplayerPlugin(),
 
     GuessTheNumberPlugin(),
