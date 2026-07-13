@@ -177,6 +177,38 @@ void main(List<String> arguments) => wrap(() async {
         if (Random().nextInt(100) == 0) return await context.respond(MessageBuilder(content: "${context.user.toMention()} tried to murder ${member.toMention()} with a *$weapon*, but they failed and accidentally murdered *themselves*.", allowedMentions: AllowedMentions(repliedUser: true)));
         await context.respond(MessageBuilder(content: "${member.toMention()} was *murdered* with a *$weapon*.", allowedMentions: AllowedMentions(repliedUser: true)));
       }, needsGuild: true),
+
+      BotCommand("birthday", "Fun", "Say happy birthday to someone!", (T context, GreedyString name) async {
+        String emoji([int? _]) => ['⭐', '🎂', '🎉', '🎁'].ro();
+
+        var top = "Happy Birthday,";
+        var bottom = "$name!";
+
+        if (top.length > bottom.length) {
+          final diff = top.length - bottom.length; // Always positive (obviously)
+          bottom = "${" " * (diff / 2).floor()}$bottom${" " * (diff / 2).ceil()}";
+        } else if (bottom.length > top.length) {
+          final diff = bottom.length - top.length; // Always positive (obviously)
+          top = "${" " * (diff / 2).floor()}$top${" " * (diff / 2).ceil()}";
+        }
+
+        final length = max(top.length, bottom.length) + 4;
+        final row = (length * (2 / 3)).ceil();
+        final spacer = " " * length;
+
+        final content = [
+          List.generate(row, emoji).join(""),
+          "${emoji()}$spacer${emoji()}",
+          "${emoji()}  $top  ${emoji()}",
+          "${emoji()}  $bottom  ${emoji()}",
+          "${emoji()}$spacer${emoji()}",
+          List.generate(row, emoji).join(""),
+        ];
+
+        await context.respond(MessageBuilder(
+          content: content.join("\n").toDiscordCodeBlock(),
+        ));
+      }, aliases: ["happybirthday", "hbd"]),
     ],
   );
 

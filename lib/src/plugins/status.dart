@@ -1,8 +1,16 @@
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:calebh101_discord/calebh101_discord.dart';
 
-final Map<Snowflake, UserStatus?> cache = {};
+final Map<int, int> statusCache = {};
+final List<UserStatus> statuses = [.online, .dnd, .idle, .offline];
+
+UserStatus? _fromCache(Snowflake id) {
+  final value = statusCache[id.value];
+  if (value == null) return null;
+  return statuses[value];
+}
 
 class StatusPlugin extends BotPlugin {
   @override get info => BotPluginInfo(id: "status", version: Version.parse("1.0.0A"), description: "Tracking user statuses.");
@@ -19,12 +27,13 @@ class StatusPlugin extends BotPlugin {
       client.onPresenceUpdate.listen((data) {
         final id = data.user?.id;
         if (id == null) return;
-
         if (isIgnored(store, id) || isExempt(store, id)) return;
-        cache[id] = data.status;
+
+        final status = data.status;
+        if (status != null) statusCache[id.value] = statuses.indexWhere((x) => x.value == status.value);
         final settings = LastSeenUserSettings(store, id);
 
-        if (data.status != .offline) {
+        if (status != .offline) {
           settings.lastOnline.set(.now());
         }
       });
@@ -92,6 +101,20 @@ class StatusPlugin extends BotPlugin {
 
         await context.respond(MessageBuilder(content: "Tracking **${input ? "enabled" : "disabled"}**."));
       }, extendedDescription: "The bot will only track **two** things:\n- When your status was not offline last\n- When you last sent a message **per server**\n\nNotes:\n- Invisible still counts as offline.\n- Users will not be able to track your messages across servers; the bot only tracks your last message in each server."),
+
+      BotCommand("statuscache", "Bot", "Save entire cache of statuses to a file.", (T context) async {
+        final perEntry = 45 + 8 + 8;
+        final total = statusCache.length * perEntry;
+
+        await context.respond(MessageBuilder(
+          content: "**${statusCache.length}** entries\nEstimated memory usage: **~$total** bytes",
+          attachments: [
+            AttachmentBuilder(data: utf8.encode(jsonEncode(statusCache.map((k, v) {
+              return MapEntry(k.toString(), statuses.elementAtOrNull(v)?.value);
+            }))), fileName: "status-cache.json"),
+          ],
+        ));
+      }, permissionsRequired: .owner),
     ];
   }
 }
@@ -110,9 +133,9 @@ class LastSeenUserPerServerSettings extends UserPerServerSettings {
 }
 
 extension GetStatusUser on PartialUser {
-  UserStatus? get status => cache[this.id];
+  UserStatus? get status => _fromCache(this.id);
 }
 
 extension GetStatusMember on PartialMember {
-  UserStatus? get status => cache[this.id];
+  UserStatus? get status => _fromCache(this.id);
 }
