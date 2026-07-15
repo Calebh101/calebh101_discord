@@ -179,36 +179,31 @@ void main(List<String> arguments) => wrap(() async {
       }, needsGuild: true),
 
       BotCommand("birthday", "Fun", "Say happy birthday to someone!", (T context, GreedyString name) async {
-        String emoji([int? _]) => ['⭐', '🎂', '🎉', '🎁'].ro();
+        final content = birthdayMessage(name.data);
+        await context.respond(MessageBuilder(content: content));
+      }, aliases: ["happybirthday", "hbd"]),
 
-        var top = "Happy Birthday,";
-        var bottom = "$name!";
+      BotCommand("testbirthday", "Debug", "Test 26 birthday messages.", (MessageChatContext context, [bool emojis = true]) async {
+        final letters = List.generate(26, (i) => String.fromCharCode(65 + i));
+        final List<String> names = List.generate(26, (i) => letters[i] * ((i * 3) + 5));
+        final contents = names.map((x) => birthdayMessage(x, emojis: emojis));
+        final List<String> buffer = [];
 
-        if (top.length > bottom.length) {
-          final diff = top.length - bottom.length; // Always positive (obviously)
-          bottom = "${" " * (diff / 2).floor()}$bottom${" " * (diff / 2).ceil()}";
-        } else if (bottom.length > top.length) {
-          final diff = bottom.length - top.length; // Always positive (obviously)
-          top = "${" " * (diff / 2).floor()}$top${" " * (diff / 2).ceil()}";
+        for (final content in contents) {
+          buffer.add(content);
+
+          if (buffer.length >= 4) {
+            await context.channel.sendMessage(MessageBuilder(content: buffer.join("\n"), referencedMessage: .reply(messageId: context.message.id)));
+            buffer.clear();
+          }
         }
 
-        final length = max(top.length, bottom.length) + 4;
-        final row = (length * (2 / 3)).ceil();
-        final spacer = " " * length;
+        if (buffer.isNotEmpty) {
+          await context.channel.sendMessage(MessageBuilder(content: buffer.join("\n"), referencedMessage: .reply(messageId: context.message.id)));
+        }
 
-        final content = [
-          List.generate(row, emoji).join(""),
-          "${emoji()}$spacer${emoji()}",
-          "${emoji()}  $top  ${emoji()}",
-          "${emoji()}  $bottom  ${emoji()}",
-          "${emoji()}$spacer${emoji()}",
-          List.generate(row, emoji).join(""),
-        ];
-
-        await context.respond(MessageBuilder(
-          content: content.join("\n").toDiscordCodeBlock(),
-        ));
-      }, aliases: ["happybirthday", "hbd"]),
+        await context.respond(MessageBuilder(content: "Completed evaluation of **${names.length}** names."));
+      }, permissionsRequired: .owner, options: BotCommandOptions(type: .textOnly)),
     ],
   );
 
@@ -227,6 +222,44 @@ void main(List<String> arguments) => wrap(() async {
     isAfk: false,
   )));
 });
+
+String birthdayMessage(String name, {bool emojis = true}) {
+  final symbols = emojis ? ['⭐', '🎂', '🎉', '🎁'] : ['✦', '※', '❋', '⚘'];
+  String s([int? _]) => symbols.ro();
+
+  var top = "Happy Birthday,";
+  var bottom = "$name!";
+
+  if (top.length > bottom.length) {
+    final diff = top.length - bottom.length; // Always positive (obviously)
+    bottom = "${" " * (diff / 2).floor()}$bottom${" " * (diff / 2).ceil()}";
+  } else if (bottom.length > top.length) {
+    final diff = bottom.length - top.length; // Always positive (obviously)
+    top = "${" " * (diff / 2).floor()}$top${" " * (diff / 2).ceil()}";
+  }
+
+  final length = max(top.length, bottom.length) + 4;
+  final row = (length * (2 / 3)).ceil();
+  final spacer = " " * length;
+
+  final content = emojis ?  [
+    List.generate(row, s).join(""),
+    "${s()}$spacer${s()}",
+    "${s()}  $top  ${s()}",
+    "${s()}  $bottom  ${s()}",
+    "${s()}$spacer${s()}",
+    List.generate(row, s).join(""),
+  ] : [
+    List.generate((length / 2).ceil() + 1, s).join(" "),
+    "${s()}$spacer${s()}",
+    "${s()}  $top  ${s()}",
+    "${s()}  $bottom  ${s()}",
+    "${s()}$spacer${s()}",
+    List.generate((length / 2).ceil() + 1, s).join(" "),
+  ];
+
+  return content.join("\n").toDiscordCodeBlock();
+}
 
 Future<List<Member>> getAllMembers(Guild guild, {int limitPer = 1000}) async {
   List<Member> result = [];

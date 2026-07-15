@@ -14,6 +14,7 @@
 analyzer:
   errors:
     curly_braces_in_flow_control_structures: ignore
+    dead_code: ignore
     prefer_function_declarations_over_variables: ignore
 include: package:lints/recommended.yaml
 
