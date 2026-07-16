@@ -261,35 +261,6 @@ String birthdayMessage(String name, {bool emojis = true}) {
   return content.join("\n").toDiscordCodeBlock();
 }
 
-Future<List<Member>> getAllMembers(Guild guild, {int limitPer = 1000}) async {
-  List<Member> result = [];
-
-  while (true) {
-    try {
-      final members = await guild.members.list(limit: limitPer, after: result.lastOrNull?.id);
-      Logger.print("getAllMembers", "Found ${members.length} (${result.length} existing)");
-
-      if (members.isEmpty) break;
-      result.addAll(members);
-      if (members.length < limitPer) break;
-    } catch (e) {
-      Logger.warn("getAllMembers", "Error: $e (${result.length} existing)");
-      break;
-    }
-  }
-
-  return result;
-}
-
-Future<Role?> getRole(Guild guild, Snowflake id) async {
-  try {
-    return (await guild.roles.list()).firstWhereOrNull((y) => y.id == id);
-  } catch (e) {
-    Logger.warn("getRole", "${guild.id},$id: $e");
-    return null;
-  }
-}
-
 int getHour() {
   return DateTime.now().difference(DateTime(2025)).inHours;
 }

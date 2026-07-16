@@ -122,7 +122,7 @@ class MemberRolePlugin extends BotPluginLegacy {
 
   @override
   FutureOr<void> onClientLoad(BotContext context) {
-    context.clients.run((client) {
+    context.clients.run((client) async {
       client.onGuildMemberAdd.listen((event) async {
         if (isIgnored(store, event.member.id)) return;
         final settings = MemberRoleSettings(store, event.guildId);
@@ -160,6 +160,43 @@ class MemberRolePlugin extends BotPluginLegacy {
           severity: fail.isEmpty ? .good : .warning,
         ));
       });
+
+      for (final guild in (await getAllGuilds(client))) {
+        final settings = MemberRoleSettings(store, guild.id);
+        final ids = settings.memberRoles.get() ?? [];
+
+        if (ids.isEmpty) continue;
+
+        final ignored = settings.memberRolesIgnored.get() ?? [];
+        final members = (await getAllMembers(guild)).where((x) => !isIgnored(store, x.id) && !ignored.contains(x.id));
+
+        Logger.print("MemberRole", "Evaluating ${ids.length} role IDs and ${members.length} members for guild ${guild.id}");
+        final List<Role> roles = [];
+        int success = 0;
+
+        for (final id in ids) {
+          try {
+            roles.add(await guild.roles.get(id));
+          } catch (e) {
+            Logger.warn("MemberRole", "Invalid role ${guild.id}.$id: $e");
+          }
+        }
+
+        await Future.wait(members.map((member) async {
+          await Future.wait(roles.map((role) async {
+            try {
+              if (!member.roleIds.contains(role.id)) {
+                await member.addRole(role.id);
+                success++;
+              }
+            } catch (e) {
+              Logger.warn("MemberRole", "Unable to add role ${guild.id}.${role.id}: $e");
+            }
+          }));
+        }));
+
+        Logger.print("MemberRole", "Evaluated $success/${members.length} members");
+      }
     });
   }
 }

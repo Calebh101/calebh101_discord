@@ -3,6 +3,7 @@ import 'dart:math';
 
 import 'package:calebh101_discord/calebh101_discord.dart';
 import 'package:chrono_dart/chrono_dart.dart';
+import 'package:collection/collection.dart';
 
 Future<DiscordColor> getColor(Member? member) async {
   return await getPrimaryColor(member) ?? primaryBotColor;
@@ -183,5 +184,54 @@ String getPrintablePrefix({required KVStore store, required Snowflake? guildId, 
     return "/";
   } else /*if (defaultMode == .text)*/ {
     return textPrefix;
+  }
+}
+
+Future<List<Member>> getAllMembers(PartialGuild guild, {int limitPer = 1000}) async {
+  List<Member> result = [];
+
+  while (true) {
+    try {
+      final members = await guild.members.list(limit: limitPer, after: result.lastOrNull?.id);
+      Logger.print("getAllMembers", "Found ${members.length} (${result.length} existing)");
+
+      if (members.isEmpty) break;
+      result.addAll(members);
+      if (members.length < limitPer) break;
+    } catch (e) {
+      Logger.warn("getAllMembers", "Error: $e (${result.length} existing)");
+      break;
+    }
+  }
+
+  return result;
+}
+
+Future<List<UserGuild>> getAllGuilds(NyxxGateway client, {int limitPer = 200}) async {
+  List<UserGuild> result = [];
+
+  while (true) {
+    try {
+      final guilds = await client.listGuilds(limit: limitPer, after: result.lastOrNull?.id);
+      Logger.print("getAllGuilds", "Found ${guilds.length} (${result.length} existing)");
+
+      if (guilds.isEmpty) break;
+      result.addAll(guilds);
+      if (guilds.length < limitPer) break;
+    } catch (e) {
+      Logger.warn("getAllGuilds", "Error: $e (${result.length} existing)");
+      break;
+    }
+  }
+
+  return result;
+}
+
+Future<Role?> getRole(Guild guild, Snowflake id) async {
+  try {
+    return (await guild.roles.list()).firstWhereOrNull((y) => y.id == id);
+  } catch (e) {
+    Logger.warn("getRole", "${guild.id},$id: $e");
+    return null;
   }
 }

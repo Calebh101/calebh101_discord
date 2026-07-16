@@ -334,7 +334,10 @@ class BotManagePlugin extends BotPluginLegacy {
         }
       }, permissionsRequired: BotCommandPermissions.owner),
       BotCommand("listguilds", "Bot", "List all guilds the bot is in.", (T context) async {
-        final guilds = await Future.wait(context.client.guilds.cache.values.map((x) async => (guild: await x.fetch(withCounts: true), owner: await tryCatchA(() => x.owner.get()))));
+        final guilds = await Future.wait((await getAllGuilds(context.client)).map((x) async {
+          final guild = await x.fetch(withCounts: true);
+          return (guild: guild, owner: await tryCatchA(() => guild.owner.get()));}
+        ));
 
         await respondWithPagination(context, PaginatedEmbedBuilder(pages:
           EmbedPage.generateFromItems(guilds.map((x) {

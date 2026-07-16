@@ -13,12 +13,17 @@ class CrosspostPlugin extends BotPluginLegacy {
   @override
   FutureOr<List<BotCommand>> commands<T extends ChatContext>(CommandsPlugin plugin, KVStore store) {
     return [
-      BotCommand("crosspost", "Admin", "Set if the bot should delete crossposted messages.", (T context, bool value) async {
+      BotCommand("crosspost", "Admin", "Set if the bot should warn for crossposted messages.", (T context, bool value) async {
         if (await context.assureGuild() == false) return;
         final settings = CrosspostServerSettings(store, context.guild!.id);
         settings.enabled.set(value);
         await context.respond(MessageBuilder(content: "Anti-crossposting rules will now ${value ? "be **enforced**" : "**not** be enforced"}."));
       }, permissionsRequired: .admin),
+      BotCommand("crosspostdelete", "Admin", "Set if the bot should delete crossposted messages.", (T context, bool value) async {
+        final settings = CrosspostServerSettings(store, context.guild!.id);
+        settings.deleteCrossposted.set(value);
+        await context.respond(MessageBuilder(content: "Crossposted messages will now be **${value ? "deleted" : "left alone"}**."));
+      }, permissionsRequired: .admin, needsGuild: true),
       BotCommand("crosspostchannels", "Admin", "Set how many channels someone has to crosspost in to trigger the warning. Defaults to $defaultMinChannels.", (T context, [int? value]) async {
         if (await context.assureGuild() == false) return;
         value ??= defaultMinChannels;
@@ -36,6 +41,7 @@ class CrosspostPlugin extends BotPluginLegacy {
       client.onMessageCreate.listen((event) async {
         if (event.guildId == null) return;
         final settings = CrosspostServerSettings(context.store, event.guildId!);
+
         if (settings.warningChannel.get() == null) return;
         if (settings.enabled.get() != true) return;
 
@@ -65,7 +71,7 @@ class CrosspostPlugin extends BotPluginLegacy {
         final channels = entries.map((e) => e.channelId).toSet();
 
         if (channels.length >= (settings.amount.get() ?? defaultMinChannels)) {
-          await handle(context: context, message: message, guild: await event.guild!.get(), channels: channels, client: client);
+          await handle(context: context, userId: userId, message: message, guild: await event.guild!.get(), channels: channels, client: client);
         }
       });
     });
@@ -85,13 +91,17 @@ class CrosspostPlugin extends BotPluginLegacy {
 
 Future<void> handle({
   required BotContext context,
+  required Snowflake userId,
   required Message message,
   required Guild guild,
   required NyxxGateway client,
   required Set<Snowflake> channels,
 }) async {
   try {
-    await message.delete();
+    if (CrosspostServerSettings(context.store, guild.id).deleteCrossposted.get()) {
+      await message.delete();
+    }
+
     final settings = CrosspostServerSettings(context.store, guild.id);
     final channelId = settings.warningChannel.get()!;
     final channel = await client.channels.get(Snowflake(channelId));
@@ -102,7 +112,7 @@ Future<void> handle({
           message.author.id.value.toMention(),
           "Please don't crosspost your message in multiple channels.",
           "If you'd like to move a message to a different channel, first delete the original message.",
-          "-# Channel #${channels.length}: ${message.channelId.value.toChannel()}"
+          "-# Channels (**${channels.length}**): ${channels.map((x) => x.value.toChannel()).join(", ")}"
         ].join("\n"),
       ));
     }
@@ -116,4 +126,5 @@ class CrosspostServerSettings extends ServerSettings {
 
   SettingsObject<bool> get enabled => SettingsObject(this, "crosspostEnabled");
   SettingsObject<int> get amount => SettingsObject(this, "crosspostAmount");
+  SettingsObjectNotNull<bool> get deleteCrossposted => SettingsObjectNotNull(this, "deleteCrossposted", defaultFunction: () => true);
 }
