@@ -94,7 +94,7 @@ class BotChatPlugin extends BotPluginLegacy {
         final settings = BotChatServerSettings(store, event.guildId!);
         if (event.message.content.startsWith(settings.prefix.get())) return;
         if (!settings.botchatChannel.exists() || event.message.channelId != settings.botchatChannel.get()) return;
-        await event.message.channel.triggerTyping();
+        await tryCatchA(event.message.channel.triggerTyping);
         final chain = BotChatServerSettings(store, event.guildId!).chain.get() ?? newChain(GuildCarrier(await event.guild!.get()));
 
         try {

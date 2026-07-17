@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:calebh101_discord/calebh101_discord.dart';
@@ -42,6 +43,7 @@ class BotManagePlugin extends BotPluginLegacy {
             EmbedFieldBuilder(name: "Command", value: interaction.command.toDiscordCodeString(), isInline: true),
             EmbedFieldBuilder(name: "Context", value: interaction.context.toDiscordCodeString(), isInline: true),
             EmbedFieldBuilder(name: "Input", value: interaction.input.toDiscordCodeBlock(), isInline: false),
+            EmbedFieldBuilder(name: "Data", value: interaction.data != null ? jsonEncode(interaction.data).toDiscordCodeBlock() : "`null`", isInline: false),
           ]].nullIfEmpty?.toList(),
           timestamp: DateTime.now().toUtc(),
           color: DiscordColor.parseHexString("#44CC44")

@@ -6,6 +6,7 @@ extension CommandContextHelper on CommandContext {
   Snowflake get userId => user.id;
   Snowflake? get guildId => guild?.id;
   Snowflake get channelId => channel.id;
+  Snowflake get clientId => client.user.id;
 
   void respondWithError(String message, {ResponseLevel? level, AllowedMentions? allowedMentions}) async {
     try {

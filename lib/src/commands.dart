@@ -233,70 +233,79 @@ class CommandAttributes {
   const CommandAttributes({this.permissionsRequired = BotCommandPermissions.any, required this.category, this.extendedDescription});
 }
 
+Future<(bool, String?)> _check({required KVStore store, required CommandsPlugin plugin, required CommandContext context}) async {
+  if (isIgnored(store, context.user.id)) return (false, "ignored");
+  final command = BotCommand.getCommand(context.command.name);
+
+  if (command == null) {
+    Logger.error("Check", "Invalid command: ${context.command.name}");
+    return (false, "invalid command");
+  }
+
+  if (command.name != "unpause" && !isOwner(id: context.user.id)) {
+    final location = context.guild?.id ?? 0;
+    final current = BotSettings(store).pausedLocations.get();
+    final paused = current.contains(location);
+    if (paused) return (false, "paused");
+  }
+
+  final override = RestrictCommandsPlugin.getOverrideDefaultPermissions(store: store, command: command.name, guildId: context.guild?.id);
+
+  if (command.enforcePermissions && override != null) {
+    if (command.permissionsRequired == BotCommandPermissions.owner) {
+      if (await context.assureOwner() == false) return (false, "perms: needs owner");
+    } else if (command.permissionsRequired != BotCommandPermissions.any) {
+      if (!isOwner(id: context.user.id)) {
+        if (await context.assureGuild() == false) return (false, "perms: needs guild");
+        final settings = ServerSettings(store, context.guild!.id);
+        if (await context.assurePerms(command.permissionsRequired, settings) == false) return (false, "perms: needs ${command.permissionsRequired.name}");
+      }
+    }
+  }
+
+  if (context.guild != null && context.member != null) {
+    final settings = ServerSettings(store, context.guild!.id);
+    final channelSettings = ChannelSettings(store, context.channelId);
+
+    if (channelSettings.mediaOnly.get() && !isAdmin(settings: settings, member: context.member!)) {
+      if (settings.modsBypassMediaOnly.get() && isMod(settings: settings, member: context.member!)) {} else {
+        try {
+          if (context is InteractionChatContext) await context.respond(MessageBuilder(content: "You can't use commands here."), level: .private);
+          if (context is MessageChatContext) await context.message.delete();
+        } catch (_) {}
+
+        Logger.print("Check", "User ${context.userId} tried to use command in media-only channel ${context.channelId}");
+        return (false, "media-only channel");
+      }
+    }
+  }
+
+  final restrictPass = await RestrictCommandsPlugin.check(client: context.client, command: command.name, store: store, guild: context.guild, userId: context.user.id, channelId: context.channel.id);
+  final pass = restrictPass != null;
+
+  if (!pass) {
+    if (context is MessageChatContext && (ifGuild(store, context.guildId, (id) => RestrictServerSettings(store, id))?.restrictionsReact.get() ?? true)) await context.message.react(ReactionBuilder(name: "🚫", id: null));
+    if (context is InteractionChatContext) await context.respond(MessageBuilder(content: "Command cannot be used.\nRun `checkcommand \"${command.name}\"` to learn more."), level: ResponseLevel.hint);
+    return (false, "command restricted");
+  }
+
+  if (command.needsGuild) {
+    if (await context.assureGuild() == false) return (false, "needs guild");
+  }
+
+  if (command.triggerTyping) await tryCatchA(context.channel.triggerTyping);
+  return (true, null);
+}
+
 BotCommand defaultCheck(KVStore store) => BotCommand.check((plugin) {
   return Check((context) async {
-    if (isIgnored(store, context.user.id)) return false;
-    final command = BotCommand.getCommand(context.command.name);
+    BotSettings(store).lastInteraction.set((client: context.client.user.id, channel: context.channel.id, user: context.user.id, input: (context is MessageChatContext ? context.message.content : (context is InteractionChatContext ? "${context.command} ${context.rawArguments.entries.map((x) => "(${x.key}: ${x.value})").join(" ")}" : null)), context: context.runtimeType.toString(), command: context.command.name, data: {
+      "client": context.clientId.toString(),
+    }));
 
-    if (command == null) {
-      Logger.error("Check", "Invalid command: ${context.command.name}");
-      return false;
-    }
-
-    if (command.name != "unpause" && !isOwner(id: context.user.id)) {
-      final location = context.guild?.id ?? 0;
-      final current = BotSettings(store).pausedLocations.get();
-      final paused = current.contains(location);
-      if (paused) return false;
-    }
-
-    final override = RestrictCommandsPlugin.getOverrideDefaultPermissions(store: store, command: command.name, guildId: context.guild?.id);
-
-    if (command.enforcePermissions && override != null) {
-      if (command.permissionsRequired == BotCommandPermissions.owner) {
-        if (await context.assureOwner() == false) return false;
-      } else if (command.permissionsRequired != BotCommandPermissions.any) {
-        if (!isOwner(id: context.user.id)) {
-          if (await context.assureGuild() == false) return false;
-          final settings = ServerSettings(store, context.guild!.id);
-          if (await context.assurePerms(command.permissionsRequired, settings) == false) return false;
-        }
-      }
-    }
-
-    if (context.guild != null && context.member != null) {
-      final settings = ServerSettings(store, context.guild!.id);
-      final channelSettings = ChannelSettings(store, context.channelId);
-
-      if (channelSettings.mediaOnly.get() && !isAdmin(settings: settings, member: context.member!)) {
-        if (settings.modsBypassMediaOnly.get() && isMod(settings: settings, member: context.member!)) {} else {
-          try {
-            if (context is InteractionChatContext) await context.respond(MessageBuilder(content: "You can't use commands here."), level: .private);
-            if (context is MessageChatContext) await context.message.delete();
-          } catch (_) {}
-
-          Logger.print("Check", "User ${context.userId} tried to use command in media-only channel ${context.channelId}");
-          return false;
-        }
-      }
-    }
-
-    final restrictPass = await RestrictCommandsPlugin.check(client: context.client, command: command.name, store: store, guild: context.guild, userId: context.user.id, channelId: context.channel.id);
-    final pass = restrictPass != null;
-
-    if (!pass) {
-      if (context is MessageChatContext && (ifGuild(store, context.guildId, (id) => RestrictServerSettings(store, id))?.restrictionsReact.get() ?? true)) await context.message.react(ReactionBuilder(name: "🚫", id: null));
-      if (context is InteractionChatContext) await context.respond(MessageBuilder(content: "Command is disabled.\nRun `checkcommand \"${command.name}\"` to learn more."), level: ResponseLevel.hint);
-      return false;
-    }
-
-    if (command.needsGuild) {
-      if (await context.assureGuild() == false) return false;
-    }
-
-    if (command.triggerTyping) await context.channel.triggerTyping();
-    BotSettings(store).lastInteraction.set((client: context.client.user.id, channel: context.channel.id, user: context.user.id, input: (context is MessageChatContext ? context.message.content : (context is InteractionChatContext ? "${context.command} ${context.rawArguments.entries.map((x) => "(${x.key}: ${x.value})").join(" ")}" : null)), context: context.runtimeType.toString(), command: context.command.name));
-    return true;
+    final result = await _check(store: store, plugin: plugin, context: context);
+    Logger.print("Check", "Checked user ${context.user.id} (${context.user.username}) in ${context.client.user.id}${context.guildId}:${context.channelId} (${result.$1}): ${result.$2}");
+    return result.$1;
   });
 });
 
