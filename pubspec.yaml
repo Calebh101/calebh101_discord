@@ -10,8 +10,8 @@ environment:
 dependencies:
   localpkg:
     git:
-      url: https://github.com/Calebh101/localpkg-dart.git
-      ref: 95b95887c425dbb09e79934c81d3428768e6a7c5
+      url: https://github.com/Calebh101/localpkg-dart
+      ref: main
 
   nyxx:
     git:

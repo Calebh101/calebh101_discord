@@ -304,7 +304,7 @@ BotCommand defaultCheck(KVStore store) => BotCommand.check((plugin) {
     }));
 
     final result = await _check(store: store, plugin: plugin, context: context);
-    Logger.print("Check", "Checked user ${context.user.id} (${context.user.username}) in ${context.client.user.id}${context.guildId}:${context.channelId} (${result.$1}): ${result.$2}");
+    Logger.print("Check", "Checked user ${context.user.id} (${context.user.username}) in ${context.client.user.id}:${context.guildId}:${context.channelId} (${result.$1}, ${result.$2}) (${context.runtimeType}): ${context.ifIs<MessageChatContext>()?.message.content ?? context.ifIs<InteractionChatContext>()?.thenReturnFrom((x) => "${x.command.name} ${x.arguments}")}");
     return result.$1;
   });
 });
