@@ -229,12 +229,11 @@ class Page extends Selection {
     final allSelections = allActionsX.whereType<Selection>().toList();
     int emojiIndex = 0;
 
-    final contentLines = allActionsX.map((item) {
-      if (item is Break) {
-        return item.customText ?? "";
+    final contentLines = allActionsX.map((action) {
+      if (action is! Selection) {
+        return action.customText ?? "";
       }
 
-      final action = item as Selection;
       final max = min(indices.length, maxUniqueReactionsPerMessage);
       if (emojiIndex >= max) throw StateError("Too many options! ...");
 

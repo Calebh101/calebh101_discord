@@ -322,7 +322,7 @@ class AdminPlugin extends BotPluginLegacy {
         if (mainAdmin != null) {
           final m = await () async {
             try {
-              return (await context.client.users.createDm(Snowflake(int.parse(mainAdmin)))).sendMessage(MessageBuilder(content: "I have been unclaimed."));
+              return await (await context.client.users.createDm(Snowflake(int.parse(mainAdmin)))).sendMessage(MessageBuilder(content: "I have been unclaimed."));
             } catch (e) {
               Logger.warn("Commands.Claim", "Unable to open DM: $e");
             }
@@ -386,7 +386,7 @@ class AdminPlugin extends BotPluginLegacy {
 
         final m = await () async {
           try {
-            return (await context.client.users.createDm(Snowflake(int.parse(old)))).sendMessage(MessageBuilder(content: "I have been unclaimed."));
+            return await (await context.client.users.createDm(Snowflake(int.parse(old)))).sendMessage(MessageBuilder(content: "I have been unclaimed."));
           } catch (e) {
             Logger.warn("Commands.Unclaim", "Unable to open DM: $e");
           }
@@ -632,7 +632,7 @@ ${v.toString().toDiscordCodeBlock()}
     BotCommand("findrole", "Server", "Find a role by ID.", (ChatContext context, int id) async {
       final role = await () async {
         try {
-          return context.guild!.roles.get(Snowflake(id));
+          return await context.guild!.roles.get(Snowflake(id));
         } catch (_) {
           return null;
         }

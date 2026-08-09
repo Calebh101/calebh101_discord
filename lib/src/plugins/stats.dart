@@ -92,7 +92,7 @@ class StatsPlugin extends BotPluginLegacy {
     elements["Uptime"] = [
       "System: ${await () async {
         try {
-          return getSystemUptime();
+          return await getSystemUptime();
         } catch (e) {
           return "Error: $e";
         }
