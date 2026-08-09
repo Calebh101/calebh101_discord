@@ -60,8 +60,13 @@ String formatLatency(Duration latency) {
   return "${(latency.inMicroseconds / Duration.microsecondsPerMillisecond).toStringAsFixed(3)}ms";
 }
 
-extension ToMention on int {
+extension ToMentionInt on int {
+  @Deprecated("Use toUserMention instead.")
   String toMention() {
+    return "<@$this>";
+  }
+
+  String toUserMention() {
     return "<@$this>";
   }
 
@@ -69,30 +74,49 @@ extension ToMention on int {
     return "<@&$this>";
   }
 
+  @Deprecated("Use toChannelMention instead.")
   String toChannel() {
+    return "<#$this>";
+  }
+
+  String toChannelMention() {
     return "<#$this>";
   }
 }
 
-extension RoleToMention on Role {
+extension ToMentionSnowflake on Snowflake {
+  String toUserMention() {
+    return value.toUserMention();
+  }
+
+  String toRoleMention() {
+    return value.toRoleMention();
+  }
+
+  String toChannelMention() {
+    return value.toChannelMention();
+  }
+}
+
+extension RoleToMention on PartialRole {
   String toMention() {
     return this.id.value.toRoleMention();
   }
 }
 
-extension UserToMention on User {
+extension UserToMention on PartialUser {
   String toMention() {
     return this.id.value.toMention();
   }
 }
 
-extension MemberToMention on Member {
+extension MemberToMention on PartialMember {
   String toMention() {
     return this.id.value.toMention();
   }
 }
 
-extension ChannelToMention on Channel {
+extension ChannelToMention on PartialChannel {
   String toMention() {
     return this.id.value.toChannel();
   }

@@ -15,7 +15,9 @@ class QuotePlugin extends BotPluginLegacy {
         if (event.guildId == null || event.member == null) return;
 
         final settings = QuoteSettings(context.store, event.guildId!);
+        Logger.print("Quote", "Made it");
         if (settings.quotedMessages.get().contains(event.messageId)) return;
+        Logger.print("Quote", "Made it");
 
         final guild = await event.guild!.get();
         final emoji = await settings.getQuoteEmoji(client: client, guild: guild);
@@ -23,7 +25,7 @@ class QuotePlugin extends BotPluginLegacy {
 
         if (emoji == null) return;
         if (channelId == null) return;
-        if (event.message.channelId == channelId) return;
+        if (event.message.channelId == channelId && !dev) return;
         late GuildTextChannel channel;
 
         try {
@@ -35,6 +37,7 @@ class QuotePlugin extends BotPluginLegacy {
 
         final count = settings.quoteCount.get();
         if (count < 1) return;
+
         final message = await event.message.fetch();
         if (isIgnored(context.store, message.author.id)) return;
 
@@ -51,30 +54,36 @@ class QuotePlugin extends BotPluginLegacy {
           await message.deleteOwnReaction(ReactionBuilder.fromEmoji(emoji));
         } else {
           final users = reaction?.value.where((x) => !x.isBot && !x.isSystem && message.author.id != x.id) ?? [];
-          if (isMod(settings: settings, member: event.member!) && settings.quoteAdminImmediate.get()) {} else if (users.length < count) return;
+          if (settings.quoteAdminImmediate.get() && isMod(settings: settings, member: event.member!)) {} else if (users.length < count) return;
         }
 
         final current = settings.quotedMessages.get();
         current.add(event.messageId);
         settings.quotedMessages.set(current);
 
-        await channel.sendMessage(MessageBuilder(embeds: [EmbedBuilder(
-          author: author is User ? EmbedAuthorBuilder(name: author.username, iconUrl: author.avatar.url) : null,
-          description: "## Quote by ${message.author.id.value.toMention()}\n\n${message.content}\n\nLink: ${discordLink(event.guildId, message.channelId, message.id)}\n-# This message was sent by a random user, and is not property of this bot.",
-          timestamp: DateTime.now().toUtc(),
-          color: await getColor(await tryCatchA<Member?>(() async => await userToMember(message.author as User, guild: guild))),
-        ), ...message.embeds.map((e) => EmbedBuilder(
-          title: e.title,
-          description: e.description,
-          url: e.url,
-          timestamp: e.timestamp,
-          color: e.color,
-          footer: e.footer != null ? EmbedFooterBuilder(text: e.footer!.text, iconUrl: e.footer!.iconUrl) : null,
-          author: e.author != null ? EmbedAuthorBuilder(name: e.author!.name, url: e.author!.url, iconUrl: e.author!.iconUrl) : null,
-          image: e.image != null ? EmbedImageBuilder(url: e.image!.url) : null,
-          thumbnail: e.thumbnail != null ? EmbedThumbnailBuilder(url: e.thumbnail!.url) : null,
-          fields: e.fields?.map((f) => EmbedFieldBuilder(name: f.name, value: f.value, isInline: f.inline)).toList(),
-        ))], attachments: (await Future.wait(message.attachments.map((x) async {
+        await channel.sendMessage(MessageBuilder(embeds: [
+          EmbedBuilder(
+            author: author is User ? EmbedAuthorBuilder(name: author.username, iconUrl: author.avatar.url) : null,
+            thumbnail: author.avatar?.url != null ? EmbedThumbnailBuilder(url: author.avatar!.url) : null,
+            description: "## Quote by ${message.author.id.value.toMention()}\n\n${message.content}",
+            timestamp: DateTime.now().toUtc(),
+            color: await getColor(await tryCatchA<Member?>(() async => await userToMember(message.author as User, guild: guild))),
+            fields: [
+              EmbedFieldBuilder(name: "Link", value: "${discordLink(event.guildId, message.channelId, message.id)}", isInline: true),
+            ],
+          ), ...message.embeds.map((e) => EmbedBuilder(
+            title: e.title,
+            description: e.description,
+            url: e.url,
+            timestamp: e.timestamp,
+            color: e.color,
+            footer: e.footer != null ? EmbedFooterBuilder(text: e.footer!.text, iconUrl: e.footer!.iconUrl) : null,
+            author: e.author != null ? EmbedAuthorBuilder(name: e.author!.name, url: e.author!.url, iconUrl: e.author!.iconUrl) : null,
+            image: e.image != null ? EmbedImageBuilder(url: e.image!.url) : null,
+            thumbnail: e.thumbnail != null ? EmbedThumbnailBuilder(url: e.thumbnail!.url) : null,
+            fields: e.fields?.map((f) => EmbedFieldBuilder(name: f.name, value: f.value, isInline: f.inline)).toList(),
+          )),
+        ], attachments: (await Future.wait(message.attachments.map((x) async {
           final data = (await tryCatchA(() => http.get(x.url)))?.bodyBytes;
           Logger.print("Quote", "Attachment ${x.fileName}: ${data?.lengthInBytes}");
           if (data == null) return null;
