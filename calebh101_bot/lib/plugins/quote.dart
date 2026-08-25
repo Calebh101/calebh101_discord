@@ -15,9 +15,7 @@ class QuotePlugin extends BotPluginLegacy {
         if (event.guildId == null || event.member == null) return;
 
         final settings = QuoteSettings(context.store, event.guildId!);
-        Logger.print("Quote", "Made it");
         if (settings.quotedMessages.get().contains(event.messageId)) return;
-        Logger.print("Quote", "Made it");
 
         final guild = await event.guild!.get();
         final emoji = await settings.getQuoteEmoji(client: client, guild: guild);
@@ -57,6 +55,10 @@ class QuotePlugin extends BotPluginLegacy {
           if (settings.quoteAdminImmediate.get() && isMod(settings: settings, member: event.member!)) {} else if (users.length < count) return;
         }
 
+        final messageChannel = await tryCatchA(() async => await message.channel.get() as GuildTextChannel);
+        final everyoneOverwrite = messageChannel?.permissionOverwrites.firstWhereOrNull((overwrite) => overwrite.id == channel.guild.id);
+        final isPrivate = everyoneOverwrite?.deny.contains(Permissions.viewChannel) ?? false;
+
         final current = settings.quotedMessages.get();
         current.add(event.messageId);
         settings.quotedMessages.set(current);
@@ -65,11 +67,14 @@ class QuotePlugin extends BotPluginLegacy {
           EmbedBuilder(
             author: author is User ? EmbedAuthorBuilder(name: author.username, iconUrl: author.avatar.url) : null,
             thumbnail: author.avatar?.url != null ? EmbedThumbnailBuilder(url: author.avatar!.url) : null,
-            description: "## Quote by ${message.author.id.value.toMention()}\n\n${message.content}",
+            description: "## Quote by ${message.author.id.toUserMention()}\n\n${message.content}",
             timestamp: DateTime.now().toUtc(),
             color: await getColor(await tryCatchA<Member?>(() async => await userToMember(message.author as User, guild: guild))),
             fields: [
-              EmbedFieldBuilder(name: "Link", value: "${discordLink(event.guildId, message.channelId, message.id)}", isInline: true),
+              EmbedFieldBuilder(name: "Link", value: [
+                if (isPrivate) "In: `#${messageChannel?.name}`",
+                "${discordLink(event.guildId, message.channelId, message.id)}",
+              ].join("\n"), isInline: true),
             ],
           ), ...message.embeds.map((e) => EmbedBuilder(
             title: e.title,
