@@ -42,6 +42,7 @@ DiscordColor modLogSeverityToColor(ModlogSeverity severity) {
 class Modlog {
   static Set<String> ignoredEvents = {"pagination"};
   static Set<String> events = {};
+  static List<ModlogEvent> buffer = [];
 
   Modlog._(ModlogGroupCollection collection) {
     addExtraGroup(collection);
@@ -81,6 +82,20 @@ class Modlog {
     return current.where((x) => !ignoredEvents.contains(x)).toSet();
   }
 
+  static String? addBuffered(ModlogEvent event) {
+    if (ignoredEvents.contains(event.eventId)) return "Event is ignored.";
+    if (events.isEmpty) return "Not set up.";
+    if (!events.contains(event.eventId)) throw Exception("Invalid event ID: ${event.eventId}");
+    if (event.guild == null) return "No guild found.";
+    if (event.settings?.modlogChannel.get() == null) return "No modlog channel set.";
+
+    final enabledScopes = event.settings?.modlog.get();
+    if (enabledScopes != null && !enabledScopes.any((x) => event.triggers.contains(x))) return "Event not in enabled scopes.";
+
+    buffer.add(event);
+    return null;
+  }
+
   static Future<String?> add(ModlogEvent event) async {
     try {
       if (ignoredEvents.contains(event.eventId)) return "Event is ignored.";
@@ -111,17 +126,7 @@ class Modlog {
 
       final message = MessageBuilder(
         embeds: [
-          EmbedBuilder(
-            title: event.title,
-            description: event.description,
-            fields: List.generate(event.fields?.length ?? 0, (i) {
-              final field = event.fields!.entries.elementAt(i);
-              return EmbedFieldBuilder(name: field.key, value: field.value, isInline: false);
-            }),
-            timestamp: event.timestamp?.toUtc(),
-            footer: EmbedFooterBuilder(text: event.eventId),
-            color: modLogSeverityToColor(event.severity),
-          ),
+          event.toEmbed(),
         ],
         attachments: (event.attachments ?? {}).entries.map((x) {
           return AttachmentBuilder(data: utf8.encode(x.value), fileName: x.key);
@@ -133,6 +138,55 @@ class Modlog {
     } catch (e) {
       Logger.warn("Modlog", "Unable to log event ${event.eventId}: $e");
       return "Unknown error.";
+    }
+  }
+
+  static Future<String?> flush() async {
+    try {
+      if (buffer.isEmpty) return "No events.";
+      final clients = buffer.mapToList((x) => x.client);
+
+      final uniqueClients = {
+        for (final client in clients) client.user.id: client,
+      }.values;
+
+      for (final client in uniqueClients) {
+        final channelIds = buffer.mapToList((x) => x.settings?.modlogChannel.get()).whereType<int>().toSet();
+
+        for (final id in channelIds) {
+          final channel = await client.channels.get(.new(id));
+
+          if (channel is! GuildTextChannel) {
+            Logger.print("Modlog", "Client ${client.user.id}, channel ${channel.id}: Specified channel is not a text channel.");
+            continue;
+          }
+
+          final all = buffer.where((x) => x.client.user.id == client.user.id && x.settings?.modlogChannel.get() == id).toList();
+
+          for (int i = 0; i < (all.length / 10).ceil(); i++) {
+            final start = i * 10;
+            final events = all.sublist(start, start + 10 >= all.length ? null : start + 10);
+
+            final message = MessageBuilder(
+              embeds: events.mapToList((x) => x.toEmbed()),
+              attachments: events.mapToList((event) {
+                return (event.attachments ?? {}).entries.mapToList((x) {
+                  return AttachmentBuilder(data: utf8.encode(x.value), fileName: x.key);
+                });
+              }).flattenedToList,
+            );
+
+            await channel.sendMessage(message);
+          }
+        }
+      }
+
+      return null;
+    } catch (e) {
+      Logger.warn("Modlog", "Unable to log buffer of ${buffer.length}: $e");
+      return "Unknown error.";
+    } finally {
+      buffer.clear();
     }
   }
 }
@@ -160,6 +214,20 @@ class ModlogEvent {
   }
 
   ModlogEvent.fromContext(this.eventId, {required this.severity, required ChatContext context, required this.settings, required this.title, this.description, this.fields, this.timestamp, this.url, this.image, this.thumbail, this.alsoTriggerOn, this.attachments}) : client = context.client, guild = context.guild;
+
+  EmbedBuilder toEmbed() {
+    return EmbedBuilder(
+      title: title,
+      description: description,
+      fields: List.generate(fields?.length ?? 0, (i) {
+        final field = fields!.entries.elementAt(i);
+        return EmbedFieldBuilder(name: field.key, value: field.value, isInline: false);
+      }),
+      timestamp: timestamp?.toUtc(),
+      footer: EmbedFooterBuilder(text: eventId),
+      color: modLogSeverityToColor(severity),
+    );
+  }
 }
 
 List<BotCommand> modLogCommandsX<T extends ChatContext>(KVStore store) => [
@@ -269,5 +337,9 @@ List<BotCommand> modLogCommandsX<T extends ChatContext>(KVStore store) => [
         content: "Modlog message sent.",
       ));
     }
+  }, CommandAttributes(permissionsRequired: BotCommandPermissions.admin, category: "Modlog")),
+  BotCommand.command("modlogflush", "Flush modlog.", (T context) async {
+    final error = await Modlog.flush();
+    await context.respond(MessageBuilder(content: error ?? "Success."));
   }, CommandAttributes(permissionsRequired: BotCommandPermissions.admin, category: "Modlog")),
 ];

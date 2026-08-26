@@ -971,7 +971,7 @@ class ModerationPlugin extends BotPluginLegacy {
 
   @override
   FutureOr<List<ModlogGroupCollection>> modlogGroups() {
-    Modlog.addIgnored({"message.send", "audit"});
+    Modlog.addIgnored({"audit"});
 
     return [
       {
@@ -989,7 +989,7 @@ class ModerationPlugin extends BotPluginLegacy {
       client.onMessageCreate.listen((event) async {
         if (event.message.author.id == client.user.id) return;
 
-        Modlog.add(ModlogEvent(
+        Modlog.addBuffered(ModlogEvent(
           "message.send",
           title: "Message Sent",
           fields: {
