@@ -263,6 +263,12 @@ List<BotCommand> modLogCommandsX<T extends ChatContext>(KVStore store) => [
     final id = settings.modlogChannel.get();
     await context.respond(MessageBuilder(content: "Modlog channel is currently ${id != null ? "set to ${id.toChannel()}" : "**not set**"}."));
   }),
+  BotCommand("modlogpresets", "Modlog", "Get available modlog presets.", (T context) async {
+    await context.respond(MessageBuilder(content: ModlogGroup.values.map((group) {
+      final scopes = Modlog.getGroup(group);
+      return "`${group.name}` (**${scopes.length}**): ${scopes.map((x) => x.toDiscordCodeString()).join(", ")}";
+    }).join("\n")));
+  }),
   BotCommand("modlogscopes", "Modlog", "Select scopes to log.", (T context, [GreedyString? data]) async {
     final input = data?.data;
     if (Modlog.events.isEmpty) return context.respondWithError("Modlog is not enabled.\n-# No events registered. Did you forget to call `Modlog()`?");
