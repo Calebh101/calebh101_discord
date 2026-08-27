@@ -202,18 +202,18 @@ class ModlogEvent {
   final ModlogSeverity severity;
   final Uri? url;
   final EmbedImageBuilder? image;
-  final EmbedThumbnailBuilder? thumbail;
+  final EmbedThumbnailBuilder? thumbnail;
   DateTime? timestamp;
   List<String>? alsoTriggerOn;
   late List<String> triggers;
   Map<String, String>? attachments;
 
-  ModlogEvent(this.eventId, {required this.severity, required this.guild, required this.settings, required this.title, this.description, this.fields, this.timestamp, this.url, this.image, this.thumbail, this.alsoTriggerOn, required this.client, this.attachments}) {
+  ModlogEvent(this.eventId, {required this.severity, required this.guild, required this.settings, required this.title, this.description, this.fields, this.timestamp, this.url, this.image, this.thumbnail, this.alsoTriggerOn, required this.client, this.attachments}) {
     timestamp ??= DateTime.now();
     triggers = [eventId, ...?alsoTriggerOn];
   }
 
-  ModlogEvent.fromContext(this.eventId, {required this.severity, required ChatContext context, required this.settings, required this.title, this.description, this.fields, this.timestamp, this.url, this.image, this.thumbail, this.alsoTriggerOn, this.attachments}) : client = context.client, guild = context.guild;
+  ModlogEvent.fromContext(this.eventId, {required this.severity, required ChatContext context, required this.settings, required this.title, this.description, this.fields, this.timestamp, this.url, this.image, this.thumbnail, this.alsoTriggerOn, this.attachments}) : client = context.client, guild = context.guild;
 
   EmbedBuilder toEmbed() {
     return EmbedBuilder(
