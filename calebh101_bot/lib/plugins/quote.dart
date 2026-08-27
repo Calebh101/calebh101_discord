@@ -56,10 +56,8 @@ class QuotePlugin extends BotPluginLegacy {
         }
 
         final messageChannel = await tryCatchA(() async => await message.channel.get() as GuildTextChannel);
-        final everyoneOverwrite = messageChannel?.permissionOverwrites.firstWhereOrNull((overwrite) => overwrite.id == channel.guild.id);
-        final isPrivate = everyoneOverwrite?.deny.contains(Permissions.viewChannel) ?? false;
-
         final current = settings.quotedMessages.get();
+
         current.add(event.messageId);
         settings.quotedMessages.set(current);
 
@@ -71,8 +69,8 @@ class QuotePlugin extends BotPluginLegacy {
             timestamp: DateTime.now().toUtc(),
             color: await getColor(await tryCatchA<Member?>(() async => await userToMember(message.author as User, guild: guild))),
             fields: [
-              EmbedFieldBuilder(name: "Link", value: [
-                if (isPrivate) "In: `#${messageChannel?.name}`",
+              EmbedFieldBuilder(name: "Where", value: [
+                if (messageChannel != null) "In: `#${messageChannel.name}`",
                 "${discordLink(event.guildId, message.channelId, message.id)}",
               ].join("\n"), isInline: true),
             ],

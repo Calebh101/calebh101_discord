@@ -971,7 +971,7 @@ class ModerationPlugin extends BotPluginLegacy {
 
   @override
   FutureOr<List<ModlogGroupCollection>> modlogGroups() {
-    Modlog.addIgnored({"audit"});
+    Modlog.addIgnored({"audit", "message.send"});
 
     return [
       {
