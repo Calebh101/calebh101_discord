@@ -1029,8 +1029,9 @@ class ModerationPlugin extends BotPluginLegacy {
             severity: .verbose,
           ));
 
-          for (final attachment in event.message.attachments) {
+          for (int i = 0; i < event.message.attachments.length; i++) {
             const int max = 10 * 1024 * 1024;
+            final attachment = event.message.attachments[i];
 
             try {
               Logger.print("Moderation", "Uploading attachment ${attachment.fileName}... (session: $session)");
@@ -1038,19 +1039,21 @@ class ModerationPlugin extends BotPluginLegacy {
               final data = (await http.get(attachment.url)).bodyBytes;
 
               if (data.length > max) { // 10 MB
-                for (int start = 0, i = 0; start < data.length; start += max, i++) {
+                for (int start = 0, j = 0; start < data.length; start += max, j++) {
                   final end = min(start + max, data.length);
-                  attachments.add(.new(data: data.sublist(start, end), fileName: "$session-$i${attachment.fileName.split(".").lastOrNull ?? ""}"));
+                  attachments.add(.new(data: data.sublist(start, end), fileName: "$i-$session-$j.${attachment.fileName.split(".").lastOrNull ?? ""}"));
                 }
               } else {
-                attachments.add(.new(data: data, fileName: "$session${attachment.fileName.split(".").lastOrNull ?? ""}"));
+                attachments.add(.new(data: data, fileName: "$i-$session.${attachment.fileName.split(".").lastOrNull ?? ""}"));
               }
 
               final result = await Modlog.send(id: "message.send.attachments", triggers: ["message.send.attachments"], client: client, settings: ifGuild(context.store, event.guildId, (id) => ServerSettings(context.store, id)), message: MessageBuilder(
                 content: [
+                  "- Attachment: ${i + 1}/${event.message.attachments.length} ($i)",
                   "- File name: `${attachment.fileName}`",
                   "- Size: ${data.length} bytes",
                   "- Session: `$session`",
+                  "- Pieces: ${attachments.length}",
                 ].join("\n"),
                 attachments: attachments,
               ));
