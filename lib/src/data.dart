@@ -13,102 +13,14 @@ enum Scope {
   user,
   userPerServer,
   channel,
-}
+  ;
 
-String scopeToString(Scope scope) {
-  return scope.name;
+  String get id {
+    return name;
+  }
 }
 
 bool isStdinLocked = false;
-
-/*class BotSettingsItem<T> {
-  final String key;
-  final BotSettings settings;
-
-  const BotSettingsItem(this.settings, this.key);
-
-  T? get({T? Function(dynamic input)? cast}) {
-    var s = settings.load();
-    s ??= {};
-    return cast?.call(s[key]) ?? s[key] as T?;
-  }
-
-  Future<T?> getAsync({T? Function(dynamic input)? cast}) async {
-    var s = await settings.loadAsync();
-    s ??= {};
-    return cast?.call(s[key]) ?? s[key] as T?;
-  }
-
-  Future<bool> set(T? value) async {
-    var s = await settings.loadAsync();
-    s ??= {key: value};
-    s[key] = value;
-    await settings.file.writeAsString(jsonEncode(s));
-    return true;
-  }
-}
-
-class BotSettings {
-  final String filename;
-  const BotSettings({this.filename = "settings.json"});
-
-  File get file => File(p.join(Directory.current.path, filename));
-  BotSettingsItem<String> get botToken => BotSettingsItem<String>(this, "botToken");
-
-  Future<Map<dynamic, dynamic>?> loadAsync() async {
-    try {
-      final result = await file.readAsString();
-      return jsonDecode(result);
-    } catch (e) {
-      return null;
-    }
-  }
-
-  Map<dynamic, dynamic>? load() {
-    try {
-      final result = file.readAsStringSync();
-      return jsonDecode(result);
-    } catch (e) {
-      return null;
-    }
-  }
-
-  Future<bool> init() async {
-    // Meant to be overridden
-    return true;
-  }
-
-  @nonVirtual
-  Future<bool> initCore() async {
-    if (await botToken.getAsync() == null) {
-      final result = await askForInput(botToken);
-      if (result == false) return false;
-    }
-
-    if (await botToken.getAsync() == null) return false;
-    return true;
-  }
-
-  static Future<bool> askForInput<T extends BotSettingsItem<String>>(T item) async {
-    isStdinLocked = true;
-    stdin.echoMode = true;
-    stdin.lineMode = true;
-
-    stdout.write('Enter value for ${item.key}: >> ');
-    final input = stdin.readLineSync();
-
-    if (input == null || input.isEmpty) {
-      print('No input provided.');
-      return false;
-    }
-
-    await item.set(input);
-    stdin.echoMode = false;
-    stdin.lineMode = false;
-    isStdinLocked = false;
-    return true;
-  }
-}*/
 
 class KVStore {
   final Database _db;
@@ -128,7 +40,7 @@ class KVStore {
   dynamic get(Scope scope, String id, String key) {
     final result = _db.select(
       'SELECT value FROM kv WHERE scope=? AND id=? AND key=?',
-      [scopeToString(scope), id, key],
+      [scope.id, id, key],
     );
 
     if (result.isEmpty) return null;
@@ -139,21 +51,21 @@ class KVStore {
     _db.execute(
       'INSERT INTO kv (scope, id, key, value) VALUES (?,?,?,?)'
       ' ON CONFLICT(scope,id,key) DO UPDATE SET value=excluded.value',
-      [scopeToString(scope), id, key, jsonEncode(value)],
+      [scope.id, id, key, jsonEncode(value)],
     );
   }
 
   void delete(Scope scope, String id, String key) {
     _db.execute(
       'DELETE FROM kv WHERE scope=? AND id=? AND key=?',
-      [scopeToString(scope), id, key],
+      [scope.id, id, key],
     );
   }
 
   Map<String, dynamic> getAll(Scope scope, String id) {
     final rows = _db.select(
       'SELECT key, value FROM kv WHERE scope=? AND id=?',
-      [scopeToString(scope), id],
+      [scope.id, id],
     );
 
     return {for (final r in rows) r['key'] as String: jsonDecode(r['value'])};
@@ -162,7 +74,7 @@ class KVStore {
   Map<String, T> getAllForKey<T>(Scope scope, String key) {
     final rows = _db.select(
       'SELECT id, value FROM kv WHERE scope=? AND key=?',
-      [scopeToString(scope), key],
+      [scope.id, key],
     );
 
     return {for (final r in rows) r['id'] as String: jsonDecode(r['value']) as T};
@@ -171,7 +83,7 @@ class KVStore {
   Map<String, Map<String, dynamic>> getScope(Scope scope) {
     final rows = _db.select(
       'SELECT id, key, value FROM kv WHERE scope=?',
-      [scopeToString(scope)],
+      [scope.id],
     );
 
     final result = <String, Map<String, dynamic>>{};
