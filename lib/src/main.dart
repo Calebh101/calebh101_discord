@@ -386,7 +386,7 @@ Future<BotContext?> load({required BotSettings settings, required FutureOr<Patte
               "User name: ${await memberFromUserToString(context.user, client: client, guild: context.guild)}",
             ].join("\n"), isInline: false),
             EmbedFieldBuilder(name: "Timestamp", value: "${timestamp.toDiscordTimestamp(DiscordTimestamp.shortDateTime)} (${timestamp.toDiscordTimestamp(DiscordTimestamp.relative)}) (source: `${message != null ? "message" : "system"}`)", isInline: false),
-            if (message != null) EmbedFieldBuilder(name: "Message", value: message.content.substring(0, min(message.content.length, 1024)), isInline: false),
+            if (message != null) EmbedFieldBuilder(name: "Message", value: message.content.max(1000), isInline: false),
           ],
           color: DiscordColor.parseHexString("#FF7F7F"),
           timestamp: timestamp,

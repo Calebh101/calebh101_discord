@@ -149,11 +149,11 @@ void main(List<String> arguments) => wrap(() async {
       }, CommandAttributes(category: "Fun")),
 
       BotCommand("mock", "Fun", "Mock a message.", (ChatContext context, [GreedyString? input]) async {
-        String? data = input?.data;
+        String? data = input?.data.max(1984);
 
         if (input == null && context is MessageChatContext) {
           final reply = context.message.referencedMessage;
-          data = reply?.content;
+          data = reply?.content.max(1984);
         }
 
         if (data == null) return context.respondWithError("No message or input found.");

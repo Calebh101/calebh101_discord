@@ -125,6 +125,7 @@ extension ChannelToMention on PartialChannel {
 extension ToDiscordCodeBlock on Object? {
   String toDiscordCodeBlock({String? language}) {
     final x = toString().trim();
+    if (x.isEmpty) return "";
     return "```${language != null && x.isNotEmpty ? language : ""}\n$x\n```";
   }
 

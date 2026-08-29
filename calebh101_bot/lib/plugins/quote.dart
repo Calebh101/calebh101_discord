@@ -70,7 +70,7 @@ class QuotePlugin extends BotPluginLegacy {
       EmbedBuilder(
         author: author is User ? EmbedAuthorBuilder(name: author.username, iconUrl: author.avatar.url) : null,
         thumbnail: author.avatar?.url != null ? EmbedThumbnailBuilder(url: author.avatar!.url) : null,
-        description: "## Quote by ${message.author.id.toUserMention()}\n\n${message.content}",
+        description: "## Quote by ${message.author.id.toUserMention()}\n\n${message.content.max(1900)}",
         timestamp: DateTime.now().toUtc(),
         color: await getColor(await tryCatchA<Member?>(() async => await userToMember(message.author as User, guild: guild))),
         fields: [

@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:typed_data';
 
 import 'package:calebh101_discord/calebh101_discord.dart';
 import 'package:collection/collection.dart';
@@ -96,6 +97,29 @@ class Modlog {
     return null;
   }
 
+  static Future<String?> send({required String id, required List<String> triggers, required NyxxGateway client, required ServerSettings? settings, required MessageBuilder message}) async {
+    try {
+      if (ignoredEvents.contains(id)) return "Event is ignored.";
+      if (events.isEmpty) return "Not set up.";
+      if (!events.contains(id)) throw Exception("Invalid event ID: $id");
+
+      final channelId = settings?.modlogChannel.get();
+      if (channelId == null) return "No modlog channel set.";
+
+      final enabledScopes = settings?.modlog.get();
+      if (enabledScopes != null && !enabledScopes.any((x) => triggers.contains(x))) return "Event not in enabled scopes.";
+
+      final channel = await client.channels.get(Snowflake(channelId));
+      if (channel is! GuildTextChannel) return "Specified channel is not a text channel.";
+
+      await channel.sendMessage(message);
+      return null;
+    } catch (e) {
+      Logger.warn("Modlog", "Unable to send message $id: $e");
+      return "Unknown error.";
+    }
+  }
+
   static Future<String?> add(ModlogEvent event) async {
     try {
       if (ignoredEvents.contains(event.eventId)) return "Event is ignored.";
@@ -107,9 +131,6 @@ class Modlog {
       final enabledScopes = event.settings?.modlog.get();
       if (enabledScopes != null && !enabledScopes.any((x) => event.triggers.contains(x))) return "Event not in enabled scopes.";
 
-      final channel = await event.client.channels.get(Snowflake(event.settings!.modlogChannel.get()!));
-      if (channel is! GuildTextChannel) return "Specified channel is not a text channel.";
-
       for (int i = 0; i < (event.fields?.length ?? 0); i++) {
         final field = event.fields?.entries.elementAtOrNull(i);
         if (field == null) continue;
@@ -120,7 +141,7 @@ class Modlog {
           event.fields![field.key] = file.toDiscordCodeBlock();
 
           event.attachments ??= {};
-          event.attachments![file] = value;
+          event.attachments![file] = utf8.encode(value);
         }
       }
 
@@ -129,12 +150,11 @@ class Modlog {
           event.toEmbed(),
         ],
         attachments: (event.attachments ?? {}).entries.map((x) {
-          return AttachmentBuilder(data: utf8.encode(x.value), fileName: x.key);
+          return AttachmentBuilder(data: x.value, fileName: x.key);
         }).toList(),
       );
 
-      await channel.sendMessage(message);
-      return null;
+      return await send(id: event.eventId, triggers: event.triggers, client: event.client, settings: event.settings, message: message);
     } catch (e) {
       Logger.warn("Modlog", "Unable to log event ${event.eventId}: $e");
       return "Unknown error.";
@@ -171,7 +191,7 @@ class Modlog {
               embeds: events.mapToList((x) => x.toEmbed()),
               attachments: events.mapToList((event) {
                 return (event.attachments ?? {}).entries.mapToList((x) {
-                  return AttachmentBuilder(data: utf8.encode(x.value), fileName: x.key);
+                  return AttachmentBuilder(data: x.value, fileName: x.key);
                 });
               }).flattenedToList,
             );
@@ -206,7 +226,7 @@ class ModlogEvent {
   DateTime? timestamp;
   List<String>? alsoTriggerOn;
   late List<String> triggers;
-  Map<String, String>? attachments;
+  Map<String, Uint8List>? attachments;
 
   ModlogEvent(this.eventId, {required this.severity, required this.guild, required this.settings, required this.title, this.description, this.fields, this.timestamp, this.url, this.image, this.thumbnail, this.alsoTriggerOn, required this.client, this.attachments}) {
     timestamp ??= DateTime.now();

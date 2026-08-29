@@ -1,10 +1,12 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:math';
 
 import 'package:calebh101_discord/calebh101_discord.dart';
 import 'package:chrono_dart/chrono_dart.dart';
 import 'package:collection/collection.dart';
 import 'package:json_annotation/json_annotation.dart';
+import 'package:http/http.dart' as http;
 
 part 'moderation.g.dart';
 
@@ -975,7 +977,7 @@ class ModerationPlugin extends BotPluginLegacy {
 
     return [
       {
-        ModlogGroup.all: (levelBelow) => {...levelBelow, "mod.timein", "mod.unwarn", "message.send", "audit", ...memberUpdateProperties.keys.where((x) => x != "timeout").map((x) => "member.update.$x")},
+        ModlogGroup.all: (levelBelow) => {...levelBelow, "mod.timein", "mod.unwarn", "message.send", "message.send.attachments", "audit", ...memberUpdateProperties.keys.where((x) => x != "timeout").map((x) => "member.update.$x")},
         ModlogGroup.normal: (levelBelow) => {...levelBelow, "mod.ban", "mod.unban", "mod.timeout", "mod.kick", "mod.warn", "mod.purge", "mod.softban", "message.delete", "message.edit", "member.add", "member.remove", "member.ban", "member.unban", "message.bulkdelete", "invite.create", "invite.delete", "member.update.timeout", "mod.block.set", "mod.block.catch", "channel.lock", "channel.unlock", "channel.slowmode"},
         ModlogGroup.quiet: (levelBelow) => {...levelBelow},
         ModlogGroup.off: (_) => {},
@@ -996,15 +998,69 @@ class ModerationPlugin extends BotPluginLegacy {
             "Author": event.message.author.id.value.toMention(),
             "ID": event.message.id.toDiscordCodeString(),
             "Link": "https://discord.com/channels/${[event.guildId ?? "@me", event.message.channelId, event.message.id].join("/")}",
-            "Attachments": "${event.message.embeds.length} embeds, ${event.message.attachments.length} attachments",
+            "Attachments": "${event.message.embeds.length} embeds, ${event.message.attachments.length} attachments (${event.message.attachments.map((x) => x.fileName.toDiscordCodeString()).join(", ")})",
             "Timestamp": event.message.timestamp.toDiscordTimestamp(DiscordTimestamp.longDateTime),
-            "Content": event.message.content.toDiscordCodeBlock(language: null),
+            "Content": event.message.content.max(1000).toDiscordCodeBlock(language: null),
           },
           guild: await event.guild?.get(),
           settings: ifGuild(context.store, event.guildId, (id) => ServerSettings(context.store, id)),
           client: client,
           severity: .verbose,
         ));
+
+        if (event.message.attachments.isNotEmpty) {
+          final session = Random.secure().nextInt(10000);
+
+          Modlog.add(ModlogEvent(
+            "message.send.attachments",
+            title: "Message Sent w/Attachments",
+            fields: {
+              "Author": event.message.author.id.value.toMention(),
+              "ID": event.message.id.toDiscordCodeString(),
+              "Link": "https://discord.com/channels/${[event.guildId ?? "@me", event.message.channelId, event.message.id].join("/")}",
+              "Attachments": "${event.message.embeds.length} embeds, ${event.message.attachments.length} attachments (${event.message.attachments.map((x) => x.fileName.toDiscordCodeString()).join(", ")})",
+              "Timestamp": event.message.timestamp.toDiscordTimestamp(DiscordTimestamp.longDateTime),
+              "Content": event.message.content.max(1000).toDiscordCodeBlock(language: null),
+              "Session": session.toDiscordCodeBlock(),
+            },
+            guild: await event.guild?.get(),
+            settings: ifGuild(context.store, event.guildId, (id) => ServerSettings(context.store, id)),
+            client: client,
+            severity: .verbose,
+          ));
+
+          for (final attachment in event.message.attachments) {
+            const int max = 10 * 1024 * 1024;
+
+            try {
+              Logger.print("Moderation", "Uploading attachment ${attachment.fileName}... (session: $session)");
+              final List<AttachmentBuilder> attachments = [];
+              final data = (await http.get(attachment.url)).bodyBytes;
+
+              if (data.length > max) { // 10 MB
+                for (int start = 0, i = 0; start < data.length; start += max, i++) {
+                  final end = min(start + max, data.length);
+                  attachments.add(.new(data: data.sublist(start, end), fileName: "$session-$i${attachment.fileName.split(".").lastOrNull ?? ""}"));
+                }
+              } else {
+                attachments.add(.new(data: data, fileName: "$session${attachment.fileName.split(".").lastOrNull ?? ""}"));
+              }
+
+              final result = await Modlog.send(id: "message.send.attachments", triggers: ["message.send.attachments"], client: client, settings: ifGuild(context.store, event.guildId, (id) => ServerSettings(context.store, id)), message: MessageBuilder(
+                content: [
+                  "- File name: `${attachment.fileName}`",
+                  "- Size: ${data.length} bytes",
+                  "- Session: `$session`",
+                ].join("\n"),
+                attachments: attachments,
+              ));
+
+              Logger.print("Moderation", "Attachment ${attachment.fileName} result (session $session, ${data.length} bytes): $result");
+            } catch (e) {
+              Logger.warn("Moderation", "Error with attachment ${attachment.url} (session $session, ${attachment.fileName}): $e");
+            }
+          }
+        }
       });
 
       client.onMessageUpdate.listen((event) async {
@@ -1027,8 +1083,8 @@ class ModerationPlugin extends BotPluginLegacy {
             "Attachments": "${old?.attachments.length} -> ${event.message.attachments.length}".toDiscordCodeString(),
             "Sent": event.message.timestamp.toDiscordTimestamp(DiscordTimestamp.shortDateTime),
             "Edited": event.message.editedTimestamp?.toDiscordTimestamp(DiscordTimestamp.longDateTime) ?? "No timestamp",
-            "Was": old?.content.toDiscordCodeBlock(language: "md") ?? "Not found",
-            "Content": event.message.content.toDiscordCodeBlock(language: "md"),
+            "Was": old?.content.max(1000).toDiscordCodeBlock(language: "md") ?? "Not found",
+            "Content": event.message.content.max(1000).toDiscordCodeBlock(language: "md"),
           },
           guild: await event.guild?.get(),
           settings: ifGuild(context.store, event.guildId, (id) => ServerSettings(context.store, id)),
@@ -1050,7 +1106,7 @@ class ModerationPlugin extends BotPluginLegacy {
             if (channel != null) "Where": discordLink(event.guildId, channel.id).toString(),
             "Sent": old?.timestamp.toDiscordTimestamp(DiscordTimestamp.shortDateTime) ?? "No timestamp found",
             "Edited": old?.editedTimestamp?.toDiscordTimestamp(DiscordTimestamp.shortDateTime) ?? "No timestamp found",
-            "Was": old?.content.toDiscordCodeBlock(language: "md") ?? "Not found",
+            "Was": old?.content.max(1000).toDiscordCodeBlock(language: "md") ?? "Not found",
             "Embeds/attachments": "${old?.embeds.length} embeds, ${old?.attachments.length} attachments",
           },
           guild: await event.guild?.get(),
@@ -1074,7 +1130,7 @@ class ModerationPlugin extends BotPluginLegacy {
           settings: ifGuild(context.store, event.guildId, (id) => ServerSettings(context.store, id)),
           client: client,
           attachments: {
-            "messages.md": [
+            "messages.md": utf8.encode([
               (await Future.wait(old.entries.map((x) async => "- ${x.key}: ${x.value == null ? "Message not found in cache" : await (() async {
                 final message = x.value!;
                 final author = message.author;
@@ -1087,7 +1143,7 @@ class ModerationPlugin extends BotPluginLegacy {
                 ].join(" - ");
               }())}"))).join("\n"),
               (await Future.wait(old.entries.where((x) => x.value != null).map((x) async => "## Message ${x.key} by ${await userToString(await tryCatchA(() => client.users.get(x.key)))}\n${x.value?.content}"))).join("\n\n---\n\n"),
-            ].join("\n\n\n"),
+            ].join("\n\n\n")),
           },
           severity: ModlogSeverity.severe,
         ));
