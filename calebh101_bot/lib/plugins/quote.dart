@@ -272,7 +272,7 @@ class QuotePlugin extends BotPluginLegacy {
 
         data.channelIds = channels?.mapToList((x) => x.id);
         QuoteSettings(store, context.guildIdUnsafe).saveWith(data);
-        await context.respond(MessageBuilder(content: "Quote channels set to ${channels?.map((x) => x.toMention()).nullIfEmpty ?? "**all**"}."));
+        await context.respond(MessageBuilder(content: "Quote channels set to ${channels?.map((x) => x.toMention()).nullIfEmpty?.join(", ") ?? "**all**"}."));
       }, permissionsRequired: BotCommandPermissions.admin, needsGuild: true),
       BotCommand("getquotechannels", "Quote", "Get the channels quotes will be received from.", (T context, String name) async {
         final data = get(context.guildIdUnsafe, name);
