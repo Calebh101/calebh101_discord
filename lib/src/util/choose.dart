@@ -214,8 +214,9 @@ class Page extends Selection {
   final List<SelectionItem> actions;
   final bool noQuit;
   final bool noBack;
+  final DiscordColor? color;
 
-  Page(super.id, super.name, {required this.actions, this.description, this.noQuit = false, this.noBack = false}) : assert(actions.isNotEmpty, "Provide at least 1 action.");
+  Page(super.id, super.name, {required this.actions, this.description, this.noQuit = false, this.noBack = false, this.color}) : assert(actions.isNotEmpty, "Provide at least 1 action.");
 
   @override
   String toString() {
@@ -245,7 +246,7 @@ class Page extends Selection {
     final content = "## $name\n${description != null ? "$description" : ""}\n\n$contentLines";
     final idx = indices.entries.mapIndexed((i, x) => (id: x.key, emoji: x.value, index: i)).toList().sublist(0, allSelections.length);
 
-    await details.message.edit(MessageUpdateBuilder(content: content));
+    await details.message.edit(color != null ? MessageUpdateBuilder(embeds: [EmbedBuilder(description: content, color: color)]) : MessageUpdateBuilder(content: content));
     await details.message.deleteAllReactions();
     bool stopReacting = false;
 
