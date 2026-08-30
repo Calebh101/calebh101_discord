@@ -246,7 +246,7 @@ class Page extends Selection {
     final content = "## $name\n${description != null ? "$description" : ""}\n\n$contentLines";
     final idx = indices.entries.mapIndexed((i, x) => (id: x.key, emoji: x.value, index: i)).toList().sublist(0, allSelections.length);
 
-    await details.message.edit(color != null ? MessageUpdateBuilder(embeds: [EmbedBuilder(description: content, color: color)]) : MessageUpdateBuilder(content: content));
+    await details.message.edit(color != null ? MessageUpdateBuilder(content: null, embeds: [EmbedBuilder(description: content, color: color)]) : MessageUpdateBuilder(content: content));
     await details.message.deleteAllReactions();
     bool stopReacting = false;
 
