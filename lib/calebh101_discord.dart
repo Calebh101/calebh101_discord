@@ -1,5 +1,7 @@
 library;
 
+import 'package:nyxx/nyxx.dart';
+
 export 'unicode_names.dart';
 export 'src/main.dart';
 export 'src/data.dart';
@@ -44,3 +46,5 @@ export 'package:nyxx/nyxx.dart' hide Logger, HttpRequest, HttpResponse;
 export 'package:nyxx_commands/nyxx_commands.dart';
 export 'package:nyxx_extensions/nyxx_extensions.dart';
 export 'package:localpkg/localpkg.dart';
+
+typedef Client = NyxxGateway;

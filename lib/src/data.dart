@@ -139,7 +139,7 @@ class SettingsObject<T> {
     try {
       return (decodeFunction ?? cast).call(obj.store.get(obj.scope, obj.id.toString(), key));
     } catch (e) {
-      Logger.warn("SettingsObject($key, $T)", "Unable to decode: $e");
+      Logger.warn("SettingsObject", "$key, $T: Unable to decode: $e");
       return null;
     }
   }
@@ -147,10 +147,16 @@ class SettingsObject<T> {
   void set(T? value) {
     try {
       if (value == null) return delete();
+
+      if (this is SettingsObjectNotNull && (value is String || value is int || value is bool)) {
+        final d = (this as SettingsObjectNotNull).defaultFunction();
+        if (value == d) return delete();
+      }
+
       final v = encodeFunction?.call(value) ?? value;
       return obj.store.set(obj.scope, obj.id.toString(), key, v);
     } catch (e) {
-      Logger.warn("SettingsObject($key, $T)", "Unable to encode value ${value.runtimeType}: $e");
+      Logger.warn("SettingsObject", "$key, $T: Unable to encode value ${value.runtimeType}: $e");
     }
   }
 

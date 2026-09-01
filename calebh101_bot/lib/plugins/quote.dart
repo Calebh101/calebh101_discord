@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:calebh101_bot/main.dart';
 import 'package:calebh101_discord/calebh101_discord.dart';
 import 'package:collection/collection.dart';
 import 'package:http/http.dart' as http;
@@ -311,6 +312,64 @@ class QuotePlugin extends BotPluginLegacy {
         final data = QuoteSettings(store, context.guildIdUnsafe).getForChannel(channel.id);
         await context.respond(MessageBuilder(content: data != null ? "Found data: `${data.name}`" : "No data found."));
       }, permissionsRequired: BotCommandPermissions.admin, needsGuild: true),
+      BotCommand("randomquote", "Quote", "Get a random quote!", (T context, [User? author]) async {
+        final settings = QuoteSettings(store, context.guildIdUnsafe);
+        final all = settings.quoteData.get();
+
+        final List<String> used = [];
+        (Snowflake, Snowflake)? result;
+
+        final m = await context.respond(MessageBuilder(
+          content: "Searching through **${all.length}** candidates...",
+        ));
+
+        while (true) {
+          if (used.length >= all.length) break;
+
+          final output = await () async {
+            final data = all.random();
+            if (used.contains(data.name) || data.channel == null) return "Used";
+            used.add(data.name);
+
+            final channel = await tryCatchA(() async => await context.client.channels.get(data.channel!) as GuildTextChannel, onError: (e) => Logger.warn("Quote", "Unable to get channel ${data.channel}: $e"));
+            if (channel == null) return "Couldn't get channel";
+
+            final perms = await channel.computePermissionsFor(context.member!);
+            Logger.print("Quote", "Perms for member ${context.member?.id} and channel ${channel.id}: ${perms.runtimeType} (${perms.canUseEmbeddedActivities})");
+            if (!perms.canViewChannel) return "Can't view channel";
+            final messages = await getAllMessages(channel, limit: 500);
+
+            final candidates = messages.where((x) {
+              if (x.author.id != context.clientId) return false;
+              if (x.embeds.isEmpty) return false;
+              if (author == null) return true;
+
+              final embed = x.embeds.first;
+              final username = embed.author?.name;
+
+              if (username == null) return false;
+              return author.username == username;
+            });
+
+            if (candidates.isEmpty) return "No candidates";
+            final message = candidates.random();
+            result = (message.channelId, message.id);
+          }();
+
+          Logger.print("Quote", "Candidate: $output (${used.length}, ${all.length}, [${used.join(", ")}], [${all.map((x) => x.name).join(", ")}])");
+          if (output != null) continue;
+          break;
+        }
+
+        Logger.print("Quote", "Random quote result: $result (${result.runtimeType})");
+
+        if (result != null) {
+          await tryCatchA(m.delete);
+          await context.respond(MessageBuilder(referencedMessage: .forward(messageId: result!.$2, channelId: result!.$1, guildId: context.guildId)));
+        } else {
+          await context.updateMessage(m, MessageUpdateBuilder(content: "No quotes found."));
+        }
+      }, needsGuild: true),
     ];
   }
 }
@@ -369,6 +428,10 @@ class QuoteSettings extends ServerSettings {
   SettingsObjectNotNull<bool> get quoteAdminImmediate => SettingsObjectNotNull(this, "quoteAdminImmediate", defaultFunction: () => false);
   SettingsObjectNotNull<List<Snowflake>> get quotedMessages => SettingsObject.listSnowflake(this, "quotedMessages");
   SettingsObjectNotNull<List<QuoteData>> get quoteData => SettingsObjectNotNull(this, "quoteData", defaultFunction: () => [], encodeFunction: (input) => input.mapToList((x) => x.toJson()), decodeFunction: (input) => (input as List?)?.mapToList((x) => QuoteData.fromJson(x)).sorted((a, b) => a.hasChannels ? 1 : -1));
+
+  List<String> allQuoteDatas() {
+    return quoteData.get().mapToList((x) => x.name);
+  }
 
   QuoteData? getForChannel(Snowflake channel) {
     final data = quoteData.get();
