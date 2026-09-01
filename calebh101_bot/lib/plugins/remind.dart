@@ -72,8 +72,26 @@ class RemindPlugin extends BotPluginLegacy {
 
         await respondWithPagination(context, PaginatedEmbedBuilder(
           title: "All Reminders for ${await memberFromUserToString(user, client: context.client, guild: context.guild)}",
-          pages: EmbedPage.generate(reminders.mapIndexed((i, x) => EmbedFieldBuilder(name: "${i + 1}. ${x.name}", value: "${x.time.toDiscordTimestamp(DiscordTimestamp.longDateTime)} in ${x.channelId?.toChannel() ?? "DMs"}", isInline: false)).toList()),
+          pages: EmbedPage.generate(reminders.mapIndexed((i, x) => EmbedFieldBuilder(name: "${i + 1}. ${x.name}", value: "${x.time.toDiscordTimestamp(DiscordTimestamp.longDateTime)} in ${x.channelId?.toChannel() ?? "DMs"} (`#${x.id}`)", isInline: false)).toList()),
         ), settings: ifGuild(store, context.guild?.id, (id) => RemindServerSettings(store, id)));
+      }),
+      BotCommand("reminder", "Reminders", "Get a reminder.", (T context, int index) async {
+        final settings = RemindSettings(store, context.user.id);
+        final reminders = settings.reminders.get() ?? [];
+        final reminder = reminders.elementAtOrNull(index - 1);
+
+        if (reminder == null) {
+          return context.respondWithError("No reminders for index $index.");
+        }
+
+        await context.respond(MessageBuilder(embeds: [
+          EmbedBuilder(
+            title: "Reminder #$index (`#${reminder.id}`)",
+            description: reminder.name,
+            color: await getColor(context.member),
+            url: Uri.parse("https://discord.com/channels/${[reminder.sentGuildId ?? "@me", reminder.sentChannelId, reminder.sentMessageId].join("/")}"),
+          ),
+        ]));
       }),
       BotCommand("remreminder", "Reminders", "Delete a reminder.", (T context, int index) async {
         final settings = RemindSettings(store, context.user.id);

@@ -78,7 +78,7 @@ Future<ChooseResult> chooseFromList(ChatContext context, Map<String, String> ite
     context.client.onMessageCreate.listen((x) => controller.isClosed ? null : controller.sink.add(x));
 
     onTimeUp = () async {
-      await tryCatchA(() => message!.edit(MessageUpdateBuilder(content: "${message.content}\n-# This prompt has been ended.")));
+      await tryCatchA(() => message!.edit(MessageUpdateBuilder(content: "${message.content}\n-# This prompt has been ended.", embeds: [])));
       controller.close();
     };
 
@@ -301,7 +301,7 @@ class Page extends Selection {
 
     countdown.cancel();
     await details.message.deleteAllReactions();
-    await details.message.edit(MessageUpdateBuilder(content: "Loading..."));
+    await details.message.edit(MessageUpdateBuilder(content: "Loading...", embeds: []));
 
     if (result != null) {
       final option = allSelections[result.index];
@@ -312,7 +312,7 @@ class Page extends Selection {
   }
 
   Future<void> startHere(ChatContext context, {Message? message, required void Function(OnSelectDetails details, dynamic data) onCancel, String? startingPage}) async {
-    message ??= await context.respond(MessageBuilder(content: "Loading..."));
+    message ??= await context.respond(MessageBuilder(content: "Loading...", embeds: []));
     final start = startingPage != null ? actions.firstWhereOrNull((x) => x is Page && (x.id == startingPage || x.name == startingPage)) as Page? : null;
     final details = OnSelectDetails(context: context, message: message, previousPage: null, previousDetails: null, onCancel: onCancel);
 
