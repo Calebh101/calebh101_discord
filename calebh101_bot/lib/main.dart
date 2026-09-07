@@ -59,7 +59,7 @@ void main(List<String> arguments) => wrap(() async {
     CrosspostPlugin(),
     TagsPlugin(),
     RestrictCommandsPlugin(),
-    StickyRoles(),
+    RolesPlugin(),
     BotChatPlugin(),
     WelcomePlugin(),
     MutePlugin(),
