@@ -18,7 +18,7 @@ import 'package:calebh101_bot/plugins/quote.dart';
 import 'package:calebh101_bot/plugins/remind.dart';
 import 'package:calebh101_bot/plugins/rules.dart';
 import 'package:calebh101_bot/plugins/selfreact.dart';
-import 'package:calebh101_bot/plugins/stickyroles.dart';
+import 'package:calebh101_bot/plugins/roles.dart';
 import 'package:calebh101_bot/plugins/support.dart';
 import 'package:calebh101_bot/plugins/tags.dart';
 import 'package:calebh101_bot/plugins/welcome.dart';
