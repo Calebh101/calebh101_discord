@@ -12,7 +12,7 @@ class RemindPlugin extends BotPluginLegacy {
   @override
   FutureOr<List<BotCommand>> commands<T extends ChatContext>(CommandsPlugin plugin, KVStore store) {
     return [
-      BotCommand("remind", "Reminders", "Remind you later, in DMs.", (T context, Duration wait, GreedyString name) async {
+      BotCommand("remind", "Reminders", "Remind you later, in DMs.", (T context, Duration wait, [GreedyString? name]) async {
         final settings = RemindSettings(store, context.user.id);
         final reminders = settings.reminders.get() ?? [];
         final time =  DateTime.now().add(wait);
@@ -29,13 +29,15 @@ class RemindPlugin extends BotPluginLegacy {
           }
         }
 
-        final reminder = Reminder(name: name.data, time: time, id: settings.getNextReminderId(), clientId: context.client.user.id.value, sentChannelId: context.channel.id.value, sentGuildId: context.guild?.id.value, sentMessageId: message.value);
+        final reference = context.ifIs<MessageChatContext>()?.message.referencedMessage?.content;
+        if (reference == null && name == null) return context.respondWithError("You either need a name or a reference (reply)!");
+        final reminder = Reminder(name: name?.data, reference: reference, time: time, id: settings.getNextReminderId(), clientId: context.client.user.id.value, sentChannelId: context.channel.id.value, sentGuildId: context.guild?.id.value, sentMessageId: message.value);
 
         reminders.add(reminder);
         settings.reminders.set(reminders);
         await context.respond(MessageBuilder(content: "Reminder set for ${time.toDiscordTimestamp(DiscordTimestamp.longDateTime)}! I'll remind you in DMs.\nReminder ID: `#${reminder.id}`"));
       }, noGroup: true, aliases: ["remindme"]),
-      BotCommand("remindhere", "Reminders", "Remind you later, in this channel.", (T context, Duration wait, GreedyString name) async {
+      BotCommand("remindhere", "Reminders", "Remind you later, in this channel.", (T context, Duration wait, [GreedyString? name]) async {
         if (await context.assureGuild() == false) return;
         final serverSettings = RemindServerSettings(store, context.guild!.id);
         if (serverSettings.allowRemindHere.get() == false) return context.respondWithError("You can't schedule me to send a reminder in this server.");
@@ -56,7 +58,9 @@ class RemindPlugin extends BotPluginLegacy {
           }
         }
 
-        final reminder = Reminder(name: name.data, time: time, channelId: context.channel.id.value, id: settings.getNextReminderId(), clientId: context.client.user.id.value, sentChannelId: context.channel.id.value, sentGuildId: context.guild?.id.value, sentMessageId: message.value);
+        final reference = context.ifIs<MessageChatContext>()?.message.referencedMessage?.content;
+        if (reference == null && name == null) return context.respondWithError("You either need a name or a reference (reply)!");
+        final reminder = Reminder(name: name?.data, reference: reference, time: time, channelId: context.channel.id.value, id: settings.getNextReminderId(), clientId: context.client.user.id.value, sentChannelId: context.channel.id.value, sentGuildId: context.guild?.id.value, sentMessageId: message.value);
 
         reminders.add(reminder);
         settings.reminders.set(reminders);
@@ -165,7 +169,10 @@ class RemindPlugin extends BotPluginLegacy {
 
         final embed = EmbedBuilder(
           title: "You asked me to remind you...",
-          description: r.reminder.name,
+          description: [
+            ?r.reminder.name,
+            ?r.reminder.reference,
+          ].join("\n\n"),
           color: await getColor(member),
           url: Uri.parse("https://discord.com/channels/${[r.reminder.sentGuildId ?? "@me", r.reminder.sentChannelId, r.reminder.sentMessageId].join("/")}"),
         );
@@ -203,7 +210,8 @@ class RemindServerSettings extends ServerSettings {
 
 @JsonSerializable(anyMap: true)
 class Reminder {
-  final String name;
+  final String? name;
+  final String? reference;
   final DateTime time;
   final int? channelId;
   final int id;
@@ -212,7 +220,7 @@ class Reminder {
   final int sentChannelId;
   final int? sentGuildId;
 
-  Reminder({required this.name, required this.time, this.channelId, required this.id, required this.clientId, required this.sentMessageId, required this.sentChannelId, required this.sentGuildId});
+  Reminder({required this.name, required this.reference, required this.time, this.channelId, required this.id, required this.clientId, required this.sentMessageId, required this.sentChannelId, required this.sentGuildId});
   factory Reminder.fromJson(Map input) => _$ReminderFromJson(input);
   Map toJson() => _$ReminderToJson(this);
 

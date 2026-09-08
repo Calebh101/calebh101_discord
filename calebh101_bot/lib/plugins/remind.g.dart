@@ -7,7 +7,8 @@ part of 'remind.dart';
 // **************************************************************************
 
 Reminder _$ReminderFromJson(Map json) => Reminder(
-  name: json['name'] as String,
+  name: json['name'] as String?,
+  reference: json['reference'] as String?,
   time: DateTime.parse(json['time'] as String),
   channelId: (json['channelId'] as num?)?.toInt(),
   id: (json['id'] as num).toInt(),
@@ -19,6 +20,7 @@ Reminder _$ReminderFromJson(Map json) => Reminder(
 
 Map<String, dynamic> _$ReminderToJson(Reminder instance) => <String, dynamic>{
   'name': instance.name,
+  'reference': instance.reference,
   'time': instance.time.toIso8601String(),
   'channelId': instance.channelId,
   'id': instance.id,
