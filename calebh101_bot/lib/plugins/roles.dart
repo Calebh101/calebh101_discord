@@ -8,6 +8,7 @@ class RolesPlugin extends BotPlugin {
   BotPluginInfo get info => .new(id: "roles", description: "Provides utilities for roles.", version: Version.parse("1.0.0A"));
 
   static const prefix = "roleselector-";
+  static const watermark = "Role Selector";
 
   @override
   FutureOr<List<BotConverter<dynamic>>> converters(CommandsPlugin plugin, KVStore store) {
@@ -134,6 +135,7 @@ class RolesPlugin extends BotPlugin {
                 title: title,
                 description: description ?? "Select any of the **${roles.data.length}** roles below.\nYou can freely add/remove them.",
                 color: await getColor(context.member),
+                footer: .new(text: watermark),
               ),
             ] : null,
           ));
