@@ -2,6 +2,7 @@ import 'package:calebh101_discord/calebh101_discord.dart';
 
 const defaultPrefix = "!";
 const enableKill = true;
+const discordEpoch = 1420070400000;
 
 typedef DefinedUser = ({String name, String username, Snowflake id});
 typedef DefinedServer = ({Snowflake id, Uri? invite});
