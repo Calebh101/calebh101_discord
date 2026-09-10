@@ -76,6 +76,7 @@ void main(List<String> arguments) => wrap(() async {
     ComicsPlugin(),
     SupportPlugin(),
     StatusPlugin(),
+    BlindPlugin(),
     MultiplayerPlugin(),
 
     GuessTheNumberPlugin(),

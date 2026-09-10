@@ -47,6 +47,7 @@ class Logger {
   static int leftOfMessagePadding = 50;
   static DateFormat dateFormat = DateFormat("h:mm:ss.SSS a");
   static final List<OnLogCallback> _onLogs = [];
+  static final regex = RegExp(r'\x1b\[[0-9;]*m');
 
   static void _onLog(Log log) {
     for (final f in _onLogs) {
@@ -66,9 +67,9 @@ class Logger {
       final x = lines[i];
       final first = "> ${effect([0, 1, ?level.toColor()])}${level.toId()} ${effect([0, 2])}${dateFormat.format(DateTime.now())}${effect()} ${effect([1])}[${effect([95])}$module${effect([0, 1])}]${effect()}";
       final input = "$x${trace != null ? "${effect([2])}\n$trace\n${effect([0, ?level.toColor()])}$x" : ""}";
-      final spacing = leftOfMessagePadding - first.replaceAll(RegExp(r'\x1b\[[0-9;]*m'), '').length;
+      final spacing = leftOfMessagePadding - first.replaceAll(regex, '').length;
 
-      final line = "${effect()}${i == 0 ? first : (" " * first.replaceAll(RegExp(r'\x1b\[[0-9;]*m'), '').length)}${" " * max(2, spacing)}> $input${effect()}";
+      final line = "${effect()}${i == 0 ? first : (" " * first.replaceAll(regex, '').length)}${" " * max(2, spacing)}> $input${effect()}";
       compiled.add(line);
       stdout.writeln(line);
     }

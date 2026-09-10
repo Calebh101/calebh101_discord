@@ -6,8 +6,11 @@ import 'package:json_annotation/json_annotation.dart';
 
 part 'mute.g.dart';
 
-class MutePlugin extends BotPluginLegacy {
-  MutePlugin() : super(id: "mute", version: Version.parse("1.0.0A"));
+class MutePlugin extends PermOverridePlugin {
+  MutePlugin() : super("mute", "Mute");
+
+  @override Flags<Permissions> get allow => Permissions(0);
+  @override Flags<Permissions> get deny => Permissions.addReactions | Permissions.sendMessages | Permissions.sendMessagesInThreads | Permissions.createPublicThreads | Permissions.createPrivateThreads | Permissions.speak | Permissions.requestToSpeak | Permissions.stream | Permissions.useSoundboard;
 
   @override
   FutureOr<List<ModlogGroupCollection>> modlogGroups() {
@@ -20,75 +23,18 @@ class MutePlugin extends BotPluginLegacy {
   }
 
   @override
-  FutureOr<List<BotConverter<dynamic>>> converters(CommandsPlugin plugin, KVStore store) {
-    return [GreedyGuildTextChannelList.converter(), durationConverter()];
+  FutureOr<List<BotConverter<dynamic>>> converters(CommandsPlugin plugin, KVStore store) async {
+    return [...(await super.converters(plugin, store)), durationConverter()];
   }
 
   @override
-  FutureOr<List<BotCommand<Function>>> commands<T extends ChatContext>(CommandsPlugin plugin, KVStore store) {
+  FutureOr<List<BotCommand<Function>>> commands<T extends ChatContext>(CommandsPlugin plugin, KVStore store) async {
     return [
-      BotCommand("syncmute", "Mute", "Sync the mute role.", (T context) async {
-        final settings = MuteServerSettings(store, context.guild!.id);
-        final role = settings.muteRole.get();
-        final ignore = settings.muteIgnoreChannels.get() ?? [];
+      ...(await super.commands(plugin, store)),
 
-        if (role == null) {
-          return context.respondWithError("No mute role set.");
-        }
-
-        final channels = await context.guild!.fetchChannels();
-        final m = await context.respond(MessageBuilder(content: "Updating 0/${channels.length} channels..."));
-
-        for (int i = 0; i < channels.length; i++) {
-          final channel = channels[i];
-          final ignored = ignore.contains(channel.id);
-
-          if ((i + 1) % 10 == 0) {
-            Logger.print("Mute", "Syncing channel $i/${channels.length - 1}. ${channel.id} (${channel.name})... (ignore: $ignored/${ignore.length})");
-            await context.updateMessage(m, MessageUpdateBuilder(content: "Updating ${i + 1}/${channels.length} channels..."));
-          }
-
-          await channel.updatePermissionOverwrite(PermissionOverwriteBuilder(id: role, type: PermissionOverwriteType.role, deny:
-            ((channel.permissionOverwrites.firstWhereOrNull((x) => x.id == role && x.type == PermissionOverwriteType.role)?.deny ?? Permissions(0)) | (ignored ? Permissions(0) : Permissions.addReactions | Permissions.sendMessages | Permissions.sendMessagesInThreads | Permissions.createPublicThreads | Permissions.createPrivateThreads | Permissions.speak | Permissions.requestToSpeak | Permissions.stream | Permissions.useSoundboard)),
-          allow: channel.permissionOverwrites.firstWhereOrNull((x) => x.id == role && x.type == PermissionOverwriteType.role)?.allow));
-        }
-
-        await context.updateMessage(m, MessageUpdateBuilder(content: "Updated ${channels.length} channels!"));
-      }, needsGuild: true, permissionsRequired: BotCommandPermissions.admin),
-      BotCommand("setmuterole", "Mute", "Set the mute role.", (T context, [Role? role]) async {
-        final settings = MuteServerSettings(store, context.guild!.id);
-
-        if (role == null) {
-          settings.muteRole.delete();
-          await context.respond(MessageBuilder(content: "Mute role deleted."));
-          return;
-        }
-
-        settings.muteRole.set(role.id);
-        await context.respond(MessageBuilder(content: "Mute role set to ${await roleToString(role)}! Run `syncmute` to sync permissions."));
-      }, needsGuild: true, permissionsRequired: .admin),
-      BotCommand("setmuteignored", "Mute", "Set channels that are ignored from syncing the mute role.", (T context, [GreedyGuildTextChannelList? channels]) async {
-        final settings = MuteServerSettings(store, context.guild!.id);
-        settings.muteIgnoreChannels.set(channels?.input.map((x) => x.id).toList());
-        await context.respond(MessageBuilder(content: "Now ignoring **${channels?.input.length ?? 0}** channels."));
-      }, needsGuild: true, permissionsRequired: .admin),
-      BotCommand("muterole", "Mute", "Get the current mute role.", (T context) async {
-        final settings = MuteServerSettings(store, context.guild!.id);
-        final id = settings.muteRole.get();
-        final role = await tryCatchA(() => context.guild!.roles.get(id!));
-        await context.respond(MessageBuilder(content: role != null ? "Current mute role: ${await roleToString(role)}" : (id != null ? "Invalid role set: ${id.toDiscordCodeString()}" : "No mute role set.")));
-      }, needsGuild: true),
-      BotCommand("muteignored", "Mute", "Get the current mute role ignored channels.", (T context) async {
-        final settings = MuteServerSettings(store, context.guild!.id);
-        final channels = settings.muteIgnoreChannels.get() ?? [];
-
-        await context.respond(MessageBuilder(content: channels.isEmpty ? "No channels ignored." : "**${channels.length}** ignored mute channels:\n\n${channels.map((x) {
-          return "- ${x.value.toChannel()} (`$x`)";
-        }).join("\n")}"));
-      }, needsGuild: true),
       BotCommand("unmute", "Moderation", "Unmute someone.", (T context, Member member) async {
         final settings = MuteServerSettings(store, context.guild!.id);
-        final role = settings.muteRole.get();
+        final role = settings.pRole.get();
         if (role == null) return context.respondWithError("No mute role set.");
 
         final mutes = settings.mutes.get() ?? [];
@@ -164,7 +110,7 @@ class MutePlugin extends BotPluginLegacy {
           pages: EmbedPage.generate(mutes.mapToList((mute) {
             return EmbedFieldBuilder(name: "Mute #${mute.id}", value: "${mute.user.toMention()}\nExpires: ${mute.time?.toDiscordTimestamp(DiscordTimestamp.shortDateTime) ?? "Never"}\nReason: ${mute.reason ?? "No reason provided"}", isInline: false);
           })),
-        ), settings: settings);
+        ), settings: ServerSettings(store, context.guildIdUnsafe));
       }, permissionsRequired: .mod, needsGuild: true),
     ];
   }
@@ -172,7 +118,7 @@ class MutePlugin extends BotPluginLegacy {
   @override
   FutureOr<void> onClientLoad(BotContext context) {
     Timer.periodic(Duration(seconds: 5), (timer) async {
-      final values = context.store.getAllForKey<List>(Scope.server, "mutes").map((k, v) => MapEntry(Snowflake.parse(k), v.map((x) => Mute.fromJson(x)).toList()));
+      final values = context.store.getAllForKey<List>(Scope.server, "mutes").map((k, v) => MapEntry(Snowflake.parse(int.tryParse(k) ?? k.split(".")[1]), v.map((x) => Mute.fromJson(x)).toList()));
 
       for (final entry in values.entries) {
         for (final mute in entry.value) {
@@ -190,7 +136,7 @@ class MutePlugin extends BotPluginLegacy {
             mutes.removeWhere((x) => x.user == mute.user);
             settings.mutes.set(mutes);
 
-            final muteRole = settings.muteRole.get();
+            final muteRole = settings.pRole.get();
             if (muteRole == null) continue;
             final result = await tryCatchA<bool>(() => member.removeRole(muteRole).to(true)) ?? false;
 
@@ -241,7 +187,7 @@ class MutePlugin extends BotPluginLegacy {
 
   static Future<MuteResults> mute(Member member, Duration? duration, {required String? reason, required KVStore store, required NyxxGateway client, required Guild guild, User? author}) async {
     final settings = MuteServerSettings(store, guild.id);
-    final role = settings.muteRole.get();
+    final role = settings.pRole.get();
     if (role == null) return MuteResults(false, reason: "No mute role set.");
 
     final mutes = settings.mutes.get() ?? [];
@@ -286,11 +232,9 @@ class MuteResults {
   const MuteResults(this.result, {this.reason, this.mute});
 }
 
-class MuteServerSettings extends ServerSettings {
-  MuteServerSettings(super.store, super.id);
+class MuteServerSettings extends PermOverrideSettings {
+  MuteServerSettings(KVStore store, Snowflake id) : super(store, id, "mute");
 
-  SettingsObject<Snowflake> get muteRole => SettingsObject.snowflake(this, "muteRole");
-  SettingsObject<List<Snowflake>> get muteIgnoreChannels => SettingsObject.listSnowflake(this, "muteIgnore");
   SettingsObject<List<Mute>> get mutes => SettingsObject(this, "mutes", encodeFunction: (input) => input.map((x) => x.toJson()).toList(), decodeFunction: (input) => (input as List?)?.map((x) => Mute.fromJson(x)).toList());
   SettingsObject<int> get muteId => SettingsObject(this, "muteId");
 

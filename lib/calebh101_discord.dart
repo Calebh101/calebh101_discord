@@ -23,6 +23,7 @@ export 'src/util/saferegex.dart';
 export 'src/util/emojis.dart';
 export 'src/util/choose.dart';
 export 'src/util/multiplayer.dart';
+export 'src/util/permoverride.dart';
 
 export 'src/plugins/modlog.dart';
 export 'src/plugins/messages.dart';
@@ -35,6 +36,7 @@ export 'src/plugins/botmanage.dart';
 export 'src/plugins/moderation.dart';
 export 'src/plugins/restriction.dart';
 export 'src/plugins/mute.dart';
+export 'src/plugins/blind.dart';
 export 'src/plugins/debug.dart';
 export 'src/plugins/bet.dart';
 export 'src/plugins/multiplayer.dart';

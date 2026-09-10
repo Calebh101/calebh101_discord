@@ -28,7 +28,7 @@ const _$RestrictionEnumMap = {
 
 CommandRestrictions _$CommandRestrictionsFromJson(Map json) =>
     CommandRestrictions(
-      command: json['command'] as String,
+      command: json['command'] as String?,
       data: (json['data'] as List<dynamic>)
           .map((e) => RestrictionData.fromJson(e as Map))
           .toList(),
@@ -53,7 +53,7 @@ const _$RestrictionCombinationEnumMap = {
 
 AdvancedCommandRestrictions _$AdvancedCommandRestrictionsFromJson(Map json) =>
     AdvancedCommandRestrictions(
-      command: json['command'] as String,
+      command: json['command'] as String?,
       ors: (json['ors'] as List<dynamic>)
           .map(
             (e) => (e as List<dynamic>)
