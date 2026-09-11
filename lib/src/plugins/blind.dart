@@ -65,7 +65,7 @@ class BlindPlugin extends PermOverridePlugin {
           client: context.client,
           severity: ModlogSeverity.good,
         ));
-      }, needsGuild: true, permissionsRequired: BotCommandPermissions.mod),
+      }, needsGuild: true, channelPermissions: Permissions.muteMembers),
       BotCommand("blind", "Moderation", "Blind someone.", (T context, Member member, [Duration? duration, GreedyString? reason]) async {
         final results = await blind(member, duration, reason: reason?.data, store: store, guild: context.guild!, author: context.user, client: context.client);
 
@@ -97,7 +97,7 @@ class BlindPlugin extends PermOverridePlugin {
             ),
           ]));
         }
-      }, needsGuild: true, permissionsRequired: BotCommandPermissions.mod),
+      }, needsGuild: true, channelPermissions: Permissions.muteMembers),
       BotCommand("blinds", "Moderation", "List all current blinds.", (T context) async {
         final settings = BlindServerSettings(store, context.guildId!);
         final blinds = settings.blinds.get() ?? [];
@@ -111,7 +111,7 @@ class BlindPlugin extends PermOverridePlugin {
             return EmbedFieldBuilder(name: "Blind #${blind.id}", value: "${blind.user.toMention()}\nExpires: ${blind.time?.toDiscordTimestamp(DiscordTimestamp.shortDateTime) ?? "Never"}\nReason: ${blind.reason ?? "No reason provided"}", isInline: false);
           })),
         ), settings: ServerSettings(store, context.guildIdUnsafe));
-      }, permissionsRequired: .mod, needsGuild: true),
+      }, channelPermissions: Permissions.muteMembers, needsGuild: true),
     ];
   }
 

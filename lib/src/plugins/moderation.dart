@@ -94,7 +94,7 @@ class ModerationPlugin extends BotPluginLegacy {
             ].whereType<EmbedFieldBuilder>().toList(),
           ),
         ]));
-      }, permissionsRequired: BotCommandPermissions.mod, needsGuild: true),
+      }, channelPermissions: Permissions.banMembers, needsGuild: true),
       BotCommand("unblock", "Moderation", "Unblock a user.", (T context, Snowflake userId) async {
         final settings = UserPerServerSettings(store, context.guild!.id, userId);
         if (settings.blocked.get() == false) return context.respondWithError("User is already unblocked.");
@@ -123,7 +123,7 @@ class ModerationPlugin extends BotPluginLegacy {
             ].whereType<EmbedFieldBuilder>().toList(),
           ),
         ]));
-      }, permissionsRequired: BotCommandPermissions.mod, needsGuild: true),
+      }, channelPermissions: Permissions.banMembers, needsGuild: true),
       BotCommand("ban", "Moderation", "Ban a user.", (T context, Or<Member, Snowflake> input, [GreedyString? reason]) async {
         final id = input.$1?.id ?? input.$2!;
 
@@ -171,7 +171,7 @@ class ModerationPlugin extends BotPluginLegacy {
             ].whereType<EmbedFieldBuilder>().toList(),
           ),
         ]));
-      }, permissionsRequired: BotCommandPermissions.mod),
+      }, channelPermissions: Permissions.banMembers),
       BotCommand("kick", "Moderation", "Kick a user.", (T context, Member member, [GreedyString? reason]) async {
         try {
           if (await confirm(context, "kick ${await confirmstringify(member, context.client)}") == false) return;
@@ -217,7 +217,7 @@ class ModerationPlugin extends BotPluginLegacy {
             ].whereType<EmbedFieldBuilder>().toList(),
           ),
         ]));
-      }, permissionsRequired: .mod),
+      }, channelPermissions: Permissions.kickMembers),
       BotCommand("softban", "Moderation", "Ban then unban a user.", (T context, Member member, [GreedyString? reason]) async {
         try {
           if (await confirm(context, "softban ${await confirmstringify(member, context.client)}") == false) return;
@@ -264,7 +264,7 @@ class ModerationPlugin extends BotPluginLegacy {
             ].whereType<EmbedFieldBuilder>().toList(),
           ),
         ]));
-      }, permissionsRequired: BotCommandPermissions.mod, aliases: ["sb"]),
+      }, channelPermissions: Permissions.kickMembers, aliases: ["sb"]),
       BotCommand("unban", "Moderation", "Unban a user.", (T context, String userId) async {
         final userIdInt = int.tryParse(userId);
         final user = userIdInt != null ? Snowflake(userIdInt) : null;
@@ -308,7 +308,7 @@ class ModerationPlugin extends BotPluginLegacy {
             ].whereType<EmbedFieldBuilder>().toList(),
           ),
         ]));
-      }, permissionsRequired: BotCommandPermissions.mod),
+      }, channelPermissions: Permissions.banMembers),
       BotCommand("timeout", "Moderation", "Time out a user.", (T context, Member member, Duration duration, [GreedyString? reason]) async {
         try {
           await member.update(MemberUpdateBuilder(communicationDisabledUntil: DateTime.now().add(duration).toUtc()), auditLogReason: "${context.user.username}: ${reason?.data ?? "No reason provided"}");
@@ -351,7 +351,7 @@ class ModerationPlugin extends BotPluginLegacy {
             color: await getColor(context.member),
           ),
         ]));
-      }, permissionsRequired: BotCommandPermissions.mod, aliases: ["to"]),
+      }, channelPermissions: Permissions.moderateMembers, aliases: ["to"]),
       BotCommand("quicktimeout", "Moderation", "Quickly time out a user, by either passing them to this function or replying to a message of theirs.", (T context, [Member? member]) async {
         final duration = Duration(minutes: 5);
 
@@ -401,7 +401,7 @@ class ModerationPlugin extends BotPluginLegacy {
             color: await getColor(context.member),
           ),
         ]));
-      }, permissionsRequired: BotCommandPermissions.mod, aliases: ["tq", "qt", "qto", "toq", "quickto"], extendedDescription: "This command times someone out for 5 minutes. You can use this command in 2 ways:\n\n- Passing the user you're targeting as the only argument to the command.\n- Replying to a message by the user you're targeting."),
+      }, channelPermissions: Permissions.moderateMembers, aliases: ["tq", "qt", "qto", "toq", "quickto"], extendedDescription: "This command times someone out for 5 minutes. You can use this command in 2 ways:\n\n- Passing the user you're targeting as the only argument to the command.\n- Replying to a message by the user you're targeting."),
       BotCommand("timein", "Moderation", "Remove timeout of a user.", (T context, Member member) async {
         try {
           await member.update(MemberUpdateBuilder(communicationDisabledUntil: null), auditLogReason: context.user.username);
@@ -441,7 +441,7 @@ class ModerationPlugin extends BotPluginLegacy {
             ].whereType<EmbedFieldBuilder>().toList(),
           ),
         ]));
-      }, permissionsRequired: BotCommandPermissions.mod, aliases: ["untimeout", "remtimeout", "ti"]),
+      }, channelPermissions: Permissions.moderateMembers, aliases: ["untimeout", "remtimeout", "ti"]),
       BotCommand("warns", "Moderation", "See someone's warns.", (T context, Member member) async {
         final settings = UserPerServerSettings(store, context.guild!.id, member.id);
         final warns = settings.warns.get() ?? [];
@@ -453,7 +453,7 @@ class ModerationPlugin extends BotPluginLegacy {
           pages: EmbedPage.generate(warns.mapIndexed((i, x) => EmbedFieldBuilder(name: "${i + 1}. ${x.timestamp.toDiscordTimestamp(DiscordTimestamp.longDateTime)}", value: x.reason ?? "No reason provided", isInline: false)).toList()),
           color: await getColor(context.member),
         ), settings: ifGuild(store, context.guild?.id, (id) => ServerSettings(store, id)));
-      }, permissionsRequired: BotCommandPermissions.mod, aliases: ["listwarns", "wl"]),
+      }, permissionsRequired: .mod, aliases: ["listwarns", "wl"]),
       BotCommand("warn", "Moderation", "Warn someone.", (T context, Member member, [GreedyString? reason]) async {
         if (await confirm(context, "warn ${await confirmstringify(member, context.client)}") == false) return;
         final settings = UserPerServerSettings(store, context.guild!.id, member.id);
@@ -479,7 +479,7 @@ class ModerationPlugin extends BotPluginLegacy {
         ));
 
         await context.respond(MessageBuilder(content: "Warned ${await memberToString(member, client: context.client)}. This is warn **#${warns.length}**.\n${reason ?? "No reason provided."}"));
-      }, permissionsRequired: BotCommandPermissions.mod, aliases: ["w"]),
+      }, permissionsRequired: .mod, aliases: ["w"]),
       BotCommand("unwarn", "Moderation", "Remove a warn from someone", (T context, Member member, [int? index]) async {
         final settings = UserPerServerSettings(store, context.guild!.id, member.id);
         final warns = settings.warns.get() ?? [];
@@ -503,7 +503,7 @@ class ModerationPlugin extends BotPluginLegacy {
         ));
 
         await context.respond(MessageBuilder(content: "Removed warn **#$index** for ${await memberToString(member, client: context.client)}."));
-      }, permissionsRequired: BotCommandPermissions.mod, aliases: ["remwarn", "uw"]),
+      }, permissionsRequired: .mod, aliases: ["remwarn", "uw"]),
       BotCommand("summary", "Moderation", "Get a moderation summary of a user.", (T context, Member member) async {
         await context.respond(MessageBuilder(embeds: [
           EmbedBuilder(
@@ -515,7 +515,7 @@ class ModerationPlugin extends BotPluginLegacy {
             color: await getColor(context.member),
           ),
         ]));
-      }, permissionsRequired: BotCommandPermissions.mod, aliases: ["s"]),
+      }, permissionsRequired: .mod, aliases: ["s"]),
       BotCommand("purge", "Moderation", "Purge messages from a channel. Messages must be under 14 days old.", (T context, int amount, [GreedyString? args]) async {
         if (await context.assureGuild() == false) return;
         if (amount <= 2) return context.respondWithError("Too little messages. Must be greater than 2.");
@@ -656,7 +656,7 @@ class ModerationPlugin extends BotPluginLegacy {
           client: context.client,
           severity: ModlogSeverity.severe,
         ));
-      }, permissionsRequired: BotCommandPermissions.mod, extendedDescription: "Usage: `purge <amount> <args>`\nArgs (`key=\"value\"`):\n\n${{
+      }, channelPermissions: Permissions.manageMessages, extendedDescription: "Usage: `purge <amount> <args>`\nArgs (`key=\"value\"`):\n\n${{
         "limit": "Message limit. This is different from the amount fetched.",
         "userIds": "A comma-separated string of user IDs. Any messages sent by one of these IDs will be deleted.",
         "notUserIds": "A comma-separated string of user IDs. Any messages sent by none of these IDs will be deleted.",
@@ -725,12 +725,9 @@ class ModerationPlugin extends BotPluginLegacy {
 
         await reply.pin(auditLogReason: reason?.data);
         await context.message.react(ReactionBuilder(name: "✅", id: null));
-      }, needsGuild: true, triggerTyping: false, options: BotCommandOptions(type: CommandType.textOnly), permissionsRequired: .mod),
+      }, needsGuild: true, triggerTyping: false, options: BotCommandOptions(type: CommandType.textOnly), channelPermissions: Permissions.pinMessages),
       BotCommand("delete", "Moderation", "Delete a message.", (ChatContext context, [Snowflake? id]) async {
-        if (context.member != null && context.channel is GuildTextChannel) {
-          final perms = await (context.channel as GuildTextChannel).computePermissionsFor(context.member!);
-          if (!perms.canManageMessages) return context.respondWithError("You can't delete messages here!");
-        } else {
+        if (context.member != null && context.channel is GuildTextChannel) {} else {
           return context.respondWithError("No member or valid channel found.");
         }
 
@@ -758,7 +755,7 @@ class ModerationPlugin extends BotPluginLegacy {
         } else if (context is InteractionChatContext) {
           await context.respond(MessageBuilder(content: "Message `${message.id}` deleted."), level: ResponseLevel.hint);
         }
-      }, permissionsRequired: BotCommandPermissions.mod, aliases: ["d"]),
+      }, channelPermissions: Permissions.manageMessages, aliases: ["d"]),
       BotCommand("lock", "Moderation", "Disable certain permissions for @everyone, excluding specific roles.", (T context, [GuildTextChannel? channel]) async {
         final settings = ServerSettings(store, context.guild!.id);
         final roles = settings.lockAllow.get();
@@ -811,7 +808,7 @@ class ModerationPlugin extends BotPluginLegacy {
         }
 
         await context.respond(MessageBuilder(content: "${thisChannel ? "Channel" : channel.toMention()} locked.\n-# Allowed ${ignored ? 0 : roles.length} roles."));
-      }, permissionsRequired: BotCommandPermissions.mod, needsGuild: true, extendedDescription: "The following permissions will be disabled for `@everyone`:\n${[
+      }, channelPermissions: Permissions.manageChannels, needsGuild: true, extendedDescription: "The following permissions will be disabled for `@everyone`:\n${[
         "Send messages (including in threads)",
         "Create public/private threads",
         "Add reactions",
@@ -874,7 +871,7 @@ class ModerationPlugin extends BotPluginLegacy {
         }
 
         await context.respond(MessageBuilder(content: "${thisChannel ? "Channel" : channel.toMention()} locked.\n-# Allowed 0 roles."));
-      }, permissionsRequired: BotCommandPermissions.mod, needsGuild: true, extendedDescription: "The following permissions will be disabled for `@everyone`:\n${[
+      }, channelPermissions: Permissions.manageChannels, needsGuild: true, extendedDescription: "The following permissions will be disabled for `@everyone`:\n${[
         "Send messages (including in threads)",
         "Create public/private threads",
         "Add reactions",
@@ -934,7 +931,7 @@ class ModerationPlugin extends BotPluginLegacy {
         }
 
         await context.respond(MessageBuilder(content: "${thisChannel ? "Channel" : channel.toMention()} unlocked."));
-      }, permissionsRequired: BotCommandPermissions.mod, needsGuild: true, extendedDescription: "The following permissions will be re-enabled for `@everyone`:\n${[
+      }, channelPermissions: Permissions.manageChannels, needsGuild: true, extendedDescription: "The following permissions will be re-enabled for `@everyone`:\n${[
         "Send messages (including in threads)",
         "Create public/private threads",
         "Add reactions",

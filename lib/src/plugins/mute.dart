@@ -65,7 +65,7 @@ class MutePlugin extends PermOverridePlugin {
           client: context.client,
           severity: ModlogSeverity.good,
         ));
-      }, needsGuild: true, permissionsRequired: BotCommandPermissions.mod, aliases: ["um"]),
+      }, needsGuild: true, channelPermissions: Permissions.muteMembers, aliases: ["um"]),
       BotCommand("mute", "Moderation", "Mute someone.", (T context, Member member, [Duration? duration, GreedyString? reason]) async {
         final results = await mute(member, duration, reason: reason?.data, store: store, guild: context.guild!, author: context.user, client: context.client);
 
@@ -97,7 +97,7 @@ class MutePlugin extends PermOverridePlugin {
             ),
           ]));
         }
-      }, needsGuild: true, permissionsRequired: BotCommandPermissions.mod, aliases: ["m"]),
+      }, needsGuild: true, channelPermissions: Permissions.muteMembers, aliases: ["m"]),
       BotCommand("mutes", "Moderation", "List all current mutes.", (T context) async {
         final settings = MuteServerSettings(store, context.guildId!);
         final mutes = settings.mutes.get() ?? [];
@@ -111,7 +111,7 @@ class MutePlugin extends PermOverridePlugin {
             return EmbedFieldBuilder(name: "Mute #${mute.id}", value: "${mute.user.toMention()}\nExpires: ${mute.time?.toDiscordTimestamp(DiscordTimestamp.shortDateTime) ?? "Never"}\nReason: ${mute.reason ?? "No reason provided"}", isInline: false);
           })),
         ), settings: ServerSettings(store, context.guildIdUnsafe));
-      }, permissionsRequired: .mod, needsGuild: true),
+      }, channelPermissions: Permissions.muteMembers, permissionsRequired: .mod, needsGuild: true),
     ];
   }
 

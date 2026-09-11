@@ -17,6 +17,12 @@ extension CommandContextHelper on CommandContext {
     }
   }
 
+  Future<bool> hasPerms(Flags<Permissions> perms) async {
+    if (channel is! GuildChannel || member == null) return false;
+    final permissions = await (channel as GuildChannel).computePermissionsFor(member!);
+    return (permissions & perms) == perms;
+  }
+
   bool verifyPerms(BotCommandPermissions perms, ServerSettings? settings) {
     final override = settings != null ? RestrictCommandsPlugin.getOverrideDefaultPermissions(store: settings.store, command: command.name, guildId: guild?.id) : "No settings";
     final o = override == null;

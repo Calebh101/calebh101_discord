@@ -106,8 +106,9 @@ class BotCommand<T extends Function> {
   late final bool triggerTyping;
   late String group;
   String? extendedDescription;
+  Flags<Permissions>? channelPermissions;
 
-  BotCommand(this.name, this.category, this.description, this.execute, {this.permissionsRequired = BotCommandPermissions.any, this.extendedDescription, this.enforcePermissions = true, this.noGroup = false, this.aliases, BotCommandOptions? options, this.group = "", this.needsGuild = false, this.triggerTyping = true}) {
+  BotCommand(this.name, this.category, this.description, this.execute, {this.permissionsRequired = BotCommandPermissions.any, this.extendedDescription, this.enforcePermissions = true, this.noGroup = false, this.aliases, BotCommandOptions? options, this.group = "", this.needsGuild = false, this.triggerTyping = true, this.channelPermissions}) {
     final wrappedExecute = (MessageChatContext context, List<dynamic> args) async {
       await Function.apply(execute, [context, ...args]);
     };
@@ -127,8 +128,8 @@ class BotCommand<T extends Function> {
   }
 
   @Deprecated("Use the unnamed constructor instead.")
-  factory BotCommand.command(String name, String description, T execute, CommandAttributes attributes, {CommandOptions? options, String group = "", bool noGroup = false, bool disabled = false}) {
-    return BotCommand(name, attributes.category, description, execute, extendedDescription: attributes.extendedDescription, permissionsRequired: attributes.permissionsRequired, enforcePermissions: false, group: group, noGroup: noGroup);
+  factory BotCommand.command(String name, String description, T execute, CommandAttributes attributes, {CommandOptions? options, String group = "", bool noGroup = false, bool disabled = false, Flags<Permissions>? channelPermissions}) {
+    return BotCommand(name, attributes.category, description, execute, extendedDescription: attributes.extendedDescription, permissionsRequired: attributes.permissionsRequired, enforcePermissions: false, group: group, noGroup: noGroup, channelPermissions: channelPermissions);
   }
 
   static set commandType(CommandType type) {
@@ -250,8 +251,27 @@ Future<(bool, String?)> _check({required KVStore store, required CommandsPlugin 
   }
 
   final override = RestrictCommandsPlugin.getOverrideDefaultPermissions(store: store, command: command.name, guildId: context.guild?.id);
+  bool checkPerms = true;
 
-  if (command.enforcePermissions && override != null) {
+  if (command.channelPermissions != null) {
+    final required = command.channelPermissions!;
+    final channel = context.channel;
+
+    if (channel is! GuildTextChannel) return (false, "channel: not guild channel");
+    if (context.member == null) return (false, "channel: no member");
+
+    final perms = await channel.computePermissionsFor(context.member!);
+    final has = await context.hasPerms(required);
+
+    if (!has) {
+      await context.respond(MessageBuilder(content: "You can't access this command!\nYou need some extra permissions (`${required.value}`)."));
+      return (false, "channel: doesn't have perms (${required.value}, ${perms.value}, $has)");
+    }
+
+    checkPerms = false;
+  }
+
+  if (checkPerms && command.enforcePermissions && override != null) {
     if (command.permissionsRequired == BotCommandPermissions.owner) {
       if (await context.assureOwner() == false) return (false, "perms: needs owner");
     } else if (command.permissionsRequired != BotCommandPermissions.any) {
