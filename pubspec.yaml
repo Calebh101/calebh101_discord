@@ -20,7 +20,7 @@ dependencies:
 
   nyxx_commands:
     git:
-      url: https://github.com/Calebh101/nyxx_commands.git
+      url: https://github.com/Calebh101/nyxx_commands
       ref: main
 
   nyxx_extensions:
