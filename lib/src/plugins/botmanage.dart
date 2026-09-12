@@ -146,6 +146,36 @@ class BotManagePlugin extends BotPluginLegacy {
       killCommand<T>(store),
       ...botSettingToCommands(BotSettings(store).inviteLink, name: "botinvite", category: "Bot", description: "Invite link to add this bot to a guild/server.", private: true),
 
+      BotCommand("allowbot", "Bot", "Allow a bot to execute commands.", (T context, Snowflake id) async {
+        final setting = BotSettings(store).allowedBots;
+        final current = setting.get();
+
+        if (current.contains(id)) {
+          return context.respondWithError("Bot is already allowed.");
+        }
+
+        current.add(id);
+        setting.set(current);
+        EventManager.allowedBots = current;
+
+        await context.respond(MessageBuilder(content: "Allowing bot ${id.toUserMention()} (`$id`) to execute commands.", allowedMentions: AllowedMentions(repliedUser: true)));
+      }),
+
+      BotCommand("denybot", "Bot", "Undo allow a bot to execute commands.", (T context, Snowflake id) async {
+        final setting = BotSettings(store).allowedBots;
+        final current = setting.get();
+
+        if (!current.contains(id)) {
+          return context.respondWithError("Bot is already not allowed.");
+        }
+
+        current.remove(id);
+        setting.set(current);
+        EventManager.allowedBots = current;
+
+        await context.respond(MessageBuilder(content: "Not allowing bot ${id.toUserMention()} (`$id`) to execute commands.", allowedMentions: AllowedMentions(repliedUser: true)));
+      }),
+
       BotCommand("blockguild", "Bot", "Block the bot from joining a guild.", (ChatContext context, Snowflake id) async {
         final settings = BotSettings(store);
         final current = settings.blockedGuilds.get();

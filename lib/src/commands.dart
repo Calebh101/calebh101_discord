@@ -310,7 +310,9 @@ Future<(bool, String?)> _check({required KVStore store, required CommandsPlugin 
   }
 
   if (command.needsGuild) {
-    if (await context.assureGuild() == false) return (false, "needs guild");
+    if (await context.assureGuild() == false) {
+      return (false, "needs guild");
+    }
   }
 
   if (command.triggerTyping) await tryCatchA(context.channel.triggerTyping);
