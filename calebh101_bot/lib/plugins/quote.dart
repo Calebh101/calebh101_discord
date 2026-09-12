@@ -102,6 +102,10 @@ class QuotePlugin extends BotPluginLegacy {
       }
     }
 
+    if (settings.quotedMessages.get().contains(event.messageId)) {
+      return "Already quoted (2)";
+    }
+
     await channel.sendMessage(MessageBuilder(content: links.nullIfEmpty?.join(" "), embeds: [
       EmbedBuilder(
         author: EmbedAuthorBuilder(name: author.username, iconUrl: author.avatar?.url),

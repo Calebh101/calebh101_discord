@@ -975,7 +975,7 @@ class ModerationPlugin extends BotPluginLegacy {
     return [
       {
         ModlogGroup.all: (levelBelow) => {...levelBelow, "mod.timein", "mod.unwarn", "message.send", "message.send.attachments", "audit", ...memberUpdateProperties.keys.where((x) => x != "timeout").map((x) => "member.update.$x")},
-        ModlogGroup.normal: (levelBelow) => {...levelBelow, "mod.ban", "mod.unban", "mod.timeout", "mod.kick", "mod.warn", "mod.purge", "mod.softban", "message.delete", "message.edit", "member.add", "member.remove", "member.ban", "member.unban", "message.bulkdelete", "invite.create", "invite.delete", "member.update.timeout", "mod.block.set", "mod.block.catch", "channel.lock", "channel.unlock", "channel.slowmode"},
+        ModlogGroup.normal: (levelBelow) => {...levelBelow, "mod.ban", "mod.unban", "mod.timeout", "mod.kick", "mod.warn", "mod.purge", "mod.softban", "message.delete", "message.edit", "member.add", "member.remove", "member.ban", "member.unban", "message.bulkdelete", "invite.create", "invite.delete", "member.update.timeout", "mod.block.set", "mod.block.catch", "channel.lock", "channel.unlock", "channel.slowmode", "thread.create", "thread.delete"},
         ModlogGroup.quiet: (levelBelow) => {...levelBelow},
         ModlogGroup.off: (_) => {},
       },
@@ -1349,6 +1349,49 @@ class ModerationPlugin extends BotPluginLegacy {
           },
           guild: await tryCatchA(() => channel.guild.get()),
           settings: ServerSettings(context.store, channel.guildId),
+          client: client,
+          severity: .verbose,
+        ));
+      });
+
+      client.onThreadCreate.listen((event) async {
+        final thread = event.thread;
+
+        Modlog.add(ModlogEvent(
+          "thread.create",
+          title: "Thread Created",
+          fields: {
+            "ID": thread.id.toDiscordCodeBlock(),
+            "Type": thread.type.value.toDiscordCodeString(),
+            "Author": thread.ownerId.toUserMention(),
+            "Link": discordLink(thread.guildId, thread.id).toString(),
+            "Messages": thread.totalMessagesSent.toDiscordCodeString(),
+            "Name": thread.name.toDiscordCodeBlock(),
+          },
+          guild: await tryCatchA(() => thread.guild.get()),
+          settings: ServerSettings(context.store, thread.guildId),
+          client: client,
+          severity: .verbose,
+        ));
+      });
+
+      client.onThreadDelete.listen((event) async {
+        final id = event.thread.id;
+        final thread = event.deletedThread ?? await tryCatchA(() async => await event.thread.get() as Thread);
+
+        Modlog.add(ModlogEvent(
+          "thread.delete",
+          title: "Thread Deleted",
+          fields: {
+            "ID": id.toDiscordCodeBlock(),
+            "Type": thread?.type.value.toDiscordCodeString() ?? "Unknown",
+            "Author": thread?.ownerId.toUserMention() ?? "Unknown",
+            "Link": discordLink(thread?.guildId, id).toString(),
+            "Messages": thread?.totalMessagesSent.toDiscordCodeString() ?? "Unknown",
+            "Name": thread?.name.toDiscordCodeBlock() ?? "Unknown",
+          },
+          guild: await tryCatchA(() => thread?.guild.get()),
+          settings: ifGuild(context.store, thread?.guildId, (id) => ServerSettings(context.store, id)),
           client: client,
           severity: .verbose,
         ));
