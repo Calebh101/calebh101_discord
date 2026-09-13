@@ -64,6 +64,10 @@ class QuotePlugin extends BotPluginLegacy {
     final messageChannel = await tryCatchA(() async => await message.channel.get() as GuildTextChannel);
     final current = settings.quotedMessages.get();
 
+    if (current.contains(event.messageId)) {
+      return "Already quoted (2)";
+    }
+
     current.add(event.messageId);
     settings.quotedMessages.set(current);
 
@@ -100,10 +104,6 @@ class QuotePlugin extends BotPluginLegacy {
           if (url != null) links.add(url);
           break;
       }
-    }
-
-    if (settings.quotedMessages.get().contains(event.messageId)) {
-      return "Already quoted (2)";
     }
 
     await channel.sendMessage(MessageBuilder(content: links.nullIfEmpty?.join(" "), embeds: [
