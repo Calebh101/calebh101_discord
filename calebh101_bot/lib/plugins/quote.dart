@@ -8,6 +8,45 @@ import 'package:http/http.dart' as http;
 class QuotePlugin extends BotPluginLegacy {
   QuotePlugin() : super(id: "quote", version: Version.parse("1.0.0A"));
 
+  (List<EmbedBuilder> embeds, List<Uri> links) processEmbeds(Message message) {
+    final List<EmbedBuilder> embeds = [];
+    final List<Uri> links = [];
+
+    for (final e in message.embeds) {
+      switch (e.type) {
+        case .article:
+        case .link:
+        case .rich:
+          embeds.add(
+            EmbedBuilder(
+              title: e.title,
+              description: e.description,
+              url: e.url,
+              timestamp: e.timestamp,
+              color: e.color,
+              footer: e.footer != null ? EmbedFooterBuilder(text: e.footer!.text, iconUrl: e.footer!.iconUrl) : null,
+              author: e.author != null ? EmbedAuthorBuilder(name: e.author!.name, url: e.author!.url, iconUrl: e.author!.iconUrl) : null,
+              image: e.image != null ? EmbedImageBuilder(url: e.image!.url) : null,
+              thumbnail: e.thumbnail != null ? EmbedThumbnailBuilder(url: e.thumbnail!.url) : null,
+              fields: e.fields?.map((f) => EmbedFieldBuilder(name: f.name, value: f.value, isInline: f.inline)).toList(),
+            ),
+          );
+
+          break;
+
+        case .gifv:
+        case .image:
+        case .video:
+          final url = e.url ?? e.image?.url ?? e.video?.url;
+          Logger.print("Quote", "URL (${e.type.value}): ${e.image?.url}, ${e.video?.url}, ${e.url}");
+          if (url != null) links.add(url);
+          break;
+      }
+    }
+
+    return (embeds, links);
+  }
+
   Future<String?> quote(NyxxGateway client, KVStore store, MessageReactionAddEvent event) async {
     if (isIgnored(store, event.userId)) return "Ignored";
     if (event.guildId == null || event.member == null) return "No guild/member";
@@ -70,47 +109,13 @@ class QuotePlugin extends BotPluginLegacy {
 
     current.add(event.messageId);
     settings.quotedMessages.set(current);
-
-    final List<EmbedBuilder> embeds = [];
-    final List<Uri> links = [];
-
-    for (final e in message.embeds) {
-      switch (e.type) {
-        case .article:
-        case .link:
-        case .rich:
-          embeds.add(
-            EmbedBuilder(
-              title: e.title,
-              description: e.description,
-              url: e.url,
-              timestamp: e.timestamp,
-              color: e.color,
-              footer: e.footer != null ? EmbedFooterBuilder(text: e.footer!.text, iconUrl: e.footer!.iconUrl) : null,
-              author: e.author != null ? EmbedAuthorBuilder(name: e.author!.name, url: e.author!.url, iconUrl: e.author!.iconUrl) : null,
-              image: e.image != null ? EmbedImageBuilder(url: e.image!.url) : null,
-              thumbnail: e.thumbnail != null ? EmbedThumbnailBuilder(url: e.thumbnail!.url) : null,
-              fields: e.fields?.map((f) => EmbedFieldBuilder(name: f.name, value: f.value, isInline: f.inline)).toList(),
-            ),
-          );
-
-          break;
-
-        case .gifv:
-        case .image:
-        case .video:
-          final url = e.url ?? e.image?.url ?? e.video?.url;
-          Logger.print("Quote", "URL (${e.type.value}): ${e.image?.url}, ${e.video?.url}, ${e.url}");
-          if (url != null) links.add(url);
-          break;
-      }
-    }
+    final (embeds, links) = processEmbeds(message);
 
     await channel.sendMessage(MessageBuilder(content: links.nullIfEmpty?.join(" "), embeds: [
       EmbedBuilder(
         author: EmbedAuthorBuilder(name: author.username, iconUrl: author.avatar?.url),
         thumbnail: author.avatar?.url != null ? EmbedThumbnailBuilder(url: author.avatar!.url) : null,
-        description: "## Quote by ${message.author.id.toUserMention()}\n\n${message.content.max(1900)}",
+        description: "## Quote by ${message.author.id.toUserMention()}\n\n${message.content.max(1900)}".trim(),
         timestamp: (message.editedTimestamp ?? message.timestamp).toUtc(),
         color: await getColor(await tryCatchA<Member?>(() async => await userToMember(message.author as User, guild: guild))),
         fields: [
@@ -118,6 +123,7 @@ class QuotePlugin extends BotPluginLegacy {
             if (messageChannel != null) "In: `#${messageChannel.name}`",
             "${discordLink(event.guildId, message.channelId, message.id)}",
           ].join("\n"), isInline: true),
+          if (message.reference?.type == .forward) EmbedFieldBuilder(name: "Forwarded", value: "Forwarded message:\n${discordLink(message.reference?.guildId, message.reference!.channelId, message.reference?.messageId)}", isInline: true),
         ],
       ), ...embeds,
     ], attachments: (await Future.wait(message.attachments.map((x) async {
