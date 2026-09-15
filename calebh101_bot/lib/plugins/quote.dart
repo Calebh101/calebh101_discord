@@ -8,7 +8,7 @@ import 'package:http/http.dart' as http;
 class QuotePlugin extends BotPluginLegacy {
   QuotePlugin() : super(id: "quote", version: Version.parse("1.0.0A"));
 
-  (List<EmbedBuilder> embeds, List<Uri> links) processEmbeds(Message message) {
+  (List<EmbedBuilder> embeds, List<Uri> links) processEmbeds(MessageSnapshot message) {
     final List<EmbedBuilder> embeds = [];
     final List<Uri> links = [];
 
@@ -109,9 +109,19 @@ class QuotePlugin extends BotPluginLegacy {
 
     current.add(event.messageId);
     settings.quotedMessages.set(current);
-    final (embeds, links) = processEmbeds(message);
+    var (embeds, links) = processEmbeds(message);
 
-    await channel.sendMessage(MessageBuilder(content: links.nullIfEmpty?.join(" "), embeds: [
+    for (final snapshot in message.messageSnapshots ?? <MessageSnapshot>[]) {
+      final (e, l) = processEmbeds(snapshot);
+      embeds.addAll(e);
+      links.addAll(l);
+    }
+
+    if (embeds.length > 10) {
+      embeds = embeds.sublist(0, 10);
+    }
+
+    await channel.sendMessage(MessageBuilder(content: links.nullIfEmpty?.join(" ").max(2000), embeds: [
       EmbedBuilder(
         author: EmbedAuthorBuilder(name: author.username, iconUrl: author.avatar?.url),
         thumbnail: author.avatar?.url != null ? EmbedThumbnailBuilder(url: author.avatar!.url) : null,
@@ -123,7 +133,6 @@ class QuotePlugin extends BotPluginLegacy {
             if (messageChannel != null) "In: `#${messageChannel.name}`",
             "${discordLink(event.guildId, message.channelId, message.id)}",
           ].join("\n"), isInline: true),
-          if (message.reference?.type == .forward) EmbedFieldBuilder(name: "Forwarded", value: "Forwarded message:\n${discordLink(message.reference?.guildId, message.reference!.channelId, message.reference?.messageId)}", isInline: true),
         ],
       ), ...embeds,
     ], attachments: (await Future.wait(message.attachments.map((x) async {
