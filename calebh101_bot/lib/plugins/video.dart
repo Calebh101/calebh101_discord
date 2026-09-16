@@ -45,6 +45,17 @@ class VideoPlugin extends BotPlugin {
           await context.updateMessage(message, .new(
             content: "https://files.calebh101.net/discord/youtube/$input",
           ));
+
+          Timer(.new(minutes: 10), () async {
+            try {
+              if (await file.exists()) {
+                Logger.print("YouTube", "Deleting file ${file.path}...");
+                await file.delete();
+              }
+            } catch (e) {
+              Logger.warn("YouTube", "Error deleting file ${file.path} ($input): $e");
+            }
+          });
         } catch (e) {
           Logger.warn("YouTube", "Error fetching video $input: $e");
           await context.updateMessage(message, .new(content: "We couldn't fetch that video. Make sure you inputted a valid YouTube link or video ID and try again."));
