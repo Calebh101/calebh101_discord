@@ -38,7 +38,7 @@ class QuotePlugin extends BotPluginLegacy {
         case .image:
         case .video:
           final url = e.url ?? e.image?.url ?? e.video?.url;
-          Logger.print("Quote", "URL (${e.type.value}): ${e.image?.url}, ${e.video?.url}, ${e.url}");
+          Logger.print("Quote", "URL (${e.type.value}): ${e.url}, ${e.image?.url}, ${e.video?.url}: $url (${url.runtimeType})");
           if (url != null) links.add(url);
           break;
       }
@@ -121,7 +121,7 @@ class QuotePlugin extends BotPluginLegacy {
       embeds = embeds.sublist(0, 10);
     }
 
-    await channel.sendMessage(MessageBuilder(content: links.nullIfEmpty?.join(" ").max(2000), embeds: [
+    await channel.sendMessage(MessageBuilder(embeds: [
       EmbedBuilder(
         author: EmbedAuthorBuilder(name: author.username, iconUrl: author.avatar?.url),
         thumbnail: author.avatar?.url != null ? EmbedThumbnailBuilder(url: author.avatar!.url) : null,
@@ -141,6 +141,9 @@ class QuotePlugin extends BotPluginLegacy {
       if (data == null) return null;
       return AttachmentBuilder(fileName: x.fileName, data: data);
     }))).whereType<AttachmentBuilder>().toList()));
+
+    final linkStuff = links.nullIfEmpty?.join(" ").max(2000);
+    if (linkStuff != null) await channel.sendMessage(MessageBuilder(content: linkStuff));
 
     return null;
   }

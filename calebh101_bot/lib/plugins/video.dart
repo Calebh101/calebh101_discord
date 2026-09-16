@@ -60,7 +60,7 @@ class VideoPlugin extends BotPlugin {
           Logger.warn("YouTube", "Error fetching video $input: $e");
           await context.updateMessage(message, .new(content: "We couldn't fetch that video. Make sure you inputted a valid YouTube link or video ID and try again."));
         }
-      }, aliases: ["yt"]),
+      }, aliases: ["yt"], disabled: true),
     ];
   }
 }

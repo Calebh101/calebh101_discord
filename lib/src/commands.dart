@@ -104,17 +104,18 @@ class BotCommand<T extends Function> {
   late final bool noGroup;
   late final bool needsGuild;
   late final bool triggerTyping;
+  late final bool disabled;
   late String group;
   String? extendedDescription;
   Flags<Permissions>? channelPermissions;
 
-  BotCommand(this.name, this.category, this.description, this.execute, {this.permissionsRequired = BotCommandPermissions.any, this.extendedDescription, this.enforcePermissions = true, this.noGroup = false, this.aliases, BotCommandOptions? options, this.group = "", this.needsGuild = false, this.triggerTyping = true, this.channelPermissions}) {
+  BotCommand(this.name, this.category, this.description, this.execute, {this.permissionsRequired = BotCommandPermissions.any, this.extendedDescription, this.enforcePermissions = true, this.noGroup = false, this.aliases, BotCommandOptions? options, this.group = "", this.needsGuild = false, this.triggerTyping = true, this.channelPermissions, this.disabled = false}) {
     final wrappedExecute = (MessageChatContext context, List<dynamic> args) async {
       await Function.apply(execute, [context, ...args]);
     };
 
     if (group.trim().isEmpty) group = category.toLowerCase();
-    commandRegistry[name] = this;
+    if (!disabled) commandRegistry[name] = this;
     final o = options ?? BotCommandOptions();
     command = ChatCommand(name, description, execute, options: o.toOptions(), aliases: aliases ?? []);
   }

@@ -21,6 +21,7 @@ import 'package:calebh101_bot/plugins/selfreact.dart';
 import 'package:calebh101_bot/plugins/roles.dart';
 import 'package:calebh101_bot/plugins/support.dart';
 import 'package:calebh101_bot/plugins/tags.dart';
+import 'package:calebh101_bot/plugins/video.dart';
 import 'package:calebh101_bot/plugins/welcome.dart';
 import 'package:calebh101_bot/plugins/xp.dart';
 import 'package:calebh101_discord/calebh101_discord.dart';
@@ -77,6 +78,7 @@ void main(List<String> arguments) => wrap(() async {
     SupportPlugin(),
     StatusPlugin(),
     BlindPlugin(),
+    VideoPlugin(),
     MultiplayerPlugin(),
 
     GuessTheNumberPlugin(),
