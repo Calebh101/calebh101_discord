@@ -309,6 +309,12 @@ extension type RoleSelectorDataStore(List<RoleSelectorData> data) {
     return null;
   }
 
+  static Null error(ContextData context, String input) {
+    if (dev) Logger.warn("RoleSelector", "Converting: $input");
+    tryCatchA(() async => await context.channel.sendMessage(.new(content: "Error: $input")));
+    return null;
+  }
+
   static BotConverter<RoleSelectorDataStore> converter() {
     return BotConverter("RoleSelectorData", (_) => Converter<RoleSelectorDataStore>((value, context) async {
       final List<RoleSelectorData> data = [];
@@ -316,7 +322,7 @@ extension type RoleSelectorDataStore(List<RoleSelectorData> data) {
       log("Going off of value of ${value.remaining.length} characters");
 
       while (!value.eof) {
-        if (value.current != "(") return log("Didn't find (");
+        if (value.current != "(") return error(context, "Didn't find (");
         value.index++;
         String object = "";
 
@@ -325,22 +331,21 @@ extension type RoleSelectorDataStore(List<RoleSelectorData> data) {
           value.index++;
         }
 
-        if (value.eof) return log("Premature eof");
+        if (value.eof) return error(context, "Premature eof");
         value.index++;
 
         final items = object.split(",");
         final Map<String, dynamic> kv = {};
 
         for (final item in items) {
-          final elements = item.split(":");
-          final raw = elements.elementAtOrNull(1);
+          final idx = item.indexOf(":");
+          if (idx == -1) return error(context, "No value for key ${item.trim()}");
 
-          String key = elements.first.toLowerCase().trim();
+          var key = item.substring(0, idx).toLowerCase().trim();
+          var raw = item.substring(idx + 1).trim();
+
           if (key.length >= 2 && key.startsWith('"') && key.endsWith('"')) key = key.substring(1, key.length - 1);
-
-          if (raw == null) {
-            return log("No value for key $key");
-          }
+          if (raw.length >= 2 && raw.startsWith('"') && raw.endsWith('"')) raw = raw.substring(1, raw.length - 1);
 
           final value = await switch (key) {
             "role" => roleConverter.convert(.new(raw), context),
@@ -349,7 +354,7 @@ extension type RoleSelectorDataStore(List<RoleSelectorData> data) {
             _ => null,
           };
 
-          if (value == null) return log("Value was null for key $key");
+          if (value == null) return error(context, "Value was null for key $key");
           kv[key] = value;
         }
 
