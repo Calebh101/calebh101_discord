@@ -9,6 +9,7 @@ import 'package:calebh101_bot/plugins/comics.dart';
 import 'package:calebh101_bot/plugins/counters.dart';
 import 'package:calebh101_bot/plugins/crosspost.dart';
 import 'package:calebh101_bot/plugins/github.dart';
+import 'package:calebh101_bot/plugins/jarvis.dart';
 import 'package:calebh101_bot/plugins/math.dart';
 import 'package:calebh101_bot/plugins/memberrole.dart';
 import 'package:calebh101_bot/plugins/modmail.dart';
@@ -79,6 +80,7 @@ void main(List<String> arguments) => wrap(() async {
     StatusPlugin(),
     BlindPlugin(),
     VideoPlugin(),
+    JarvisPlugin(),
     MultiplayerPlugin(),
 
     GuessTheNumberPlugin(),

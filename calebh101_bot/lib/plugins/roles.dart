@@ -317,57 +317,63 @@ extension type RoleSelectorDataStore(List<RoleSelectorData> data) {
 
   static BotConverter<RoleSelectorDataStore> converter() {
     return BotConverter("RoleSelectorData", (_) => Converter<RoleSelectorDataStore>((value, context) async {
-      final List<RoleSelectorData> data = [];
-      value.skipWhitespace();
-      log("Going off of value of ${value.remaining.length} characters");
-
-      while (!value.eof) {
-        if (value.current != "(") return error(context, "Didn't find (");
-        value.index++;
-        String object = "";
-
-        while (value.current != ")" && !value.eof) {
-          object += value.current;
-          value.index++;
-        }
-
-        if (value.eof) return error(context, "Premature eof");
-        value.index++;
-
-        final items = object.split(",");
-        final Map<String, dynamic> kv = {};
-
-        for (final item in items) {
-          final idx = item.indexOf(":");
-          if (idx == -1) return error(context, "No value for key ${item.trim()}");
-
-          var key = item.substring(0, idx).toLowerCase().trim();
-          var raw = item.substring(idx + 1).trim();
-
-          if (key.length >= 2 && key.startsWith('"') && key.endsWith('"')) key = key.substring(1, key.length - 1);
-          if (raw.length >= 2 && raw.startsWith('"') && raw.endsWith('"')) raw = raw.substring(1, raw.length - 1);
-
-          final value = await switch (key) {
-            "role" => roleConverter.convert(.new(raw), context),
-            "name" => raw,
-            "style" => buttonStyles.entries.firstWhereOrNull((x) => x.key == raw.toLowerCase().trim() || x.value.value == .tryParse(raw.trim()))?.value,
-            _ => null,
-          };
-
-          if (value == null) return error(context, "Value was null for key $key");
-          kv[key] = value;
-        }
-
-        log("Found keys: ${kv.mapTo((k, v) => "($k: ${v.runtimeType})").join(", ")}");
-        final role = kv["role"];
-        if (role is! Role) return null;
-
-        data.add(.new(role, kv["name"], kv["style"]));
+      try {
+        final List<RoleSelectorData> data = [];
         value.skipWhitespace();
-      }
+        log("Going off of value of ${value.remaining.length} characters");
 
-      log("Produced ${data.length} items");
-      return .new(data);
+        while (!value.eof) {
+          if (value.current != "(") return error(context, "Didn't find (");
+          value.index++;
+          String object = "";
+
+          while (value.current != ")" && !value.eof) {
+            object += value.current;
+            value.index++;
+          }
+
+          if (value.eof) return error(context, "Premature eof");
+          value.index++;
+
+          final items = object.split(",");
+          final Map<String, dynamic> kv = {};
+
+          for (final item in items) {
+            final idx = item.indexOf(":");
+            if (idx == -1) return error(context, "No value for key ${item.trim()}");
+
+            var key = item.substring(0, idx).toLowerCase().trim();
+            var raw = item.substring(idx + 1).trim();
+
+            if (key.length >= 2 && key.startsWith('"') && key.endsWith('"')) key = key.substring(1, key.length - 1);
+            if (raw.length >= 2 && raw.startsWith('"') && raw.endsWith('"')) raw = raw.substring(1, raw.length - 1);
+
+            final value = switch (key) {
+              "role" => await roleConverter.convert(.new(raw), context),
+              "name" => raw,
+              "style" => buttonStyles.entries.firstWhereOrNull((x) => x.key == raw.toLowerCase().trim() || x.value.value == .tryParse(raw.trim()))?.value,
+              _ => null,
+            };
+
+            if (value == null) return error(context, "Value was null for key $key (from raw `$raw`, ${context.guild?.roleList.firstWhereOrNull((x) => x.name.trim().toLowerCase() == raw.trim().toLowerCase())?.runtimeType})");
+            kv[key] = value;
+          }
+
+          log("Found keys: ${kv.mapTo((k, v) => "($k: ${v.runtimeType})").join(", ")}");
+          final role = kv["role"];
+          if (role is! Role) return null;
+
+          data.add(.new(role, kv["name"], kv["style"]));
+          value.skipWhitespace();
+        }
+
+        log("Produced ${data.length} items");
+        return .new(data);
+      } catch (e) {
+        Logger.warn("RoleSelectorData", "Error parsing ${value.buffer} (${value.remaining}: $e)");
+        error(context, "An unknown error occurred");
+        return null;
+      }
     }));
   }
 }
