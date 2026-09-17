@@ -56,7 +56,7 @@ class JarvisPlugin extends BotPlugin {
     return [
       BotCommand("jarvis", "Fun", "Jarvis, destroy their house", (T context, GreedyString data) async {
         try {
-          final text = "jarvis, ${data.data}";
+          final text = "jarvis, ${data.data}".replaceAll("\\n", "\n");
 
           if (template == null) {
             Logger.print("MrBeast", "Fetching template...");
@@ -86,7 +86,7 @@ class JarvisPlugin extends BotPlugin {
             }
           }
 
-          for (final line in lines!) {
+          for (final line in lines) {
             final width = measure(font, line);
             final x = (image.width - width) ~/ 2;
 
