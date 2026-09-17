@@ -56,7 +56,7 @@ class JarvisPlugin extends BotPlugin {
     return [
       BotCommand("jarvis", "Fun", "Jarvis, destroy their house", (T context, GreedyString data) async {
         try {
-          final text = data.data;
+          final text = "jarvis, ${data.data}";
 
           if (template == null) {
             Logger.print("MrBeast", "Fetching template...");
