@@ -48,104 +48,109 @@ class QuotePlugin extends BotPluginLegacy {
   }
 
   Future<String?> quote(NyxxGateway client, KVStore store, MessageReactionAddEvent event) async {
-    if (isIgnored(store, event.userId)) return "Ignored";
-    if (event.guildId == null || event.member == null) return "No guild/member";
-
-    final settings = QuoteSettings(store, event.guildId!);
-    if (settings.quotedMessages.get().contains(event.messageId)) return "Already quoted";
-
-    final guild = await event.guild!.get();
-    final data = settings.getForChannel(event.channelId);
-
-    if (data == null) {
-      return "No data";
-    }
-
-    final emoji = await data.getQuoteEmoji(client: client, guild: guild);
-    final channelId = data.channel;
-
-    if (emoji == null) return "No emoji";
-    if (channelId == null) return "No channel";
-    if (event.message.channelId == channelId && !dev) return "In quote channel";
-
-    Logger.print("Quote", "Attempting to quote message ${event.messageId} with data ${data.name} (${data.runtimeType})");
-    late GuildTextChannel channel;
-
     try {
-      channel = await client.channels.get(channelId) as GuildTextChannel;
+      if (isIgnored(store, event.userId)) return "Ignored";
+      if (event.guildId == null || event.member == null) return "No guild/member";
+
+      final settings = QuoteSettings(store, event.guildId!);
+      if (settings.quotedMessages.get().contains(event.messageId)) return "Already quoted";
+
+      final guild = await event.guild!.get();
+      final data = settings.getForChannel(event.channelId);
+
+      if (data == null) {
+        return "No data";
+      }
+
+      final emoji = await data.getQuoteEmoji(client: client, guild: guild);
+      final channelId = data.channel;
+
+      if (emoji == null) return "No emoji";
+      if (channelId == null) return "No channel";
+      if (event.message.channelId == channelId && !dev) return "In quote channel";
+
+      Logger.print("Quote", "Attempting to quote message ${event.messageId} with data ${data.name} (${data.runtimeType})");
+      late GuildTextChannel channel;
+
+      try {
+        channel = await client.channels.get(channelId) as GuildTextChannel;
+      } catch (e) {
+        Logger.warn("Quote", "Unable to get channel $channelId: $e");
+        return "Couldn't get channel";
+      }
+
+      final count = data.count;
+      if (count < 1) return "Disabled via count";
+
+      final message = await event.message.fetch();
+      if (isIgnored(store, message.author.id)) return "Author is ignored";
+
+      final reactions = Map.fromEntries(await Future.wait(message.reactions.map((x) async {
+        final Emoji emoji = (x.emoji is TextEmoji ? x.emoji : (x.emoji is GuildEmoji ? x.emoji : await x.emoji.get())) as Emoji;
+        return MapEntry(emoji, await message.fetchReactions(ReactionBuilder.fromEmoji(emoji)));
+      })));
+
+      final reaction = reactions.entries.firstWhereOrNull((x) => x.key.id == emoji.id && x.key.name == emoji.name);
+      Logger.print("Quote", "Reactions: ${reaction?.value.length} (from ${reactions.length} entries and ${message.reactions.length} reactions): ${reactions.entries.map((x) => "(${x.key.name}, ${x.key.id}, ${x.key.name == emoji.name}, ${x.key.id == emoji.id})")}");
+      final author = message.author;
+
+      if (reaction?.value.any((x) => x.id == client.user.id) ?? false) {
+        await message.deleteOwnReaction(ReactionBuilder.fromEmoji(emoji));
+      } else {
+        final users = reaction?.value.where((x) => !x.isBot && !x.isSystem && message.author.id != x.id) ?? [];
+        if (settings.quoteAdminImmediate.get() && isMod(settings: settings, member: event.member!)) {} else if (users.length < count) return "Not enough users";
+      }
+
+      final messageChannel = await tryCatchA(() async => await message.channel.get() as GuildTextChannel);
+      final current = settings.quotedMessages.get();
+
+      if (current.contains(event.messageId)) {
+        return "Already quoted (2)";
+      }
+
+      current.add(event.messageId);
+      settings.quotedMessages.set(current);
+      var (embeds, links) = processEmbeds(message);
+
+      for (final snapshot in message.messageSnapshots ?? <MessageSnapshot>[]) {
+        final (e, l) = processEmbeds(snapshot);
+        embeds.addAll(e);
+        links.addAll(l);
+      }
+
+      if (embeds.length > 10) {
+        embeds = embeds.sublist(0, 10);
+      }
+
+      await channel.sendMessage(MessageBuilder(embeds: [
+        EmbedBuilder(
+          author: EmbedAuthorBuilder(name: author.username, iconUrl: author.avatar?.url),
+          thumbnail: author.avatar?.url != null ? EmbedThumbnailBuilder(url: author.avatar!.url) : null,
+          description: "## Quote by ${message.author.id.toUserMention()}\n\n${message.content.max(1900)}".trim(),
+          timestamp: (message.editedTimestamp ?? message.timestamp).toUtc(),
+          color: await getColor(await tryCatchA<Member?>(() async => await userToMember(message.author as User, guild: guild))),
+          fields: [
+            EmbedFieldBuilder(name: "Where", value: [
+              if (messageChannel != null) "In: `#${messageChannel.name}`",
+              "${discordLink(event.guildId, message.channelId, message.id)}",
+            ].join("\n"), isInline: true),
+          ],
+        ), ...embeds,
+      ], attachments: (await Future.wait(message.attachments.map((x) async {
+        final data = (await tryCatchA(() => http.get(x.url)))?.bodyBytes;
+        Logger.print("Quote", "Attachment ${x.fileName}: ${data?.lengthInBytes}");
+        if (data == null) return null;
+        return AttachmentBuilder(fileName: x.fileName, data: data);
+      }))).whereType<AttachmentBuilder>().toList()));
+
+      final linkStuff = links.nullIfEmpty?.join(" ").max(2000);
+      if (linkStuff != null) await channel.sendMessage(MessageBuilder(content: linkStuff));
+
+      return null;
     } catch (e) {
-      Logger.warn("Quote", "Unable to get channel $channelId: $e");
-      return "Couldn't get channel";
+      Logger.warn("Quote", "Unexpected error (message: ${discordLink(event.guildId, event.channelId, event.messageId)}, user: ${event.userId}, author: ${event.messageAuthorId}, member: ${event.member.runtimeType}, emoji: ${event.emoji.name}:${event.emoji.id}): $e");
+      return "Unexpected error";
     }
-
-    final count = data.count;
-    if (count < 1) return "Disabled via count";
-
-    final message = await event.message.fetch();
-    if (isIgnored(store, message.author.id)) return "Author is ignored";
-
-    final reactions = Map.fromEntries(await Future.wait(message.reactions.map((x) async {
-      final Emoji emoji = (x.emoji is TextEmoji ? x.emoji : (x.emoji is GuildEmoji ? x.emoji : await x.emoji.get())) as Emoji;
-      return MapEntry(emoji, await message.fetchReactions(ReactionBuilder.fromEmoji(emoji)));
-    })));
-
-    final reaction = reactions.entries.firstWhereOrNull((x) => x.key.id == emoji.id && x.key.name == emoji.name);
-    Logger.print("Quote", "Reactions: ${reaction?.value.length} (from ${reactions.length} entries and ${message.reactions.length} reactions): ${reactions.entries.map((x) => "(${x.key.name}, ${x.key.id}, ${x.key.name == emoji.name}, ${x.key.id == emoji.id})")}");
-    final author = message.author;
-
-    if (reaction?.value.any((x) => x.id == client.user.id) ?? false) {
-      await message.deleteOwnReaction(ReactionBuilder.fromEmoji(emoji));
-    } else {
-      final users = reaction?.value.where((x) => !x.isBot && !x.isSystem && message.author.id != x.id) ?? [];
-      if (settings.quoteAdminImmediate.get() && isMod(settings: settings, member: event.member!)) {} else if (users.length < count) return "Not enough users";
-    }
-
-    final messageChannel = await tryCatchA(() async => await message.channel.get() as GuildTextChannel);
-    final current = settings.quotedMessages.get();
-
-    if (current.contains(event.messageId)) {
-      return "Already quoted (2)";
-    }
-
-    current.add(event.messageId);
-    settings.quotedMessages.set(current);
-    var (embeds, links) = processEmbeds(message);
-
-    for (final snapshot in message.messageSnapshots ?? <MessageSnapshot>[]) {
-      final (e, l) = processEmbeds(snapshot);
-      embeds.addAll(e);
-      links.addAll(l);
-    }
-
-    if (embeds.length > 10) {
-      embeds = embeds.sublist(0, 10);
-    }
-
-    await channel.sendMessage(MessageBuilder(embeds: [
-      EmbedBuilder(
-        author: EmbedAuthorBuilder(name: author.username, iconUrl: author.avatar?.url),
-        thumbnail: author.avatar?.url != null ? EmbedThumbnailBuilder(url: author.avatar!.url) : null,
-        description: "## Quote by ${message.author.id.toUserMention()}\n\n${message.content.max(1900)}".trim(),
-        timestamp: (message.editedTimestamp ?? message.timestamp).toUtc(),
-        color: await getColor(await tryCatchA<Member?>(() async => await userToMember(message.author as User, guild: guild))),
-        fields: [
-          EmbedFieldBuilder(name: "Where", value: [
-            if (messageChannel != null) "In: `#${messageChannel.name}`",
-            "${discordLink(event.guildId, message.channelId, message.id)}",
-          ].join("\n"), isInline: true),
-        ],
-      ), ...embeds,
-    ], attachments: (await Future.wait(message.attachments.map((x) async {
-      final data = (await tryCatchA(() => http.get(x.url)))?.bodyBytes;
-      Logger.print("Quote", "Attachment ${x.fileName}: ${data?.lengthInBytes}");
-      if (data == null) return null;
-      return AttachmentBuilder(fileName: x.fileName, data: data);
-    }))).whereType<AttachmentBuilder>().toList()));
-
-    final linkStuff = links.nullIfEmpty?.join(" ").max(2000);
-    if (linkStuff != null) await channel.sendMessage(MessageBuilder(content: linkStuff));
-
-    return null;
   }
 
   @override
