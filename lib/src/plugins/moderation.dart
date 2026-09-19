@@ -1066,7 +1066,6 @@ class ModerationPlugin extends BotPluginLegacy {
       client.onMessageUpdate.listen((event) async {
         if (event.message.author.id == client.user.id) return;
         final old = event.oldMessage;
-        if (old != null && old.content == event.message.content) return;
 
         final author = event.message.author;
         if (author is! User) return;
@@ -1117,7 +1116,13 @@ class ModerationPlugin extends BotPluginLegacy {
       });
 
       client.onMessageBulkDelete.listen((event) async {
-        final old = Map.fromEntries(event.ids.map((x) => MapEntry(x, event.deletedMessages.firstWhereOrNull((y) => y.id == x))));
+        final deleted = {
+          for (final message in event.deletedMessages) message.id: message,
+        };
+
+        final old = {
+          for (final id in event.ids) id: deleted[id],
+        };
 
         Modlog.add(ModlogEvent(
           "message.bulkdelete",
@@ -1278,9 +1283,12 @@ class ModerationPlugin extends BotPluginLegacy {
           Modlog.add(ModlogEvent(
             "member.update.${property.key}",
             title: "Member Updated (${property.key})",
-            fields: Map.fromEntries(changed.map((x) {
-              return MapEntry("`${typeToString(x.$1)}` `${x.$2}`", "${x.$3} -> ${x.$4}".toDiscordCodeBlock());
-            })),
+            fields: {
+              "Who": event.member.toMention(),
+              ...Map.fromEntries(changed.map((x) {
+                return MapEntry("`${typeToString(x.$1)}` `${x.$2}`", "${x.$3} -> ${x.$4}".toDiscordCodeBlock());
+              })),
+            },
             guild: await event.guild.get(),
             settings: ifGuild(context.store, event.guildId, (id) => ServerSettings(context.store, id)),
             client: client,
