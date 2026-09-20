@@ -68,6 +68,7 @@ class QuotePlugin extends BotPluginLegacy {
       if (emoji == null) return "No emoji";
       if (channelId == null) return "No channel";
       if (event.message.channelId == channelId && !dev) return "In quote channel";
+      if (emoji.name != event.emoji.name || emoji.id != event.emoji.id) return "Emojis don't match";
 
       Logger.print("Quote", "Attempting to quote message ${event.messageId} with data ${data.name} (${data.runtimeType})");
       late GuildTextChannel channel;
