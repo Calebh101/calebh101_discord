@@ -225,7 +225,7 @@ class XPPlugin extends BotPluginLegacy {
 
       final id = settings.xpChannel.get();
       await context.respond(MessageBuilder(content: "XP updates channel ${id != null ? "is set to ${id.toChannel()}" : "not set"}."));
-    }, CommandAttributes(category: "XP", permissionsRequired: BotCommandPermissions.admin)),
+    }, CommandAttributes(category: "XP")),
 
     BotCommand.command("reassignxp", "Reassign everyone's XP levels, or specific users'.", (T context, [GreedyMemberList? input]) async {
       if (context.guild == null) return context.respondWithError("No guild found.");
