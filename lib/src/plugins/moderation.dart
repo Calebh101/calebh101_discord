@@ -174,22 +174,7 @@ class ModerationPlugin extends BotPluginLegacy {
       }, channelPermissions: Permissions.banMembers),
       BotCommand("fban", "Moderation", "Fake ban a user.", (T context, Or<Member, Snowflake> input, [GreedyString? reason]) async {
         final id = input.$1?.id ?? input.$2!;
-
-        try {
-          if (await confirm(context, "ban ${await confirmstringifyorid(id, input.$1, context.client)}") == false) return;
-        } on HttpResponseError catch (e) {
-          Logger.warn("Ban", "Unable to ban $id: $e");
-          final fail = e.message;
-
-          await context.respond(MessageBuilder(embeds: [
-            EmbedBuilder(
-              description: "## Unable to Ban ${id.value.toMention()}\n${await memberToString(input.$1, client: context.client, detailed: true) ?? id}\n${reason?.toDiscordCodeBlock() ?? "No reason provided"}\n\n${fail.toDiscordCodeBlock()}",
-              color: await getColor(context.member),
-            ),
-          ]));
-
-          return;
-        }
+        if (await confirm(context, "ban ${await confirmstringifyorid(id, input.$1, context.client)}") == false) return;
 
         await context.respond(MessageBuilder(embeds: [
           EmbedBuilder(
@@ -201,7 +186,7 @@ class ModerationPlugin extends BotPluginLegacy {
             ].whereType<EmbedFieldBuilder>().toList(),
           ),
         ]));
-      }, channelPermissions: Permissions.banMembers, aliases: ["fakeban"]),
+      }, aliases: ["fakeban"]),
       BotCommand("kick", "Moderation", "Kick a user.", (T context, Member member, [GreedyString? reason]) async {
         try {
           if (await confirm(context, "kick ${await confirmstringify(member, context.client)}") == false) return;
